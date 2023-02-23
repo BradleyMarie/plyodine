@@ -30,3 +30,20 @@
 *.exe
 *.out
 *.app
+
+# Build artifacts
+bazel-bin/
+bazel-genfiles/
+bazel-out/
+bazel-plyodine/
+bazel-testlogs/
+
+# Build artifacts as files
+bazel-bin
+bazel-genfiles
+bazel-out
+bazel-plyodine
+bazel-testlogs
+
+# VS Code
+.vscode/
