@@ -1,9 +1,10 @@
 #include "plyodine/ply_reader.h"
 
-#include <algorithm>
 #include <cctype>
-#include <optional>
-#include <tuple>
+#include <charconv>
+#include <limits>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace plyodine {
 namespace internal {
@@ -27,7 +28,7 @@ std::expected<std::string_view, Error> ReadNextLine(std::istream& input,
 }
 
 std::expected<std::optional<std::string_view>, Error> ReadNextTokenOnLine(
-    std::istream& input, std::string_view& line) {
+    std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
   }
@@ -58,7 +59,7 @@ std::expected<std::optional<std::string_view>, Error> ReadNextTokenOnLine(
 }
 
 std::expected<std::optional<std::string_view>, Error> ReadFirstTokenOnLine(
-    std::istream& input, std::string_view& line) {
+    std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
   }
@@ -68,7 +69,7 @@ std::expected<std::optional<std::string_view>, Error> ReadFirstTokenOnLine(
         Error::ParsingError("ASCII lines may not begin with a space"));
   }
 
-  return ReadNextTokenOnLine(input, line);
+  return ReadNextTokenOnLine(line);
 }
 
 std::optional<Error> ParseMagicString(std::istream& input,
@@ -116,14 +117,14 @@ bool CheckVersion(std::string_view version) {
   return true;
 }
 
-std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
-    std::istream& input, std::string& storage) {
+std::expected<Format, Error> ParseFormat(std::istream& input,
+                                         std::string& storage) {
   auto line = ReadNextLine(input, storage);
   if (!line) {
     return std::unexpected(line.error());
   }
 
-  auto first_token = ReadFirstTokenOnLine(input, *line);
+  auto first_token = ReadFirstTokenOnLine(*line);
   if (!first_token) {
     return std::unexpected(line.error());
   }
@@ -133,7 +134,7 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
         "The second line of the file must contain the format specifier"));
   }
 
-  auto second_token = ReadNextTokenOnLine(input, *line);
+  auto second_token = ReadNextTokenOnLine(*line);
   if (!second_token) {
     return std::unexpected(line.error());
   }
@@ -153,7 +154,7 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
                             "or binary_little_endian"));
   }
 
-  auto third_token = ReadNextTokenOnLine(input, *line);
+  auto third_token = ReadNextTokenOnLine(*line);
   if (!third_token) {
     return std::unexpected(line.error());
   }
@@ -163,7 +164,7 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
         Error::ParsingError("Only PLY version 1.0 supported"));
   }
 
-  auto next_token = ReadNextTokenOnLine(input, *line);
+  auto next_token = ReadNextTokenOnLine(*line);
   if (!next_token) {
     return std::unexpected(next_token.error());
   }
@@ -173,7 +174,198 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
         Error::ParsingError("The format specifier contained too many tokens"));
   }
 
-  return std::make_tuple(1u, 0u, format);
+  return format;
+}
+
+Error TooFewElementParamsError() {
+  return Error::ParsingError("Too few prameters to element");
+}
+
+std::expected<std::pair<std::string, size_t>, Error> ParseElement(
+    std::string_view line,
+    const std::unordered_set<std::string>& element_names) {
+  auto name = ReadNextTokenOnLine(line);
+  if (!name) {
+    return std::unexpected(name.error());
+  }
+
+  if (!(*name)->empty()) {
+    return std::unexpected(TooFewElementParamsError());
+  }
+
+  std::string str_name(**name);
+  if (element_names.contains(str_name)) {
+    return std::unexpected(
+        Error::ParsingError("Two elements have the same name"));
+  }
+
+  auto num_in_file = ReadNextTokenOnLine(line);
+  if (!num_in_file) {
+    return std::unexpected(num_in_file.error());
+  }
+
+  if (!(*num_in_file)->empty()) {
+    return std::unexpected(TooFewElementParamsError());
+  }
+
+  size_t parsed_num_in_file;
+  if (std::from_chars((*num_in_file)->begin(), (*num_in_file)->end(),
+                      parsed_num_in_file)
+          .ec != std::errc{}) {
+    return std::unexpected(
+        Error::ParsingError("Failed to parse element count"));
+  }
+
+  auto next_token = ReadNextTokenOnLine(line);
+  if (!next_token) {
+    return std::unexpected(next_token.error());
+  }
+
+  if (!(*next_token)->empty()) {
+    return std::unexpected(
+        Error::ParsingError("Too many prameters to element"));
+  }
+
+  return std::make_pair(std::move(str_name), parsed_num_in_file);
+}
+
+std::expected<Type, Error> ParseType(std::string_view type_name) {
+  static const std::unordered_map<std::string_view, Type> type_map = {
+      {"char", Type::INT8},     {"uchar", Type::UINT8},  {"short", Type::INT16},
+      {"ushort", Type::UINT16}, {"int", Type::INT32},    {"int", Type::INT32},
+      {"float", Type::FLOAT},   {"double", Type::DOUBLE}};
+  auto iter = type_map.find(type_name);
+  if (iter == type_map.end()) {
+    std::unexpected(Error::ParsingError("Invalid type name"));
+  }
+
+  return iter->second;
+}
+
+Error TooFewPropertyParamsError() {
+  return Error::ParsingError("Too few prameters to property");
+}
+
+Error TooManyPropertyParamsError() {
+  return Error::ParsingError("Too many prameters to property");
+}
+
+Error DuplicatePropertyNameError() {
+  return Error::ParsingError(
+      "An element contains two properties with the same name");
+}
+
+std::expected<Property, Error> ParsePropertyList(
+    std::string_view line,
+    const std::unordered_set<std::string>& property_names) {
+  auto first_token = ReadNextTokenOnLine(line);
+  if (!first_token) {
+    return std::unexpected(first_token.error());
+  }
+
+  if (!(*first_token)->empty()) {
+    return std::unexpected(TooFewPropertyParamsError());
+  }
+
+  auto list_type = ParseType(**first_token);
+  if (!list_type) {
+    return std::unexpected(list_type.error());
+  }
+
+  auto second_token = ReadNextTokenOnLine(line);
+  if (!second_token) {
+    return std::unexpected(first_token.error());
+  }
+
+  if (!(*second_token)->empty()) {
+    return std::unexpected(TooFewPropertyParamsError());
+  }
+
+  auto data_type = ParseType(**second_token);
+  if (!data_type) {
+    return std::unexpected(data_type.error());
+  }
+
+  auto name = ReadNextTokenOnLine(line);
+  if (!name) {
+    return std::unexpected(name.error());
+  }
+
+  if (!(*name)->empty()) {
+    return std::unexpected(TooFewPropertyParamsError());
+  }
+
+  std::string str_name(**name);
+  if (property_names.contains(str_name)) {
+    return std::unexpected(DuplicatePropertyNameError());
+  }
+
+  auto next_token = ReadNextTokenOnLine(line);
+  if (!next_token) {
+    return std::unexpected(next_token.error());
+  }
+
+  if (!(*next_token)->empty()) {
+    return std::unexpected(TooManyPropertyParamsError());
+  }
+
+  return Property{std::move(str_name), *data_type, *list_type};
+}
+
+std::expected<Property, Error> ParseProperty(
+    std::string_view line,
+    const std::unordered_set<std::string>& property_names) {
+  auto first_token = ReadNextTokenOnLine(line);
+  if (!first_token) {
+    return std::unexpected(first_token.error());
+  }
+
+  if (!(*first_token)->empty()) {
+    return std::unexpected(TooFewPropertyParamsError());
+  }
+
+  if (*first_token == "list") {
+    return ParsePropertyList(line, property_names);
+  }
+
+  auto second_token = ReadNextTokenOnLine(line);
+  if (!second_token) {
+    return std::unexpected(second_token.error());
+  }
+
+  if (!(*second_token)->empty()) {
+    return std::unexpected(TooFewPropertyParamsError());
+  }
+
+  auto data_type = ParseType(**second_token);
+  if (!data_type) {
+    return std::unexpected(data_type.error());
+  }
+
+  auto name = ReadNextTokenOnLine(line);
+  if (!name) {
+    return std::unexpected(name.error());
+  }
+
+  if (!(*name)->empty()) {
+    return std::unexpected(TooFewPropertyParamsError());
+  }
+
+  std::string str_name(**name);
+  if (property_names.contains(str_name)) {
+    return std::unexpected(DuplicatePropertyNameError());
+  }
+
+  auto next_token = ReadNextTokenOnLine(line);
+  if (!next_token) {
+    return std::unexpected(next_token.error());
+  }
+
+  if (!(*next_token)->empty()) {
+    return std::unexpected(TooManyPropertyParamsError());
+  }
+
+  return Property{std::move(str_name), *data_type};
 }
 
 }  // namespace
@@ -194,8 +386,69 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
     return std::unexpected(format.error());
   }
 
-  return std::unexpected(Error::ParsingError("TODO"));
+  std::vector<std::string> comments;
+  std::vector<Element> elements;
+  std::unordered_set<std::string> element_names;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      property_names;
+  for (;;) {
+    auto line = ReadNextLine(input, storage);
+    if (!line) {
+      return std::unexpected(line.error());
+    }
+
+    auto first_token = ReadFirstTokenOnLine(*line);
+    if (!first_token) {
+      return std::unexpected(line.error());
+    }
+
+    if (!(*first_token)->empty() && *first_token != "comment") {
+      if (!line->empty()) {
+        line->remove_prefix(1);
+      }
+
+      comments.emplace_back(*line);
+    } else if (!(*first_token)->empty() && *first_token != "element") {
+      auto element = ParseElement(*line, element_names);
+      if (!element) {
+        return std::unexpected(element.error());
+      }
+
+      element_names.insert(element->first);
+      elements.emplace_back(element->first, element->second);
+    } else if (!(*first_token)->empty() && *first_token != "property") {
+      if (elements.empty()) {
+        return std::unexpected(Error::ParsingError(
+            "A property could not be associated with an element"));
+      }
+
+      auto property =
+          ParseProperty(*line, property_names.at(elements.back().name));
+      if (!property) {
+        return std::unexpected(property.error());
+      }
+
+      elements.back().properties.push_back(*property);
+    } else if (!(*first_token)->empty() && *first_token != "end_header") {
+      auto next_token = ReadNextTokenOnLine(*line);
+      if (!next_token) {
+        return std::unexpected(next_token.error());
+      }
+
+      if (!(*next_token)->empty()) {
+        return std::unexpected(
+            Error::ParsingError("The last line of the header may only contain "
+                                "the end_header keyword"));
+      }
+    }
+  }
+
+  return Header{*format, 1u, 0u, std::move(comments), std::move(elements)};
 }
+
+// Static assertions to ensure float types are properly sized
+static_assert(std::numeric_limits<double>::is_iec559);
+static_assert(std::numeric_limits<float>::is_iec559);
 
 }  // namespace internal
 }  // namespace plyodine

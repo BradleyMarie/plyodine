@@ -3,6 +3,7 @@
 
 #include <expected>
 #include <istream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -36,11 +37,12 @@ namespace internal {
 
 enum class Format { ASCII, BINARY_LITTLE_ENDIAN, BINARY_BIG_ENDIAN };
 
-enum class Type { INT8, UINT8, INT16, UINT16, INT32, UINT32, FLOAT32, FLOAT64 };
+enum class Type { INT8, UINT8, INT16, UINT16, INT32, UINT32, FLOAT, DOUBLE };
 
 struct Property {
   std::string name;
-  Type type;
+  Type data_type;
+  std::optional<Type> list_type;
 };
 
 struct Element {
