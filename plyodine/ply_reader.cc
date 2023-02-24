@@ -27,22 +27,18 @@ std::expected<std::string_view, Error> ReadNextLine(std::istream& input,
 }
 
 std::expected<std::optional<std::string_view>, Error> ReadNextTokenOnLine(
-    std::istream& input, std::string_view& line, bool strict) {
+    std::istream& input, std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
   }
 
   size_t prefix_length = line.find_first_not_of(' ');
   if (prefix_length == std::string_view::npos) {
-    if (strict) {
-      return std::unexpected(Error::ParsingError(
-          "Non-comment ASCII lines may not contain trailing spaces"));
-    }
-
-    return std::nullopt;
+    return std::unexpected(Error::ParsingError(
+        "Non-comment ASCII lines may not contain trailing spaces"));
   }
 
-  if (strict && prefix_length > 1) {
+  if (prefix_length > 1) {
     return std::unexpected(
         Error::ParsingError("Non-comment ASCII lines may only contain a single "
                             "space between tokens tokens"));
@@ -62,17 +58,17 @@ std::expected<std::optional<std::string_view>, Error> ReadNextTokenOnLine(
 }
 
 std::expected<std::optional<std::string_view>, Error> ReadFirstTokenOnLine(
-    std::istream& input, std::string_view& line, bool strict) {
+    std::istream& input, std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
   }
 
-  if (strict && line[0] == ' ') {
+  if (line[0] == ' ') {
     return std::unexpected(
         Error::ParsingError("ASCII lines may not begin with a space"));
   }
 
-  return ReadNextTokenOnLine(input, line, strict);
+  return ReadNextTokenOnLine(input, line);
 }
 
 std::optional<Error> ParseMagicString(std::istream& input,
@@ -121,13 +117,13 @@ bool CheckVersion(std::string_view version) {
 }
 
 std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
-    std::istream& input, std::string& storage, bool strict) {
+    std::istream& input, std::string& storage) {
   auto line = ReadNextLine(input, storage);
   if (!line) {
     return std::unexpected(line.error());
   }
 
-  auto first_token = ReadFirstTokenOnLine(input, *line, strict);
+  auto first_token = ReadFirstTokenOnLine(input, *line);
   if (!first_token) {
     return std::unexpected(line.error());
   }
@@ -137,7 +133,7 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
         "The second line of the file must contain the format specifier"));
   }
 
-  auto second_token = ReadNextTokenOnLine(input, *line, strict);
+  auto second_token = ReadNextTokenOnLine(input, *line);
   if (!second_token) {
     return std::unexpected(line.error());
   }
@@ -157,7 +153,7 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
                             "or binary_little_endian"));
   }
 
-  auto third_token = ReadNextTokenOnLine(input, *line, strict);
+  auto third_token = ReadNextTokenOnLine(input, *line);
   if (!third_token) {
     return std::unexpected(line.error());
   }
@@ -167,7 +163,7 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
         Error::ParsingError("Only PLY version 1.0 supported"));
   }
 
-  auto next_token = ReadNextTokenOnLine(input, *line, strict);
+  auto next_token = ReadNextTokenOnLine(input, *line);
   if (!next_token) {
     return std::unexpected(next_token.error());
   }
@@ -182,7 +178,7 @@ std::expected<std::tuple<uint8_t, uint8_t, Format>, Error> ParseFormat(
 
 }  // namespace
 
-std::expected<Header, Error> ParseHeader(std::istream& input, bool strict) {
+std::expected<Header, Error> ParseHeader(std::istream& input) {
   if (input.fail()) {
     return std::unexpected(Error::IoError("Bad stream passed"));
   }
@@ -193,7 +189,7 @@ std::expected<Header, Error> ParseHeader(std::istream& input, bool strict) {
     return std::unexpected(*magic_string_error);
   }
 
-  auto format = ParseFormat(input, storage, strict);
+  auto format = ParseFormat(input, storage);
   if (!format) {
     return std::unexpected(format.error());
   }

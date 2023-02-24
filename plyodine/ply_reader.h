@@ -57,7 +57,7 @@ struct Header {
   std::vector<Element> elements;
 };
 
-std::expected<Header, Error> ParseHeader(std::istream& input, bool strict);
+std::expected<Header, Error> ParseHeader(std::istream& input);
 
 }  // namespace internal
 
