@@ -440,6 +440,9 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
             Error::ParsingError("The last line of the header may only contain "
                                 "the end_header keyword"));
       }
+    } else {
+      return std::unexpected(
+          Error::ParsingError("The file contained an invalid header"));
     }
   }
 
