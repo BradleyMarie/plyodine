@@ -9,37 +9,38 @@
 
 namespace plyodine {
 
-class Error {
-public:
- enum class Type {
-  EARLY_EOF
- };
+class Error final {
+ public:
+  enum ErrorCode { IO_ERROR, PARSING_ERROR };
 
- Error(Type type, std::string_view message)
- : type_(type), message_(message) { }
+  Error(ErrorCode code, std::string_view message) noexcept
+      : code_(code), message_(message) {}
 
- Type Type() const { return type_; }
- std::string_view Message() const { return message_; }
+  ErrorCode Code() const noexcept { return code_; }
+  std::string_view Message() const noexcept { return message_; }
+
+  static Error IoError(std::string_view message) noexcept {
+    return Error(IO_ERROR, message);
+  }
+
+  static Error ParsingError(std::string_view message) noexcept {
+    return Error(PARSING_ERROR, message);
+  }
 
  private:
- const Type type_;
- const std::string_view message_;
+  ErrorCode code_;
+  std::string_view message_;
 };
 
 namespace internal {
 
-enum class Format {
-    ASCII,
-    BINARY
-};
+enum class Format { ASCII, BINARY_LITTLE_ENDIAN, BINARY_BIG_ENDIAN };
 
-enum class Type {
-  INT8, UINT8, INT16, UINT16, INT32, UINT32, FLOAT32, FLOAT64
-};
+enum class Type { INT8, UINT8, INT16, UINT16, INT32, UINT32, FLOAT32, FLOAT64 };
 
 struct Property {
- std::string name;
- Type type;
+  std::string name;
+  Type type;
 };
 
 struct Element {
@@ -49,22 +50,22 @@ struct Element {
 };
 
 struct Header {
- Format format;
- uint8_t major_version;
- uint8_t minor_version;
- std::vector<std::string> comments;
- std::vector<Element> elements;
+  Format format;
+  uint8_t major_version;
+  uint8_t minor_version;
+  std::vector<std::string> comments;
+  std::vector<Element> elements;
 };
 
-std::expected<PlyHeader, Error> ParseHeader(std::istream& input);
+std::expected<Header, Error> ParseHeader(std::istream& input, bool strict);
 
 }  // namespace internal
 
 class PlyReader {
-public:
- void ParseFrom(std::istream& input);
-private:
- 
+ public:
+  void ParseFrom(std::istream& input);
+
+ private:
 };
 
 }  // namespace plyodine
