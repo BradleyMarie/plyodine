@@ -15,7 +15,15 @@ std::expected<std::string_view, Error> ReadNextLine(std::istream& input,
   storage.clear();
 
   char c = '\0';
-  while (input.get(c) && c != '\r') {
+  while (input.get(c)) {
+    if (c == '\r' && input.peek() == '\n') {
+      continue;
+    }
+
+    if (c == '\r' || c == '\n') {
+      break;
+    }
+
     if (c != ' ' && !std::isgraph(c)) {
       return std::unexpected(
           Error::ParsingError("The file contained an invalid character"));
@@ -98,7 +106,7 @@ bool CheckVersion(std::string_view version) {
     return true;
   }
 
-  if (version[1] != '.') {
+  if (version[0] != '.') {
     return false;
   }
 
@@ -129,7 +137,7 @@ std::expected<Format, Error> ParseFormat(std::istream& input,
     return std::unexpected(line.error());
   }
 
-  if (!(*first_token)->empty() && *first_token != "format") {
+  if (!first_token->has_value() || *first_token != "format") {
     return std::unexpected(Error::ParsingError(
         "The second line of the file must contain the format specifier"));
   }
@@ -140,12 +148,12 @@ std::expected<Format, Error> ParseFormat(std::istream& input,
   }
 
   Format format;
-  if (!(*second_token)->empty() && *second_token == "ascii") {
+  if (second_token->has_value() && *second_token == "ascii") {
     format = Format::ASCII;
-  } else if (!(*second_token)->empty() &&
+  } else if (second_token->has_value() &&
              *second_token == "binary_big_endian") {
     format = Format::BINARY_BIG_ENDIAN;
-  } else if (!(*second_token)->empty() &&
+  } else if (second_token->has_value() &&
              *second_token == "binary_little_endian") {
     format = Format::BINARY_LITTLE_ENDIAN;
   } else {
@@ -159,7 +167,7 @@ std::expected<Format, Error> ParseFormat(std::istream& input,
     return std::unexpected(line.error());
   }
 
-  if ((*third_token)->empty() || !CheckVersion(**third_token)) {
+  if (!third_token->has_value() || !CheckVersion(**third_token)) {
     return std::unexpected(
         Error::ParsingError("Only PLY version 1.0 supported"));
   }
@@ -169,7 +177,7 @@ std::expected<Format, Error> ParseFormat(std::istream& input,
     return std::unexpected(next_token.error());
   }
 
-  if (!(*next_token)->empty()) {
+  if (next_token->has_value()) {
     return std::unexpected(
         Error::ParsingError("The format specifier contained too many tokens"));
   }
@@ -189,7 +197,7 @@ std::expected<std::pair<std::string, size_t>, Error> ParseElement(
     return std::unexpected(name.error());
   }
 
-  if (!(*name)->empty()) {
+  if (!name->has_value()) {
     return std::unexpected(TooFewElementParamsError());
   }
 
@@ -204,7 +212,7 @@ std::expected<std::pair<std::string, size_t>, Error> ParseElement(
     return std::unexpected(num_in_file.error());
   }
 
-  if (!(*num_in_file)->empty()) {
+  if (!num_in_file->has_value()) {
     return std::unexpected(TooFewElementParamsError());
   }
 
@@ -221,7 +229,7 @@ std::expected<std::pair<std::string, size_t>, Error> ParseElement(
     return std::unexpected(next_token.error());
   }
 
-  if (!(*next_token)->empty()) {
+  if (next_token->has_value()) {
     return std::unexpected(
         Error::ParsingError("Too many prameters to element"));
   }
@@ -263,7 +271,7 @@ std::expected<Property, Error> ParsePropertyList(
     return std::unexpected(first_token.error());
   }
 
-  if (!(*first_token)->empty()) {
+  if (!first_token->has_value()) {
     return std::unexpected(TooFewPropertyParamsError());
   }
 
@@ -277,7 +285,7 @@ std::expected<Property, Error> ParsePropertyList(
     return std::unexpected(first_token.error());
   }
 
-  if (!(*second_token)->empty()) {
+  if (!second_token->has_value()) {
     return std::unexpected(TooFewPropertyParamsError());
   }
 
@@ -291,7 +299,7 @@ std::expected<Property, Error> ParsePropertyList(
     return std::unexpected(name.error());
   }
 
-  if (!(*name)->empty()) {
+  if (!name->has_value()) {
     return std::unexpected(TooFewPropertyParamsError());
   }
 
@@ -305,7 +313,7 @@ std::expected<Property, Error> ParsePropertyList(
     return std::unexpected(next_token.error());
   }
 
-  if (!(*next_token)->empty()) {
+  if (next_token->has_value()) {
     return std::unexpected(TooManyPropertyParamsError());
   }
 
@@ -320,7 +328,7 @@ std::expected<Property, Error> ParseProperty(
     return std::unexpected(first_token.error());
   }
 
-  if (!(*first_token)->empty()) {
+  if (!first_token->has_value()) {
     return std::unexpected(TooFewPropertyParamsError());
   }
 
@@ -328,16 +336,7 @@ std::expected<Property, Error> ParseProperty(
     return ParsePropertyList(line, property_names);
   }
 
-  auto second_token = ReadNextTokenOnLine(line);
-  if (!second_token) {
-    return std::unexpected(second_token.error());
-  }
-
-  if (!(*second_token)->empty()) {
-    return std::unexpected(TooFewPropertyParamsError());
-  }
-
-  auto data_type = ParseType(**second_token);
+  auto data_type = ParseType(**first_token);
   if (!data_type) {
     return std::unexpected(data_type.error());
   }
@@ -347,7 +346,7 @@ std::expected<Property, Error> ParseProperty(
     return std::unexpected(name.error());
   }
 
-  if (!(*name)->empty()) {
+  if (!name->has_value()) {
     return std::unexpected(TooFewPropertyParamsError());
   }
 
@@ -361,7 +360,7 @@ std::expected<Property, Error> ParseProperty(
     return std::unexpected(next_token.error());
   }
 
-  if (!(*next_token)->empty()) {
+  if (next_token->has_value()) {
     return std::unexpected(TooManyPropertyParamsError());
   }
 
@@ -402,13 +401,24 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
       return std::unexpected(line.error());
     }
 
-    if (!(*first_token)->empty() && *first_token != "comment") {
-      if (!line->empty()) {
-        line->remove_prefix(1);
+    if (first_token->has_value() && *first_token == "property") {
+      if (elements.empty()) {
+        return std::unexpected(Error::ParsingError(
+            "A property could not be associated with an element"));
       }
 
-      comments.emplace_back(*line);
-    } else if (!(*first_token)->empty() && *first_token != "element") {
+      auto& element_property_names = property_names[elements.back().name];
+      auto property = ParseProperty(*line, element_property_names);
+      if (!property) {
+        return std::unexpected(property.error());
+      }
+
+      elements.back().properties.push_back(*property);
+      element_property_names.insert(property->name);
+      continue;
+    }
+
+    if (first_token->has_value() && *first_token == "element") {
       auto element = ParseElement(*line, element_names);
       if (!element) {
         return std::unexpected(element.error());
@@ -416,34 +426,35 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
 
       element_names.insert(element->first);
       elements.emplace_back(element->first, element->second);
-    } else if (!(*first_token)->empty() && *first_token != "property") {
-      if (elements.empty()) {
-        return std::unexpected(Error::ParsingError(
-            "A property could not be associated with an element"));
+      continue;
+    }
+
+    if (first_token->has_value() && *first_token == "comment") {
+      if (!line->empty()) {
+        line->remove_prefix(1);
       }
 
-      auto property =
-          ParseProperty(*line, property_names.at(elements.back().name));
-      if (!property) {
-        return std::unexpected(property.error());
-      }
+      comments.emplace_back(*line);
+      continue;
+    }
 
-      elements.back().properties.push_back(*property);
-    } else if (!(*first_token)->empty() && *first_token != "end_header") {
+    if (first_token->has_value() && *first_token == "end_header") {
       auto next_token = ReadNextTokenOnLine(*line);
       if (!next_token) {
         return std::unexpected(next_token.error());
       }
 
-      if (!(*next_token)->empty()) {
+      if (next_token->has_value()) {
         return std::unexpected(
             Error::ParsingError("The last line of the header may only contain "
                                 "the end_header keyword"));
       }
-    } else {
-      return std::unexpected(
-          Error::ParsingError("The file contained an invalid header"));
+
+      break;
     }
+
+    return std::unexpected(
+        Error::ParsingError("The file contained an invalid header"));
   }
 
   return Header{*format, 1u, 0u, std::move(comments), std::move(elements)};
