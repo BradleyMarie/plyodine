@@ -14,6 +14,7 @@ cc_test(
     data = [
         "test_data/header_empty.ply",
         "test_data/header_illegal_characters.ply",
+        "test_data/header_mismatched_endings.ply",
         "test_data/header_valid_mac.ply",
         "test_data/header_valid_unix.ply",
         "test_data/header_valid_windows.ply",

@@ -14,10 +14,16 @@ std::expected<std::string_view, Error> ReadNextLine(
     std::istream& input, std::string& storage, std::string_view line_ending) {
   storage.clear();
 
-  char c = '\0';
-  while (!line_ending.empty() && input.get(c)) {
-    if (c == line_ending[0]) {
-      line_ending.remove_prefix(1);
+  char c;
+  while (input.get(c)) {
+    if (c == '\r' || c == '\n') {
+      do {
+        if (c != line_ending[0]) {
+          return std::unexpected(Error::ParsingError(
+              "The file contained mismatched line endings"));
+        }
+        line_ending.remove_prefix(1);
+      } while (!line_ending.empty() && input.get(c));
       break;
     }
 
@@ -27,15 +33,6 @@ std::expected<std::string_view, Error> ReadNextLine(
     }
 
     storage.push_back(c);
-  }
-
-  while (!line_ending.empty() && input.get(c)) {
-    if (c != line_ending[0]) {
-      return std::unexpected(
-          Error::ParsingError("The file contained an line ending"));
-    }
-
-    line_ending.remove_prefix(1);
   }
 
   return storage;

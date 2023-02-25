@@ -27,6 +27,14 @@ TEST(Header, IllegalCharacters) {
             result.error().Message());
 }
 
+TEST(Header, MismatchedLineEndings) {
+  std::ifstream input("plyodine/test_data/header_mismatched_endings.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("The file contained mismatched line endings",
+            result.error().Message());
+}
+
 TEST(Header, Valid) {
   std::string files[] = {"plyodine/test_data/header_valid_mac.ply",
                          "plyodine/test_data/header_valid_unix.ply",
