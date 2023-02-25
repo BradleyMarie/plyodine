@@ -20,7 +20,7 @@ std::expected<std::string_view, Error> ReadNextLine(
       do {
         if (c != line_ending[0]) {
           return std::unexpected(Error::ParsingError(
-              "The file contained mismatched line endings"));
+              "The input contained mismatched line endings"));
         }
         line_ending.remove_prefix(1);
       } while (!line_ending.empty() && input.get(c));
@@ -29,7 +29,7 @@ std::expected<std::string_view, Error> ReadNextLine(
 
     if (c != ' ' && !std::isgraph(c)) {
       return std::unexpected(
-          Error::ParsingError("The file contained an invalid character"));
+          Error::ParsingError("The input contained an invalid character"));
     }
 
     storage.push_back(c);
@@ -88,7 +88,7 @@ std::expected<std::string_view, Error> ParseMagicString(std::istream& input) {
   if (!input.get(c) || c != 'p' || !input.get(c) || c != 'l' || !input.get(c) ||
       c != 'y' || !input.get(c) || (c != '\r' && c != '\n')) {
     return std::unexpected(Error::ParsingError(
-        "The first line of the file must exactly contain the magic string"));
+        "The first line of the input must exactly contain the magic string"));
   }
 
   // The original documentation describing the PLY format mandates the use of
@@ -160,7 +160,7 @@ std::expected<Format, Error> ParseFormat(std::istream& input,
 
   if (!first_token->has_value() || *first_token != "format") {
     return std::unexpected(Error::ParsingError(
-        "The second line of the file must contain the format specifier"));
+        "The second line of the input must contain the format specifier"));
   }
 
   auto second_token = ReadNextTokenOnLine(*line);
@@ -261,11 +261,12 @@ std::expected<std::pair<std::string, size_t>, Error> ParseElement(
 std::expected<Type, Error> ParseType(std::string_view type_name) {
   static const std::unordered_map<std::string_view, Type> type_map = {
       {"char", Type::INT8},     {"uchar", Type::UINT8},  {"short", Type::INT16},
-      {"ushort", Type::UINT16}, {"int", Type::INT32},    {"int", Type::INT32},
+      {"ushort", Type::UINT16}, {"int", Type::INT32},    {"uint", Type::UINT32},
       {"float", Type::FLOAT},   {"double", Type::DOUBLE}};
   auto iter = type_map.find(type_name);
   if (iter == type_map.end()) {
-    std::unexpected(Error::ParsingError("Invalid type name"));
+    return std::unexpected(
+        Error::ParsingError("A property is of an invalid type"));
   }
 
   return iter->second;
@@ -475,7 +476,7 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
     }
 
     return std::unexpected(
-        Error::ParsingError("The file contained an invalid header"));
+        Error::ParsingError("The input contained an invalid header"));
   }
 
   return Header{*format, 1u, 0u, std::move(comments), std::move(elements)};

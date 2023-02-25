@@ -18,13 +18,13 @@ TEST(Header, BadMagicStringMac) {
     std::stringstream stream(magic_string.substr(0u, i));
     auto result = plyodine::internal::ParseHeader(stream);
     EXPECT_EQ(
-        "The first line of the file must exactly contain the magic string",
+        "The first line of the input must exactly contain the magic string",
         result.error().Message());
   }
 
   std::stringstream stream(magic_string);
   auto result = plyodine::internal::ParseHeader(stream);
-  EXPECT_EQ("The second line of the file must contain the format specifier",
+  EXPECT_EQ("The second line of the input must contain the format specifier",
             result.error().Message());
 }
 
@@ -34,13 +34,13 @@ TEST(Header, BadMagicStringUnix) {
     std::stringstream stream(magic_string.substr(0u, i));
     auto result = plyodine::internal::ParseHeader(stream);
     EXPECT_EQ(
-        "The first line of the file must exactly contain the magic string",
+        "The first line of the input must exactly contain the magic string",
         result.error().Message());
   }
 
   std::stringstream stream(magic_string);
   auto result = plyodine::internal::ParseHeader(stream);
-  EXPECT_EQ("The second line of the file must contain the format specifier",
+  EXPECT_EQ("The second line of the input must contain the format specifier",
             result.error().Message());
 }
 
@@ -50,13 +50,13 @@ TEST(Header, BadMagicStringWindows) {
     std::stringstream stream(magic_string.substr(0u, i));
     auto result = plyodine::internal::ParseHeader(stream);
     EXPECT_EQ(
-        "The first line of the file must exactly contain the magic string",
+        "The first line of the input must exactly contain the magic string",
         result.error().Message());
   }
 
   std::stringstream stream(magic_string);
   auto result = plyodine::internal::ParseHeader(stream);
-  EXPECT_EQ("The second line of the file must contain the format specifier",
+  EXPECT_EQ("The second line of the input must contain the format specifier",
             result.error().Message());
 }
 
@@ -64,15 +64,7 @@ TEST(Header, MismatchedLineEndings) {
   std::ifstream input("plyodine/test_data/header_mismatched_endings.ply");
   auto result = plyodine::internal::ParseHeader(input);
   EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
-  EXPECT_EQ("The file contained mismatched line endings",
-            result.error().Message());
-}
-
-TEST(Header, IllegalCharacters) {
-  std::ifstream input("plyodine/test_data/header_illegal_characters.ply");
-  auto result = plyodine::internal::ParseHeader(input);
-  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
-  EXPECT_EQ("The file contained an invalid character",
+  EXPECT_EQ("The input contained mismatched line endings",
             result.error().Message());
 }
 
@@ -171,6 +163,140 @@ TEST(Header, FormatTooLong) {
             result.error().Message());
 }
 
+TEST(Header, ElementNoName) {
+  std::ifstream input("plyodine/test_data/header_element_name_none.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too few prameters to element", result.error().Message());
+}
+
+TEST(Header, ElementNameRepeated) {
+  std::ifstream input("plyodine/test_data/header_element_name_repeated.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Two elements have the same name", result.error().Message());
+}
+
+TEST(Header, ElementCountNone) {
+  std::ifstream input("plyodine/test_data/header_element_count_none.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too few prameters to element", result.error().Message());
+}
+
+TEST(Header, ElementCountBad) {
+  std::ifstream input("plyodine/test_data/header_element_count_bad.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Failed to parse element count", result.error().Message());
+}
+
+TEST(Header, ElementCountNegative) {
+  std::ifstream input("plyodine/test_data/header_element_count_negative.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Failed to parse element count", result.error().Message());
+}
+
+TEST(Header, ElementCountTooLarge) {
+  std::ifstream input("plyodine/test_data/header_element_count_too_large.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Failed to parse element count", result.error().Message());
+}
+
+TEST(Header, ElementCountTooMany) {
+  std::ifstream input("plyodine/test_data/header_element_too_many.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too many prameters to element", result.error().Message());
+}
+
+TEST(Header, PropertyTypes) {
+  std::string types[8] = {"char", "uchar", "short", "ushort",
+                          "int",  "uint",  "float", "double"};
+  plyodine::internal::Type parsed_types[8] = {
+      plyodine::internal::Type::INT8,  plyodine::internal::Type::UINT8,
+      plyodine::internal::Type::INT16, plyodine::internal::Type::UINT16,
+      plyodine::internal::Type::INT32, plyodine::internal::Type::UINT32,
+      plyodine::internal::Type::FLOAT, plyodine::internal::Type::DOUBLE};
+
+  std::string base = "ply\nformat ascii 1.0\nelement vertex 1\n";
+  for (size_t i = 0; i < 8; i++) {
+    std::stringstream input(
+        "ply\nformat ascii 1.0\nelement vertex 1\nproperty " + types[i] +
+        " name\nend_header");
+    auto result = plyodine::internal::ParseHeader(input);
+    EXPECT_EQ(parsed_types[i],
+              result->elements.at(0).properties.at(0).data_type);
+    EXPECT_FALSE(result->elements.at(0).properties.at(0).list_type);
+  }
+}
+
+TEST(Header, PropertyNameNone) {
+  std::ifstream input("plyodine/test_data/header_property_name_none.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too few prameters to property", result.error().Message());
+}
+
+TEST(Header, PropertyNameDuplicated) {
+  std::ifstream input("plyodine/test_data/header_property_name_duplicated.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("An element contains two properties with the same name",
+            result.error().Message());
+}
+
+TEST(Header, PropertyTypeNone) {
+  std::ifstream input("plyodine/test_data/header_property_type_none.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too few prameters to property", result.error().Message());
+}
+
+TEST(Header, PropertyTypeBad) {
+  std::ifstream input("plyodine/test_data/header_property_type_bad.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("A property is of an invalid type", result.error().Message());
+}
+
+TEST(Header, PropertyTooMany) {
+  std::ifstream input("plyodine/test_data/header_property_too_many.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too many prameters to property", result.error().Message());
+}
+
+TEST(Header, PropertyListTypes) {
+  std::string types[8] = {"char", "uchar", "short", "ushort",
+                          "int",  "uint",  "float", "double"};
+  plyodine::internal::Type parsed_types[8] = {
+      plyodine::internal::Type::INT8,  plyodine::internal::Type::UINT8,
+      plyodine::internal::Type::INT16, plyodine::internal::Type::UINT16,
+      plyodine::internal::Type::INT32, plyodine::internal::Type::UINT32,
+      plyodine::internal::Type::FLOAT, plyodine::internal::Type::DOUBLE};
+
+  std::string base = "ply\nformat ascii 1.0\nelement vertex 1\n";
+  for (size_t i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      std::stringstream input(
+          "ply\nformat ascii 1.0\nelement vertex 1\nproperty list " + types[i] +
+          " " + types[j] + " name\nend_header");
+      auto result = plyodine::internal::ParseHeader(input);
+      EXPECT_EQ(parsed_types[i],
+                result->elements.at(0).properties.at(0).list_type.value());
+      EXPECT_EQ(parsed_types[j],
+                result->elements.at(0).properties.at(0).data_type);
+    }
+  }
+}
+
+TEST(Header, PropertyList) {
+  std::string base = "ply\nformat ascii 1.0\nelement vertex 1\n";
+}
+
 TEST(Header, Valid) {
   std::string files[] = {"plyodine/test_data/header_valid_mac.ply",
                          "plyodine/test_data/header_valid_unix.ply",
@@ -246,5 +372,24 @@ TEST(Header, Valid) {
     EXPECT_EQ(plyodine::internal::Type::UINT8,
               result->elements.at(2).properties.at(4).data_type);
     EXPECT_FALSE(result->elements.at(2).properties.at(4).list_type);
+  }
+}
+
+TEST(Header, InvalidCharacters) {
+  std::ifstream input("plyodine/test_data/header_valid_unix.ply");
+
+  char c;
+  std::string base_string;
+  while (input.get(c)) {
+    base_string += c;
+  }
+
+  for (size_t i = 4; i < base_string.size(); i++) {
+    std::string string_copy = base_string;
+    string_copy[i] = '\t';
+    std::stringstream stream(string_copy);
+    auto result = plyodine::internal::ParseHeader(stream);
+    EXPECT_EQ("The input contained an invalid character",
+              result.error().Message());
   }
 }
