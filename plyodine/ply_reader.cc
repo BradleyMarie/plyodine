@@ -91,6 +91,11 @@ std::expected<std::string_view, Error> ParseMagicString(std::istream& input) {
         "The first line of the file must exactly contain the magic string"));
   }
 
+  // The original documentation describing the PLY format mandates the use of
+  // carriage return for all ASCII line endings; however, this requirement seems
+  // to have been lost to time and it is common to find PLY files with any of
+  // the three major line endings. Plyodine therefor supports all three of these
+  // line endings only requiring that parsed files are consistent throughout.
   if (c == '\n') {
     return "\n";
   }
@@ -104,6 +109,13 @@ std::expected<std::string_view, Error> ParseMagicString(std::istream& input) {
 }
 
 bool CheckVersion(std::string_view version) {
+  size_t prefix_length = version.find_first_not_of('0');
+  if (prefix_length == std::string_view::npos) {
+    return false;
+  }
+
+  version.remove_prefix(prefix_length);
+
   if (version[0] != '1') {
     return false;
   }
@@ -407,7 +419,7 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
 
     auto first_token = ReadFirstTokenOnLine(*line);
     if (!first_token) {
-      return std::unexpected(line.error());
+      return std::unexpected(first_token.error());
     }
 
     if (first_token->has_value() && *first_token == "property") {

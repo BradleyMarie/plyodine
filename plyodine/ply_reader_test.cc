@@ -1,6 +1,7 @@
 #include "plyodine/ply_reader.h"
 
 #include <fstream>
+#include <sstream>
 
 #include "googletest/include/gtest/gtest.h"
 
@@ -11,11 +12,59 @@ TEST(Header, BadStream) {
   EXPECT_EQ("Bad stream passed", result.error().Message());
 }
 
-TEST(Header, Empty) {
-  std::ifstream input("plyodine/test_data/header_empty.ply");
+TEST(Header, BadMagicStringMac) {
+  const std::string magic_string = "ply\r";
+  for (size_t i = 0; i < magic_string.length(); i++) {
+    std::stringstream stream(magic_string.substr(0u, i));
+    auto result = plyodine::internal::ParseHeader(stream);
+    EXPECT_EQ(
+        "The first line of the file must exactly contain the magic string",
+        result.error().Message());
+  }
+
+  std::stringstream stream(magic_string);
+  auto result = plyodine::internal::ParseHeader(stream);
+  EXPECT_EQ("The second line of the file must contain the format specifier",
+            result.error().Message());
+}
+
+TEST(Header, BadMagicStringUnix) {
+  const std::string magic_string = "ply\n";
+  for (size_t i = 0; i < magic_string.length(); i++) {
+    std::stringstream stream(magic_string.substr(0u, i));
+    auto result = plyodine::internal::ParseHeader(stream);
+    EXPECT_EQ(
+        "The first line of the file must exactly contain the magic string",
+        result.error().Message());
+  }
+
+  std::stringstream stream(magic_string);
+  auto result = plyodine::internal::ParseHeader(stream);
+  EXPECT_EQ("The second line of the file must contain the format specifier",
+            result.error().Message());
+}
+
+TEST(Header, BadMagicStringWindows) {
+  const std::string magic_string = "ply\r\n";
+  for (size_t i = 0; i < magic_string.length() - 1; i++) {
+    std::stringstream stream(magic_string.substr(0u, i));
+    auto result = plyodine::internal::ParseHeader(stream);
+    EXPECT_EQ(
+        "The first line of the file must exactly contain the magic string",
+        result.error().Message());
+  }
+
+  std::stringstream stream(magic_string);
+  auto result = plyodine::internal::ParseHeader(stream);
+  EXPECT_EQ("The second line of the file must contain the format specifier",
+            result.error().Message());
+}
+
+TEST(Header, MismatchedLineEndings) {
+  std::ifstream input("plyodine/test_data/header_mismatched_endings.ply");
   auto result = plyodine::internal::ParseHeader(input);
   EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
-  EXPECT_EQ("The first line of the file must exactly contain the magic string",
+  EXPECT_EQ("The file contained mismatched line endings",
             result.error().Message());
 }
 
@@ -27,11 +76,98 @@ TEST(Header, IllegalCharacters) {
             result.error().Message());
 }
 
-TEST(Header, MismatchedLineEndings) {
-  std::ifstream input("plyodine/test_data/header_mismatched_endings.ply");
+TEST(Header, LeadingSpaces) {
+  std::ifstream input("plyodine/test_data/header_spaces_leading.ply");
   auto result = plyodine::internal::ParseHeader(input);
   EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
-  EXPECT_EQ("The file contained mismatched line endings",
+  EXPECT_EQ("ASCII lines may not begin with a space", result.error().Message());
+}
+
+TEST(Header, MultipleSpaces) {
+  std::ifstream input("plyodine/test_data/header_spaces_multiple.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ(
+      "Non-comment ASCII lines may only contain a single space between tokens "
+      "tokens",
+      result.error().Message());
+}
+
+TEST(Header, TrailingSpaces) {
+  std::ifstream input("plyodine/test_data/header_spaces_trailing.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Non-comment ASCII lines may not contain trailing spaces",
+            result.error().Message());
+}
+
+TEST(Header, NoFileFormat) {
+  std::stringstream input("ply\nformat");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(
+      "Format must be one of ascii, binary_big_endian, or binary_little_endian",
+      result.error().Message());
+}
+
+TEST(Header, FormatASCII) {
+  std::ifstream input("plyodine/test_data/header_format_ascii.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::internal::Format::ASCII, result->format);
+}
+
+TEST(Header, FormatBigEndian) {
+  std::ifstream input("plyodine/test_data/header_format_big_endian.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::internal::Format::BINARY_BIG_ENDIAN, result->format);
+}
+
+TEST(Header, FormatLittleEndian) {
+  std::ifstream input("plyodine/test_data/header_format_little_endian.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::internal::Format::BINARY_LITTLE_ENDIAN, result->format);
+}
+
+TEST(Header, FormatBad) {
+  std::ifstream input("plyodine/test_data/header_format_bad.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ(
+      "Format must be one of ascii, binary_big_endian, or binary_little_endian",
+      result.error().Message());
+}
+
+TEST(Header, FormatNoVersion) {
+  std::stringstream input("ply\nformat ascii");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ("Only PLY version 1.0 supported", result.error().Message());
+}
+
+TEST(Header, FormatGoodVersions) {
+  std::string good_versions[] = {"1", "1.", "1.0", "01", "0001.", "1.0000"};
+  for (const auto& version : good_versions) {
+    std::stringstream input("ply\nformat ascii " + version + "\nend_header");
+    auto result = plyodine::internal::ParseHeader(input);
+    EXPECT_EQ(1u, result->major_version);
+    EXPECT_EQ(0u, result->minor_version);
+  }
+}
+
+TEST(Header, FormatBadVersions) {
+  std::string bad_versions[] = {"11",  "11.",  "11.0", "2",   "2.",
+                                "2.0", "2.00", ".",    ".0",  "0",
+                                "-1",  "-1.0", "0.0",  "1..0"};
+  for (const auto& version : bad_versions) {
+    std::stringstream input("ply\nformat ascii " + version + "\nend_header");
+    auto result = plyodine::internal::ParseHeader(input);
+    EXPECT_EQ("Only PLY version 1.0 supported", result.error().Message());
+  }
+}
+
+TEST(Header, FormatTooLong) {
+  std::ifstream input("plyodine/test_data/header_format_too_long.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("The format specifier contained too many tokens",
             result.error().Message());
 }
 
