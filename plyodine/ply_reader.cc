@@ -10,17 +10,14 @@ namespace plyodine {
 namespace internal {
 namespace {
 
-std::expected<std::string_view, Error> ReadNextLine(std::istream& input,
-                                                    std::string& storage) {
+std::expected<std::string_view, Error> ReadNextLine(
+    std::istream& input, std::string& storage, std::string_view line_ending) {
   storage.clear();
 
   char c = '\0';
-  while (input.get(c)) {
-    if (c == '\r' && input.peek() == '\n') {
-      continue;
-    }
-
-    if (c == '\r' || c == '\n') {
+  while (!line_ending.empty() && input.get(c)) {
+    if (c == line_ending[0]) {
+      line_ending.remove_prefix(1);
       break;
     }
 
@@ -30,6 +27,15 @@ std::expected<std::string_view, Error> ReadNextLine(std::istream& input,
     }
 
     storage.push_back(c);
+  }
+
+  while (!line_ending.empty() && input.get(c)) {
+    if (c != line_ending[0]) {
+      return std::unexpected(
+          Error::ParsingError("The file contained an line ending"));
+    }
+
+    line_ending.remove_prefix(1);
   }
 
   return storage;
@@ -80,19 +86,24 @@ std::expected<std::optional<std::string_view>, Error> ReadFirstTokenOnLine(
   return ReadNextTokenOnLine(line);
 }
 
-std::optional<Error> ParseMagicString(std::istream& input,
-                                      std::string& storage) {
-  auto line = ReadNextLine(input, storage);
-  if (!line) {
-    return line.error();
+std::expected<std::string_view, Error> ParseMagicString(std::istream& input) {
+  char c;
+  if (!input.get(c) || c != 'p' || !input.get(c) || c != 'l' || !input.get(c) ||
+      c != 'y' || !input.get(c) || (c != '\r' && c != '\n')) {
+    return std::unexpected(Error::ParsingError(
+        "The first line of the file must exactly contain the magic string"));
   }
 
-  if (*line != "ply") {
-    return Error::ParsingError(
-        "The first line of the file must exactly contain the magic string");
+  if (c == '\n') {
+    return "\n";
   }
 
-  return std::nullopt;
+  if (input.peek() == '\n') {
+    input.get();
+    return "\r\n";
+  }
+
+  return "\r";
 }
 
 bool CheckVersion(std::string_view version) {
@@ -126,8 +137,9 @@ bool CheckVersion(std::string_view version) {
 }
 
 std::expected<Format, Error> ParseFormat(std::istream& input,
-                                         std::string& storage) {
-  auto line = ReadNextLine(input, storage);
+                                         std::string& storage,
+                                         std::string_view line_ending) {
+  auto line = ReadNextLine(input, storage, line_ending);
   if (!line) {
     return std::unexpected(line.error());
   }
@@ -374,13 +386,13 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
     return std::unexpected(Error::IoError("Bad stream passed"));
   }
 
-  std::string storage;
-  auto magic_string_error = ParseMagicString(input, storage);
-  if (magic_string_error) {
-    return std::unexpected(*magic_string_error);
+  auto line_ending = ParseMagicString(input);
+  if (!line_ending) {
+    return std::unexpected(line_ending.error());
   }
 
-  auto format = ParseFormat(input, storage);
+  std::string storage;
+  auto format = ParseFormat(input, storage, *line_ending);
   if (!format) {
     return std::unexpected(format.error());
   }
@@ -391,7 +403,7 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
   std::unordered_map<std::string, std::unordered_set<std::string>>
       property_names;
   for (;;) {
-    auto line = ReadNextLine(input, storage);
+    auto line = ReadNextLine(input, storage, *line_ending);
     if (!line) {
       return std::unexpected(line.error());
     }
