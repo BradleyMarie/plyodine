@@ -53,6 +53,7 @@ struct Element {
 
 struct Header {
   Format format;
+  std::string_view line_ending;
   uint8_t major_version;
   uint8_t minor_version;
   std::vector<std::string> comments;

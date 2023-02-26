@@ -489,7 +489,8 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
         Error::ParsingError("The input contained an invalid header"));
   }
 
-  return Header{*format, 1u, 0u, std::move(comments), std::move(elements)};
+  return Header{*format, *line_ending,        1u,
+                0u,      std::move(comments), std::move(elements)};
 }
 
 // Static assertions to ensure float types are properly sized

@@ -406,13 +406,15 @@ TEST(Header, Valid) {
   std::string files[] = {"plyodine/test_data/header_valid_mac.ply",
                          "plyodine/test_data/header_valid_unix.ply",
                          "plyodine/test_data/header_valid_windows.ply"};
+  std::string line_endings[] = {"\r", "\n", "\r\n"};
 
-  for (const auto& file : files) {
-    std::ifstream input(file);
+  for (size_t i = 0; i < 3; i++) {
+    std::ifstream input(files[i]);
     auto result = plyodine::internal::ParseHeader(input);
     ASSERT_TRUE(result);
 
     EXPECT_EQ(plyodine::internal::Format::ASCII, result->format);
+    EXPECT_EQ(line_endings[i], result->line_ending);
     EXPECT_EQ(1u, result->major_version);
     EXPECT_EQ(0u, result->minor_version);
     EXPECT_EQ(2u, result->comments.size());
