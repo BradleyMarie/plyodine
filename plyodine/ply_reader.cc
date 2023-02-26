@@ -302,6 +302,16 @@ std::expected<Property, Error> ParsePropertyList(
     return std::unexpected(list_type.error());
   }
 
+  if (*list_type == Type::FLOAT) {
+    return std::unexpected(Error::ParsingError(
+        "A property list cannot have float as its list type"));
+  }
+
+  if (*list_type == Type::DOUBLE) {
+    return std::unexpected(Error::ParsingError(
+        "A property list cannot have double as its list type"));
+  }
+
   auto second_token = ReadNextTokenOnLine(line);
   if (!second_token) {
     return std::unexpected(first_token.error());

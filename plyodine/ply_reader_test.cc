@@ -269,6 +269,61 @@ TEST(Header, PropertyTooMany) {
   EXPECT_EQ("Too many prameters to property", result.error().Message());
 }
 
+TEST(Header, PropertyListNameNone) {
+  std::ifstream input("plyodine/test_data/header_property_list_name_none.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too few prameters to property", result.error().Message());
+}
+
+TEST(Header, PropertyListNameDuplicated) {
+  std::ifstream input(
+      "plyodine/test_data/header_property_list_name_duplicated.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("An element contains two properties with the same name",
+            result.error().Message());
+}
+
+TEST(Header, PropertyListDataTypeNone) {
+  std::ifstream input(
+      "plyodine/test_data/header_property_list_data_type_none.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too few prameters to property", result.error().Message());
+}
+
+TEST(Header, PropertyListDataTypeBad) {
+  std::ifstream input(
+      "plyodine/test_data/header_property_list_data_type_bad.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("A property is of an invalid type", result.error().Message());
+}
+
+TEST(Header, PropertyListListTypeNone) {
+  std::ifstream input(
+      "plyodine/test_data/header_property_list_list_type_none.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too few prameters to property", result.error().Message());
+}
+
+TEST(Header, PropertyListListTypeBad) {
+  std::ifstream input(
+      "plyodine/test_data/header_property_list_list_type_bad.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("A property is of an invalid type", result.error().Message());
+}
+
+TEST(Header, PropertyListTooMany) {
+  std::ifstream input("plyodine/test_data/header_property_list_too_many.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("Too many prameters to property", result.error().Message());
+}
+
 TEST(Header, PropertyListTypes) {
   std::string types[8] = {"char", "uchar", "short", "ushort",
                           "int",  "uint",  "float", "double"};
@@ -284,17 +339,67 @@ TEST(Header, PropertyListTypes) {
       std::stringstream input(
           "ply\nformat ascii 1.0\nelement vertex 1\nproperty list " + types[i] +
           " " + types[j] + " name\nend_header");
+
       auto result = plyodine::internal::ParseHeader(input);
-      EXPECT_EQ(parsed_types[i],
-                result->elements.at(0).properties.at(0).list_type.value());
-      EXPECT_EQ(parsed_types[j],
-                result->elements.at(0).properties.at(0).data_type);
+      if (parsed_types[i] == plyodine::internal::Type::FLOAT) {
+        EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+        EXPECT_EQ("A property list cannot have float as its list type",
+                  result.error().Message());
+      } else if (parsed_types[i] == plyodine::internal::Type::DOUBLE) {
+        EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+        EXPECT_EQ("A property list cannot have double as its list type",
+                  result.error().Message());
+      } else {
+        EXPECT_EQ(parsed_types[i],
+                  result->elements.at(0).properties.at(0).list_type.value());
+        EXPECT_EQ(parsed_types[j],
+                  result->elements.at(0).properties.at(0).data_type);
+      }
     }
   }
 }
 
-TEST(Header, PropertyList) {
-  std::string base = "ply\nformat ascii 1.0\nelement vertex 1\n";
+TEST(Header, LooseProperty) {
+  std::ifstream input("plyodine/test_data/header_loose_property.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("A property could not be associated with an element",
+            result.error().Message());
+}
+
+TEST(Header, CommentAllowsSpaces) {
+  std::ifstream input("plyodine/test_data/header_comment_allows_spaces.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(" comment with multiple  spaces  ", result->comments.at(0));
+}
+
+TEST(Header, CommentEmpty) {
+  std::ifstream input("plyodine/test_data/header_comment_empty.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_TRUE(result->comments.at(0).empty());
+}
+
+TEST(Header, EndTooMany) {
+  std::ifstream input("plyodine/test_data/header_end_too_many.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ(
+      "The last line of the header may only contain the end_header keyword",
+      result.error().Message());
+}
+
+TEST(Header, EmptyLine) {
+  std::ifstream input("plyodine/test_data/header_empty_line.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("The input contained an invalid header", result.error().Message());
+}
+
+TEST(Header, InvalidKeyword) {
+  std::ifstream input("plyodine/test_data/header_invalid_keyword.ply");
+  auto result = plyodine::internal::ParseHeader(input);
+  EXPECT_EQ(plyodine::Error::PARSING_ERROR, result.error().Code());
+  EXPECT_EQ("The input contained an invalid header", result.error().Message());
 }
 
 TEST(Header, Valid) {
