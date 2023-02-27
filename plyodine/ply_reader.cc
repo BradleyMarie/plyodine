@@ -6,7 +6,6 @@
 #include <charconv>
 #include <limits>
 #include <type_traits>
-#include <unordered_map>
 #include <unordered_set>
 
 namespace plyodine {
@@ -630,6 +629,19 @@ std::optional<Error> ReadBinaryData(std::istream& input,
   return std::nullopt;
 }
 
+template <typename T>
+std::optional<T> GetPropertyImpl(const PlyReader reader,
+                                 std::string_view element_name,
+                                 std::string_view property_name) {
+  const auto* contents =
+      std::get_if<T>(reader.GetProperty(element_name, property_name));
+  if (!contents) {
+    return std::nullopt;
+  }
+
+  return *contents;
+}
+
 }  // namespace
 
 std::expected<Header, Error> ParseHeader(std::istream& input) {
@@ -828,6 +840,158 @@ std::optional<Error> PlyReader::ReadFrom(std::istream& input) {
   return std::nullopt;
 }
 
+std::span<const std::string> PlyReader::GetComments() const {
+  return comments_;
+}
+
+std::span<const std::string> PlyReader::GetElements() const {
+  return element_names_;
+}
+
+std::optional<std::span<const std::string>> PlyReader::GetProperties(
+    std::string_view element_name) const {
+  auto iter = property_names_.find(element_name);
+  if (iter == property_names_.end()) {
+    return std::nullopt;
+  }
+
+  return iter->second;
+}
+
+std::optional<PropertyType> PlyReader::GetPropertyType(
+    std::string_view element_name, std::string_view property_name) const {
+  auto element_iter = properties_.find(element_name);
+  if (element_iter == properties_.end()) {
+    return std::nullopt;
+  }
+
+  auto property_iter = element_iter->second.find(property_name);
+  if (property_iter == element_iter->second.end()) {
+    return std::nullopt;
+  }
+
+  return static_cast<PropertyType>(property_iter->second->index());
+}
+
+std::optional<std::span<const int8_t>> PlyReader::GetPropertyInt8(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const int8_t>>(*this, element_name,
+                                                            property_name);
+}
+
+std::optional<std::span<const std::span<const int8_t>>>
+PlyReader::GetPropertyListInt8(std::string_view element_name,
+                               std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const int8_t>>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const uint8_t>> PlyReader::GetPropertyUInt8(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const uint8_t>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const std::span<const uint8_t>>>
+PlyReader::GetPropertyListUInt8(std::string_view element_name,
+                                std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const uint8_t>>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const int16_t>> PlyReader::GetPropertyInt16(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const int16_t>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const std::span<const int16_t>>>
+PlyReader::GetPropertyListInt16(std::string_view element_name,
+                                std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const int16_t>>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const uint16_t>> PlyReader::GetPropertyUInt16(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const uint16_t>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const std::span<const uint16_t>>>
+PlyReader::GetPropertyListUInt16(std::string_view element_name,
+                                 std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const uint16_t>>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const int32_t>> PlyReader::GetPropertyInt32(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const int32_t>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const std::span<const int32_t>>>
+PlyReader::GetPropertyListInt32(std::string_view element_name,
+                                std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const int32_t>>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const uint32_t>> PlyReader::GetPropertyUInt32(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const uint32_t>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const std::span<const uint32_t>>>
+PlyReader::GetPropertyListUInt32(std::string_view element_name,
+                                 std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const uint32_t>>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const float>> PlyReader::GetPropertyFloat(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const float>>(*this, element_name,
+                                                           property_name);
+}
+
+std::optional<std::span<const std::span<const float>>>
+PlyReader::GetPropertyListFloat(std::string_view element_name,
+                                std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const float>>>(
+      *this, element_name, property_name);
+}
+
+std::optional<std::span<const double>> PlyReader::GetPropertyDouble(
+    std::string_view element_name, std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const double>>(*this, element_name,
+                                                            property_name);
+}
+
+std::optional<std::span<const std::span<const double>>>
+PlyReader::GetPropertyListDouble(std::string_view element_name,
+                                 std::string_view property_name) const {
+  return internal::GetPropertyImpl<std::span<const std::span<const double>>>(
+      *this, element_name, property_name);
+}
+
+const PlyReader::Property* PlyReader::GetProperty(
+    std::string_view element_name, std::string_view property_name) const {
+  auto element_iter = properties_.find(element_name);
+  if (element_iter == properties_.end()) {
+    return nullptr;
+  }
+
+  auto property_iter = element_iter->second.find(property_name);
+  if (property_iter == element_iter->second.end()) {
+    return nullptr;
+  }
+
+  return property_iter->second;
+}
+
 // Static assertions to ensure float types are properly sized
 static_assert(std::numeric_limits<double>::is_iec559);
 static_assert(std::numeric_limits<float>::is_iec559);
@@ -835,5 +999,46 @@ static_assert(std::numeric_limits<float>::is_iec559);
 // Static assertions to ensure system does not use mixed endianness
 static_assert(std::endian::native == std::endian::little ||
               std::endian::native == std::endian::big);
+
+// Static assertions to ensure variant and enums align
+static_assert(PlyReader::Property(std::span<const int8_t>()).index() ==
+              static_cast<size_t>(PropertyType::INT8));
+static_assert(PlyReader::Property(std::span<const std::span<const int8_t>>())
+                  .index() == static_cast<size_t>(PropertyType::INT8_LIST));
+
+static_assert(PlyReader::Property(std::span<const uint8_t>()).index() ==
+              static_cast<size_t>(PropertyType::UINT8));
+static_assert(PlyReader::Property(std::span<const std::span<const uint8_t>>())
+                  .index() == static_cast<size_t>(PropertyType::UINT8_LIST));
+
+static_assert(PlyReader::Property(std::span<const int16_t>()).index() ==
+              static_cast<size_t>(PropertyType::INT16));
+static_assert(PlyReader::Property(std::span<const std::span<const int16_t>>())
+                  .index() == static_cast<size_t>(PropertyType::INT16_LIST));
+
+static_assert(PlyReader::Property(std::span<const uint16_t>()).index() ==
+              static_cast<size_t>(PropertyType::UINT16));
+static_assert(PlyReader::Property(std::span<const std::span<const uint16_t>>())
+                  .index() == static_cast<size_t>(PropertyType::UINT16_LIST));
+
+static_assert(PlyReader::Property(std::span<const int32_t>()).index() ==
+              static_cast<size_t>(PropertyType::INT32));
+static_assert(PlyReader::Property(std::span<const std::span<const int32_t>>())
+                  .index() == static_cast<size_t>(PropertyType::INT32_LIST));
+
+static_assert(PlyReader::Property(std::span<const uint32_t>()).index() ==
+              static_cast<size_t>(PropertyType::UINT32));
+static_assert(PlyReader::Property(std::span<const std::span<const uint32_t>>())
+                  .index() == static_cast<size_t>(PropertyType::UINT32_LIST));
+
+static_assert(PlyReader::Property(std::span<const float>()).index() ==
+              static_cast<size_t>(PropertyType::FLOAT));
+static_assert(PlyReader::Property(std::span<const std::span<const float>>())
+                  .index() == static_cast<size_t>(PropertyType::FLOAT_LIST));
+
+static_assert(PlyReader::Property(std::span<const double>()).index() ==
+              static_cast<size_t>(PropertyType::DOUBLE));
+static_assert(PlyReader::Property(std::span<const std::span<const double>>())
+                  .index() == static_cast<size_t>(PropertyType::DOUBLE_LIST));
 
 }  // namespace plyodine

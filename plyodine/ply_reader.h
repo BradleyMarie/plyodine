@@ -3,11 +3,11 @@
 
 #include <expected>
 #include <istream>
-#include <map>
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -94,22 +94,22 @@ std::expected<std::vector<Element>, Error> ReadData(std::istream& input,
 }  // namespace internal
 
 enum class PropertyType {
-  INT8,
-  INT8_LIST,
-  UINT8,
-  UINT8_LIST,
-  INT16,
-  INT16_LIST,
-  UINT16,
-  UINT16_LIST,
-  INT32,
-  INT32_LIST,
-  UINT32,
-  UINT32_LIST,
-  FLOAT,
-  FLOAT_LIST,
-  DOUBLE,
-  DOUBLE_LIST
+  INT8 = 0u,
+  INT8_LIST = 1u,
+  UINT8 = 2u,
+  UINT8_LIST = 3u,
+  INT16 = 4u,
+  INT16_LIST = 5u,
+  UINT16 = 6u,
+  UINT16_LIST = 7u,
+  INT32 = 8u,
+  INT32_LIST = 9u,
+  UINT32 = 10u,
+  UINT32_LIST = 11u,
+  FLOAT = 12u,
+  FLOAT_LIST = 13u,
+  DOUBLE = 14u,
+  DOUBLE_LIST = 15u
 };
 
 class PlyReader final {
@@ -185,15 +185,18 @@ class PlyReader final {
       std::span<const double>, std::span<const std::span<const double>>>
       Property;
 
-  std::optional<Property> GetProperty(std::string_view element_name,
-                                      std::string_view property_name) const;
+  const Property* GetProperty(std::string_view element_name,
+                              std::string_view property_name) const;
 
  private:
   std::vector<internal::Element> elements_;
   std::vector<std::string> comments_;
   std::vector<std::string> element_names_;
-  std::map<std::string, std::vector<std::string>> property_names_;
-  std::map<std::string, std::map<std::string, const Property*>> properties_;
+  std::unordered_map<std::string_view, std::vector<std::string>>
+      property_names_;
+  std::unordered_map<std::string_view,
+                     std::unordered_map<std::string_view, const Property*>>
+      properties_;
 };
 
 }  // namespace plyodine
