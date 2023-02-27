@@ -896,7 +896,7 @@ std::optional<std::span<const std::string>> PlyReader::GetProperties(
   return iter->second;
 }
 
-std::optional<PropertyType> PlyReader::GetPropertyType(
+std::optional<Property::Type> PlyReader::GetPropertyType(
     std::string_view element_name, std::string_view property_name) const {
   auto element_iter = properties_.find(element_name);
   if (element_iter == properties_.end()) {
@@ -908,7 +908,7 @@ std::optional<PropertyType> PlyReader::GetPropertyType(
     return std::nullopt;
   }
 
-  return static_cast<PropertyType>(property_iter->second.index());
+  return property_iter->second.type();
 }
 
 std::optional<std::span<const int8_t>> PlyReader::GetPropertyInt8(
@@ -1015,7 +1015,7 @@ PlyReader::GetPropertyListDouble(std::string_view element_name,
       *this, element_name, property_name);
 }
 
-const PlyReader::Property* PlyReader::GetProperty(
+const Property* PlyReader::GetProperty(
     std::string_view element_name, std::string_view property_name) const {
   auto element_iter = properties_.find(element_name);
   if (element_iter == properties_.end()) {
@@ -1037,46 +1037,5 @@ static_assert(std::numeric_limits<float>::is_iec559);
 // Static assertions to ensure system does not use mixed endianness
 static_assert(std::endian::native == std::endian::little ||
               std::endian::native == std::endian::big);
-
-// Static assertions to ensure variant and enums align
-static_assert(PlyReader::Property(std::span<const int8_t>()).index() ==
-              static_cast<size_t>(PropertyType::INT8));
-static_assert(PlyReader::Property(std::span<const std::span<const int8_t>>())
-                  .index() == static_cast<size_t>(PropertyType::INT8_LIST));
-
-static_assert(PlyReader::Property(std::span<const uint8_t>()).index() ==
-              static_cast<size_t>(PropertyType::UINT8));
-static_assert(PlyReader::Property(std::span<const std::span<const uint8_t>>())
-                  .index() == static_cast<size_t>(PropertyType::UINT8_LIST));
-
-static_assert(PlyReader::Property(std::span<const int16_t>()).index() ==
-              static_cast<size_t>(PropertyType::INT16));
-static_assert(PlyReader::Property(std::span<const std::span<const int16_t>>())
-                  .index() == static_cast<size_t>(PropertyType::INT16_LIST));
-
-static_assert(PlyReader::Property(std::span<const uint16_t>()).index() ==
-              static_cast<size_t>(PropertyType::UINT16));
-static_assert(PlyReader::Property(std::span<const std::span<const uint16_t>>())
-                  .index() == static_cast<size_t>(PropertyType::UINT16_LIST));
-
-static_assert(PlyReader::Property(std::span<const int32_t>()).index() ==
-              static_cast<size_t>(PropertyType::INT32));
-static_assert(PlyReader::Property(std::span<const std::span<const int32_t>>())
-                  .index() == static_cast<size_t>(PropertyType::INT32_LIST));
-
-static_assert(PlyReader::Property(std::span<const uint32_t>()).index() ==
-              static_cast<size_t>(PropertyType::UINT32));
-static_assert(PlyReader::Property(std::span<const std::span<const uint32_t>>())
-                  .index() == static_cast<size_t>(PropertyType::UINT32_LIST));
-
-static_assert(PlyReader::Property(std::span<const float>()).index() ==
-              static_cast<size_t>(PropertyType::FLOAT));
-static_assert(PlyReader::Property(std::span<const std::span<const float>>())
-                  .index() == static_cast<size_t>(PropertyType::FLOAT_LIST));
-
-static_assert(PlyReader::Property(std::span<const double>()).index() ==
-              static_cast<size_t>(PropertyType::DOUBLE));
-static_assert(PlyReader::Property(std::span<const std::span<const double>>())
-                  .index() == static_cast<size_t>(PropertyType::DOUBLE_LIST));
 
 }  // namespace plyodine

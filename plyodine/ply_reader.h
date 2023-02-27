@@ -11,6 +11,8 @@
 #include <variant>
 #include <vector>
 
+#include "plyodine/ply_property.h"
+
 namespace plyodine {
 
 class Error final {
@@ -98,25 +100,6 @@ std::expected<std::vector<Element>, Error> ReadData(std::istream& input,
 
 }  // namespace internal
 
-enum class PropertyType {
-  INT8 = 0u,
-  INT8_LIST = 1u,
-  UINT8 = 2u,
-  UINT8_LIST = 3u,
-  INT16 = 4u,
-  INT16_LIST = 5u,
-  UINT16 = 6u,
-  UINT16_LIST = 7u,
-  INT32 = 8u,
-  INT32_LIST = 9u,
-  UINT32 = 10u,
-  UINT32_LIST = 11u,
-  FLOAT = 12u,
-  FLOAT_LIST = 13u,
-  DOUBLE = 14u,
-  DOUBLE_LIST = 15u
-};
-
 class PlyReader final {
  public:
   std::optional<Error> ReadFrom(std::istream& input);
@@ -132,7 +115,7 @@ class PlyReader final {
       std::string_view element_name) const;
 
   // Property Type
-  std::optional<PropertyType> GetPropertyType(
+  std::optional<Property::Type> GetPropertyType(
       std::string_view element_name, std::string_view property_name) const;
 
   // Structured Property Access
@@ -179,17 +162,6 @@ class PlyReader final {
       std::string_view element_name, std::string_view property_name) const;
 
   // Unstructured Property Access
-  typedef std::variant<
-      std::span<const int8_t>, std::span<const std::span<const int8_t>>,
-      std::span<const uint8_t>, std::span<const std::span<const uint8_t>>,
-      std::span<const int16_t>, std::span<const std::span<const int16_t>>,
-      std::span<const uint16_t>, std::span<const std::span<const uint16_t>>,
-      std::span<const int32_t>, std::span<const std::span<const int32_t>>,
-      std::span<const uint32_t>, std::span<const std::span<const uint32_t>>,
-      std::span<const float>, std::span<const std::span<const float>>,
-      std::span<const double>, std::span<const std::span<const double>>>
-      Property;
-
   const Property* GetProperty(std::string_view element_name,
                               std::string_view property_name) const;
 
