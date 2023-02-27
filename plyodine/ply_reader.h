@@ -3,11 +3,11 @@
 
 #include <expected>
 #include <istream>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -67,20 +67,25 @@ std::expected<Header, Error> ParseHeader(std::istream& input);
 
 struct Element final {
   template <typename T>
+  struct Single final {
+    std::vector<T> entries;
+  };
+
+  template <typename T>
   struct List final {
-    struct Entry final {
+    struct Extents final {
       size_t index;
       size_t size;
     };
 
-    std::vector<Entry> entries;
+    std::vector<Extents> extents;
+    std::vector<std::span<const T>> entries;
     std::vector<T> data;
   };
 
-  typedef std::variant<std::vector<int8_t>, std::vector<uint8_t>,
-                       std::vector<int16_t>, std::vector<uint16_t>,
-                       std::vector<int32_t>, std::vector<uint32_t>,
-                       std::vector<float>, std::vector<double>, List<int8_t>,
+  typedef std::variant<Single<int8_t>, Single<uint8_t>, Single<int16_t>,
+                       Single<uint16_t>, Single<int32_t>, Single<uint32_t>,
+                       Single<float>, Single<double>, List<int8_t>,
                        List<uint8_t>, List<int16_t>, List<uint16_t>,
                        List<int32_t>, List<uint32_t>, List<float>, List<double>>
       Property;
@@ -192,10 +197,9 @@ class PlyReader final {
   std::vector<internal::Element> elements_;
   std::vector<std::string> comments_;
   std::vector<std::string> element_names_;
-  std::unordered_map<std::string_view, std::vector<std::string>>
-      property_names_;
-  std::unordered_map<std::string_view,
-                     std::unordered_map<std::string_view, const Property*>>
+  std::map<std::string, std::vector<std::string>, std::less<>> property_names_;
+  std::map<std::string, std::map<std::string, Property, std::less<>>,
+           std::less<>>
       properties_;
 };
 

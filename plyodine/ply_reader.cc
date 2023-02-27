@@ -6,6 +6,7 @@
 #include <charconv>
 #include <limits>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace plyodine {
@@ -442,35 +443,35 @@ std::optional<Error> ReadBinaryPropertyData(
   switch (header_property.data_type) {
     case Type::INT8:
       result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<std::vector<int8_t>>(data_property));
+          input, std::get<Element::Single<int8_t>>(data_property).entries);
       break;
     case Type::UINT8:
       result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<std::vector<uint8_t>>(data_property));
+          input, std::get<Element::Single<uint8_t>>(data_property).entries);
       break;
     case Type::INT16:
       result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<std::vector<int16_t>>(data_property));
+          input, std::get<Element::Single<int16_t>>(data_property).entries);
       break;
     case Type::UINT16:
       result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<std::vector<uint16_t>>(data_property));
+          input, std::get<Element::Single<uint16_t>>(data_property).entries);
       break;
     case Type::INT32:
       result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<std::vector<int32_t>>(data_property));
+          input, std::get<Element::Single<int32_t>>(data_property).entries);
       break;
     case Type::UINT32:
       result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<std::vector<uint32_t>>(data_property));
+          input, std::get<Element::Single<uint32_t>>(data_property).entries);
       break;
     case Type::FLOAT:
       result = ReadBinaryPropertyDataImpl<Endianness, float, uint32_t>(
-          input, std::get<std::vector<float>>(data_property));
+          input, std::get<Element::Single<float>>(data_property).entries);
       break;
     case Type::DOUBLE:
       result = ReadBinaryPropertyDataImpl<Endianness, double, uint64_t>(
-          input, std::get<std::vector<double>>(data_property));
+          input, std::get<Element::Single<double>>(data_property).entries);
       break;
   }
 
@@ -538,7 +539,7 @@ template <std::endian Endianness, typename T, typename ReadType = T>
 std::optional<Error> ReadBinaryPropertyListData(std::istream& input,
                                                 Element::List<T>& list,
                                                 size_t num_to_read) {
-  list.entries.emplace_back(list.data.size(), num_to_read);
+  list.extents.emplace_back(list.data.size(), num_to_read);
 
   for (size_t i = 0; i < num_to_read; i++) {
     auto error =
@@ -772,28 +773,28 @@ std::expected<std::vector<Element>, Error> ReadData(std::istream& input,
       } else {
         switch (property.data_type) {
           case Type::INT8:
-            result.back().properties.emplace_back(std::vector<int8_t>());
+            result.back().properties.emplace_back(Element::Single<int8_t>());
             break;
           case Type::UINT8:
-            result.back().properties.emplace_back(std::vector<uint8_t>());
+            result.back().properties.emplace_back(Element::Single<uint8_t>());
             break;
           case Type::INT16:
-            result.back().properties.emplace_back(std::vector<int16_t>());
+            result.back().properties.emplace_back(Element::Single<int16_t>());
             break;
           case Type::UINT16:
-            result.back().properties.emplace_back(std::vector<uint16_t>());
+            result.back().properties.emplace_back(Element::Single<uint16_t>());
             break;
           case Type::INT32:
-            result.back().properties.emplace_back(std::vector<int32_t>());
+            result.back().properties.emplace_back(Element::Single<int32_t>());
             break;
           case Type::UINT32:
-            result.back().properties.emplace_back(std::vector<uint32_t>());
+            result.back().properties.emplace_back(Element::Single<uint32_t>());
             break;
           case Type::FLOAT:
-            result.back().properties.emplace_back(std::vector<float>());
+            result.back().properties.emplace_back(Element::Single<float>());
             break;
           case Type::DOUBLE:
-            result.back().properties.emplace_back(std::vector<double>());
+            result.back().properties.emplace_back(Element::Single<double>());
             break;
         }
       }
@@ -813,6 +814,23 @@ std::expected<std::vector<Element>, Error> ReadData(std::istream& input,
       break;
   }
 
+  for (const auto& element : result) {
+    for (const auto& property : element.properties) {
+      std::visit(
+          [&](auto& contents) {
+            if constexpr (std::is_class<decltype(contents.entries[0])>::value) {
+              for (const auto& extent : contents.extents) {
+                contents.entries.emplace_back(
+                    contents.data.data() + extent.index,
+                    contents.data.data() + extent.index + extent.size);
+              }
+              contents.extents.clear();
+            }
+          },
+          property);
+    }
+  }
+
   if (error) {
     return std::unexpected(*error);
   }
@@ -824,6 +842,9 @@ std::expected<std::vector<Element>, Error> ReadData(std::istream& input,
 
 std::optional<Error> PlyReader::ReadFrom(std::istream& input) {
   elements_.clear();
+  element_names_.clear();
+  property_names_.clear();
+  properties_.clear();
 
   auto header = internal::ParseHeader(input);
   if (!header) {
@@ -835,7 +856,24 @@ std::optional<Error> PlyReader::ReadFrom(std::istream& input) {
     return elements.error();
   }
 
-  elements_ = elements.value();
+  elements_ = std::move(elements.value());
+
+  for (const auto& comment : header->comments) {
+    comments_.push_back(comment);
+  }
+
+  for (size_t e = 0; e < header->elements.size(); e++) {
+    const auto& element_name = header->elements[e].name;
+    element_names_.push_back(element_name);
+    for (size_t p = 0; p < header->elements[e].properties.size(); p++) {
+      const auto& property_name = header->elements[e].properties[p].name;
+      property_names_[element_names_.back()].push_back(property_name);
+
+      properties_[element_name][property_name] = std::visit(
+          [&](const auto& contents) -> Property { return contents.entries; },
+          elements_[e].properties[p]);
+    }
+  }
 
   return std::nullopt;
 }
@@ -870,7 +908,7 @@ std::optional<PropertyType> PlyReader::GetPropertyType(
     return std::nullopt;
   }
 
-  return static_cast<PropertyType>(property_iter->second->index());
+  return static_cast<PropertyType>(property_iter->second.index());
 }
 
 std::optional<std::span<const int8_t>> PlyReader::GetPropertyInt8(
@@ -989,7 +1027,7 @@ const PlyReader::Property* PlyReader::GetProperty(
     return nullptr;
   }
 
-  return property_iter->second;
+  return &property_iter->second;
 }
 
 // Static assertions to ensure float types are properly sized
