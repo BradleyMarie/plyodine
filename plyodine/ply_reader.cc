@@ -1,8 +1,11 @@
 #include "plyodine/ply_reader.h"
 
+#include <bit>
+#include <cassert>
 #include <cctype>
 #include <charconv>
 #include <limits>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -285,7 +288,7 @@ Error DuplicatePropertyNameError() {
       "An element contains two properties with the same name");
 }
 
-std::expected<Property, Error> ParsePropertyList(
+std::expected<Header::Element::Property, Error> ParsePropertyList(
     std::string_view line,
     const std::unordered_set<std::string>& property_names) {
   auto first_token = ReadNextTokenOnLine(line);
@@ -349,10 +352,10 @@ std::expected<Property, Error> ParsePropertyList(
     return std::unexpected(TooManyPropertyParamsError());
   }
 
-  return Property{std::move(str_name), *data_type, *list_type};
+  return Header::Element::Property{std::move(str_name), *data_type, *list_type};
 }
 
-std::expected<Property, Error> ParseProperty(
+std::expected<Header::Element::Property, Error> ParseProperty(
     std::string_view line,
     const std::unordered_set<std::string>& property_names) {
   auto first_token = ReadNextTokenOnLine(line);
@@ -396,7 +399,235 @@ std::expected<Property, Error> ParseProperty(
     return std::unexpected(TooManyPropertyParamsError());
   }
 
-  return Property{std::move(str_name), *data_type};
+  return Header::Element::Property{std::move(str_name), *data_type};
+}
+
+Error UnexpectedEOF() { return Error::ParsingError("Unexpected EOF"); }
+
+template <std::endian Endianness, typename T, typename ReadType = T>
+std::optional<Error> ReadBinaryPropertyDataImpl(std::istream& input,
+                                                std::vector<T>& output) {
+  static_assert(sizeof(T) == sizeof(ReadType));
+
+  if constexpr (std::endian::native == Endianness) {
+    T data;
+    if (!input.read(reinterpret_cast<char*>(&data), sizeof(T))) {
+      return UnexpectedEOF();
+    }
+
+    output.push_back(data);
+  } else {
+    ReadType data;
+    if (!input.read(reinterpret_cast<char*>(&data), sizeof(T))) {
+      return UnexpectedEOF();
+    }
+
+    data = std::byteswap(data);
+
+    if constexpr (std::is_same<T, ReadType>::value) {
+      output.push_back(data);
+    } else {
+      output.push_back(std::bit_cast<T>(data));
+    }
+  }
+
+  return std::nullopt;
+}
+
+template <std::endian Endianness>
+std::optional<Error> ReadBinaryPropertyData(
+    std::istream& input, const Header::Element::Property& header_property,
+    internal::Element::Property& data_property) {
+  std::optional<Error> result;
+
+  switch (header_property.data_type) {
+    case Type::INT8:
+      result = ReadBinaryPropertyDataImpl<Endianness>(
+          input, std::get<std::vector<int8_t>>(data_property));
+      break;
+    case Type::UINT8:
+      result = ReadBinaryPropertyDataImpl<Endianness>(
+          input, std::get<std::vector<uint8_t>>(data_property));
+      break;
+    case Type::INT16:
+      result = ReadBinaryPropertyDataImpl<Endianness>(
+          input, std::get<std::vector<int16_t>>(data_property));
+      break;
+    case Type::UINT16:
+      result = ReadBinaryPropertyDataImpl<Endianness>(
+          input, std::get<std::vector<uint16_t>>(data_property));
+      break;
+    case Type::INT32:
+      result = ReadBinaryPropertyDataImpl<Endianness>(
+          input, std::get<std::vector<int32_t>>(data_property));
+      break;
+    case Type::UINT32:
+      result = ReadBinaryPropertyDataImpl<Endianness>(
+          input, std::get<std::vector<uint32_t>>(data_property));
+      break;
+    case Type::FLOAT:
+      result = ReadBinaryPropertyDataImpl<Endianness, float, uint32_t>(
+          input, std::get<std::vector<float>>(data_property));
+      break;
+    case Type::DOUBLE:
+      result = ReadBinaryPropertyDataImpl<Endianness, double, uint64_t>(
+          input, std::get<std::vector<double>>(data_property));
+      break;
+  }
+
+  return result;
+}
+
+Error NegativeListSize() {
+  return Error::ParsingError(
+      "The input contained a property list with a negative size");
+}
+
+template <std::endian Endianness, typename T>
+std::expected<size_t, Error> ReadBinaryListSizeImpl(std::istream& input) {
+  T result;
+
+  if (!input.read(reinterpret_cast<char*>(&result), sizeof(T))) {
+    return std::unexpected(UnexpectedEOF());
+  }
+
+  if constexpr (std::is_signed<T>::value) {
+    if (result < 0) {
+      return std::unexpected(NegativeListSize());
+    }
+  }
+
+  if constexpr (std::endian::native != Endianness) {
+    result = std::byteswap(result);
+  }
+
+  return result;
+}
+
+template <std::endian Endianness>
+std::expected<size_t, Error> ReadBinaryListSize(std::istream& input,
+                                                Type type) {
+  std::expected<size_t, Error> result;
+
+  switch (type) {
+    case Type::INT8:
+      result = ReadBinaryListSizeImpl<Endianness, int8_t>(input);
+      break;
+    case Type::UINT8:
+      result = ReadBinaryListSizeImpl<Endianness, uint8_t>(input);
+      break;
+    case Type::INT16:
+      result = ReadBinaryListSizeImpl<Endianness, int16_t>(input);
+      break;
+    case Type::UINT16:
+      result = ReadBinaryListSizeImpl<Endianness, uint16_t>(input);
+      break;
+    case Type::INT32:
+      result = ReadBinaryListSizeImpl<Endianness, int32_t>(input);
+      break;
+    case Type::UINT32:
+      result = ReadBinaryListSizeImpl<Endianness, uint32_t>(input);
+      break;
+    default:
+      assert(false);
+  }
+
+  return result;
+}
+
+template <std::endian Endianness, typename T, typename ReadType = T>
+std::optional<Error> ReadBinaryPropertyListData(std::istream& input,
+                                                Element::List<T>& list,
+                                                size_t num_to_read) {
+  list.entries.emplace_back(list.data.size(), num_to_read);
+
+  for (size_t i = 0; i < num_to_read; i++) {
+    auto error =
+        ReadBinaryPropertyDataImpl<Endianness, T, ReadType>(input, list.data);
+    if (error) {
+      return error;
+    }
+  }
+
+  return std::nullopt;
+}
+
+template <std::endian Endianness>
+std::optional<Error> ReadBinaryPropertyList(
+    std::istream& input, const Header::Element::Property& header_property,
+    internal::Element::Property& data_property) {
+  auto num_to_read =
+      ReadBinaryListSize<Endianness>(input, *header_property.list_type);
+  if (!num_to_read) {
+    return num_to_read.error();
+  }
+
+  std::optional<Error> result;
+  switch (header_property.data_type) {
+    case Type::INT8:
+      result = ReadBinaryPropertyListData<Endianness>(
+          input, std::get<Element::List<int8_t>>(data_property), *num_to_read);
+      break;
+    case Type::UINT8:
+      result = ReadBinaryPropertyListData<Endianness>(
+          input, std::get<Element::List<uint8_t>>(data_property), *num_to_read);
+      break;
+    case Type::INT16:
+      result = ReadBinaryPropertyListData<Endianness>(
+          input, std::get<Element::List<int16_t>>(data_property), *num_to_read);
+      break;
+    case Type::UINT16:
+      result = ReadBinaryPropertyListData<Endianness>(
+          input, std::get<Element::List<uint16_t>>(data_property),
+          *num_to_read);
+      break;
+    case Type::INT32:
+      result = ReadBinaryPropertyListData<Endianness>(
+          input, std::get<Element::List<int32_t>>(data_property), *num_to_read);
+      break;
+    case Type::UINT32:
+      result = ReadBinaryPropertyListData<Endianness>(
+          input, std::get<Element::List<uint32_t>>(data_property),
+          *num_to_read);
+      break;
+    case Type::FLOAT:
+      result = ReadBinaryPropertyListData<Endianness, float, uint32_t>(
+          input, std::get<Element::List<float>>(data_property), *num_to_read);
+      break;
+    case Type::DOUBLE:
+      result = ReadBinaryPropertyListData<Endianness, double, uint64_t>(
+          input, std::get<Element::List<double>>(data_property), *num_to_read);
+      break;
+  }
+
+  return result;
+}
+
+template <std::endian Endianness>
+std::optional<Error> ReadBinaryData(std::istream& input,
+                                    const internal::Header& header,
+                                    std::vector<internal::Element>& result) {
+  for (const auto& element : header.elements) {
+    for (size_t e = 0; e < element.num_in_file; e++) {
+      for (size_t p = 0; p < element.properties.size(); p++) {
+        if (element.properties[p].list_type) {
+          auto error = ReadBinaryPropertyList<Endianness>(
+              input, element.properties[p], result.back().properties[p]);
+          if (!error) {
+            return error;
+          }
+        } else {
+          auto error = ReadBinaryPropertyData<Endianness>(
+              input, element.properties[p], result.back().properties[p]);
+          if (!error) {
+            return error;
+          }
+        }
+      }
+    }
+  }
+
+  return std::nullopt;
 }
 
 }  // namespace
@@ -418,7 +649,7 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
   }
 
   std::vector<std::string> comments;
-  std::vector<Element> elements;
+  std::vector<Header::Element> elements;
   std::unordered_set<std::string> element_names;
   std::unordered_map<std::string, std::unordered_set<std::string>>
       property_names;
@@ -493,9 +724,116 @@ std::expected<Header, Error> ParseHeader(std::istream& input) {
                 0u,      std::move(comments), std::move(elements)};
 }
 
+std::expected<std::vector<Element>, Error> ReadData(std::istream& input,
+                                                    const Header& header) {
+  std::vector<internal::Element> result;
+  for (const auto& element : header.elements) {
+    result.emplace_back();
+    for (const auto& property : element.properties) {
+      if (property.list_type) {
+        switch (property.data_type) {
+          case Type::INT8:
+            result.back().properties.emplace_back(Element::List<int8_t>());
+            break;
+          case Type::UINT8:
+            result.back().properties.emplace_back(Element::List<uint8_t>());
+            break;
+          case Type::INT16:
+            result.back().properties.emplace_back(Element::List<int16_t>());
+            break;
+          case Type::UINT16:
+            result.back().properties.emplace_back(Element::List<uint16_t>());
+            break;
+          case Type::INT32:
+            result.back().properties.emplace_back(Element::List<int32_t>());
+            break;
+          case Type::UINT32:
+            result.back().properties.emplace_back(Element::List<uint32_t>());
+            break;
+          case Type::FLOAT:
+            result.back().properties.emplace_back(Element::List<float>());
+            break;
+          case Type::DOUBLE:
+            result.back().properties.emplace_back(Element::List<double>());
+            break;
+        }
+      } else {
+        switch (property.data_type) {
+          case Type::INT8:
+            result.back().properties.emplace_back(std::vector<int8_t>());
+            break;
+          case Type::UINT8:
+            result.back().properties.emplace_back(std::vector<uint8_t>());
+            break;
+          case Type::INT16:
+            result.back().properties.emplace_back(std::vector<int16_t>());
+            break;
+          case Type::UINT16:
+            result.back().properties.emplace_back(std::vector<uint16_t>());
+            break;
+          case Type::INT32:
+            result.back().properties.emplace_back(std::vector<int32_t>());
+            break;
+          case Type::UINT32:
+            result.back().properties.emplace_back(std::vector<uint32_t>());
+            break;
+          case Type::FLOAT:
+            result.back().properties.emplace_back(std::vector<float>());
+            break;
+          case Type::DOUBLE:
+            result.back().properties.emplace_back(std::vector<double>());
+            break;
+        }
+      }
+    }
+  }
+
+  std::optional<Error> error;
+  switch (header.format) {
+    case internal::Format::ASCII:
+      break;
+    case internal::Format::BINARY_BIG_ENDIAN:
+      error = internal::ReadBinaryData<std::endian::big>(input, header, result);
+      break;
+    case internal::Format::BINARY_LITTLE_ENDIAN:
+      error =
+          internal::ReadBinaryData<std::endian::little>(input, header, result);
+      break;
+  }
+
+  if (error) {
+    return std::unexpected(*error);
+  }
+
+  return result;
+}
+
+}  // namespace internal
+
+std::optional<Error> PlyReader::ReadFrom(std::istream& input) {
+  elements_.clear();
+
+  auto header = internal::ParseHeader(input);
+  if (!header) {
+    return header.error();
+  }
+
+  auto elements = internal::ReadData(input, *header);
+  if (!elements) {
+    return elements.error();
+  }
+
+  elements_ = elements.value();
+
+  return std::nullopt;
+}
+
 // Static assertions to ensure float types are properly sized
 static_assert(std::numeric_limits<double>::is_iec559);
 static_assert(std::numeric_limits<float>::is_iec559);
 
-}  // namespace internal
+// Static assertions to ensure system does not use mixed endianness
+static_assert(std::endian::native == std::endian::little ||
+              std::endian::native == std::endian::big);
+
 }  // namespace plyodine
