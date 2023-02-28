@@ -58,6 +58,10 @@ struct Property final
   };
 
   constexpr Type type() const { return static_cast<Type>(index()); }
+
+  size_t size() const {
+    return std::visit([](const auto& entry) { return entry.size(); }, *this);
+  }
 };
 
 static_assert(Property(Int8Property()).type() ==

@@ -104,64 +104,16 @@ class PlyReader final {
  public:
   std::optional<Error> ReadFrom(std::istream& input);
 
-  // Comments
   std::span<const std::string> GetComments() const;
 
-  // Elements
   std::span<const std::string> GetElements() const;
 
-  // Properties
   std::optional<std::span<const std::string>> GetProperties(
       std::string_view element_name) const;
 
-  // Property Type
   std::optional<Property::Type> GetPropertyType(
       std::string_view element_name, std::string_view property_name) const;
 
-  // Structured Property Access
-  std::optional<std::span<const int8_t>> GetPropertyInt8(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const int8_t>>> GetPropertyListInt8(
-      std::string_view element_name, std::string_view property_name) const;
-
-  std::optional<std::span<const uint8_t>> GetPropertyUInt8(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const uint8_t>>> GetPropertyListUInt8(
-      std::string_view element_name, std::string_view property_name) const;
-
-  std::optional<std::span<const int16_t>> GetPropertyInt16(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const int16_t>>> GetPropertyListInt16(
-      std::string_view element_name, std::string_view property_name) const;
-
-  std::optional<std::span<const uint16_t>> GetPropertyUInt16(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const uint16_t>>>
-  GetPropertyListUInt16(std::string_view element_name,
-                        std::string_view property_name) const;
-
-  std::optional<std::span<const int32_t>> GetPropertyInt32(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const int32_t>>> GetPropertyListInt32(
-      std::string_view element_name, std::string_view property_name) const;
-
-  std::optional<std::span<const uint32_t>> GetPropertyUInt32(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const uint32_t>>>
-  GetPropertyListUInt32(std::string_view element_name,
-                        std::string_view property_name) const;
-
-  std::optional<std::span<const float>> GetPropertyFloat(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const float>>> GetPropertyListFloat(
-      std::string_view element_name, std::string_view property_name) const;
-
-  std::optional<std::span<const double>> GetPropertyDouble(
-      std::string_view element_name, std::string_view property_name) const;
-  std::optional<std::span<const std::span<const double>>> GetPropertyListDouble(
-      std::string_view element_name, std::string_view property_name) const;
-
-  // Unstructured Property Access
   const Property* GetProperty(std::string_view element_name,
                               std::string_view property_name) const;
 
