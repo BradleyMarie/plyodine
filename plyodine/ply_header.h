@@ -1,6 +1,7 @@
 #ifndef _PLYODINE_PLY_HEADER_
 #define _PLYODINE_PLY_HEADER_
 
+#include <cstdint>
 #include <expected>
 #include <istream>
 #include <optional>
