@@ -297,6 +297,92 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
     return std::unexpected(header.error());
   }
 
+  size_t property_index = 0;
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view, std::pair<size_t, Property::Type>>>
+      all_properties;
+  for (const auto& element : header->elements) {
+    std::unordered_map<std::string_view, std::pair<size_t, Property::Type>>
+        properties;
+    for (const auto& property : element.properties) {
+      if (property.list_type) {
+        switch (property.data_type) {
+          case PlyHeader::Property::INT8:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::INT8_LIST);
+            break;
+          case PlyHeader::Property::UINT8:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::UINT8_LIST);
+            break;
+          case PlyHeader::Property::INT16:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::INT16_LIST);
+            break;
+          case PlyHeader::Property::UINT16:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::UINT16_LIST);
+            break;
+          case PlyHeader::Property::INT32:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::INT32_LIST);
+            break;
+          case PlyHeader::Property::UINT32:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::UINT32_LIST);
+            break;
+          case PlyHeader::Property::FLOAT:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::FLOAT_LIST);
+            break;
+          case PlyHeader::Property::DOUBLE:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::DOUBLE_LIST);
+            break;
+        }
+      } else {
+        switch (property.data_type) {
+          case PlyHeader::Property::INT8:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::INT8);
+            break;
+          case PlyHeader::Property::UINT8:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::UINT8);
+            break;
+          case PlyHeader::Property::INT16:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::INT16);
+            break;
+          case PlyHeader::Property::UINT16:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::UINT16);
+            break;
+          case PlyHeader::Property::INT32:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::INT32);
+            break;
+          case PlyHeader::Property::UINT32:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::UINT32);
+            break;
+          case PlyHeader::Property::FLOAT:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::FLOAT);
+            break;
+          case PlyHeader::Property::DOUBLE:
+            properties[property.name] =
+                std::make_pair(property_index++, Property::DOUBLE);
+            break;
+        }
+      }
+    }
+    all_properties[element.name] = properties;
+  }
+
+  Start(all_properties);
+
   Context context = {this};
 
   std::expected<void, std::string_view> result;

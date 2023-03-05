@@ -2,10 +2,9 @@
 #define _PLYODINE_PLY_READER_
 
 #include <expected>
-#include <map>
 #include <span>
-#include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include "plyodine/ply_property.h"
 
@@ -15,10 +14,11 @@ class PlyReader {
  public:
   std::expected<void, std::string_view> ReadFrom(std::istream& stream);
 
-  virtual std::expected<void, std::string_view> Start(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>&
-          properties) = 0;
+  virtual std::expected<void, std::string_view>
+  Start(const std::unordered_map<
+        std::string_view,
+        std::unordered_map<std::string_view,
+                           std::pair<size_t, Property::Type>>>& properties) = 0;
 
   virtual std::expected<void, std::string_view> Parse(
       std::string_view element_name, std::string_view property_name,

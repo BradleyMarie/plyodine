@@ -3,9 +3,6 @@
 
 #include <concepts>
 #include <functional>
-#include <optional>
-#include <span>
-#include <string_view>
 #include <type_traits>
 
 #include "plyodine/ply_reader.h"
@@ -245,10 +242,12 @@ class NormalizedReader : public PlyReader {
   }
 
   static const std::pair<size_t, Property::Type> *LookupProperty(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>
-          &properties,
-      const std::string &element_name, const std::string &property_name) {
+      const std::unordered_map<
+          std::string_view,
+          std::unordered_map<std::string_view,
+                             std::pair<size_t, Property::Type>>> &properties,
+      const std::string_view &element_name,
+      const std::string_view &property_name) {
     auto element_iter = properties.find(element_name);
     if (element_iter == properties.end()) {
       return nullptr;
@@ -265,10 +264,12 @@ class NormalizedReader : public PlyReader {
   static std::expected<const std::pair<size_t, Property::Type> *,
                        std::string_view>
   LocationPropertyIndex(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>
-          &properties,
-      const std::string &element_name, const std::string &property_name) {
+      const std::unordered_map<
+          std::string_view,
+          std::unordered_map<std::string_view,
+                             std::pair<size_t, Property::Type>>> &properties,
+      const std::string_view &element_name,
+      const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property && (property->second != Property::FLOAT ||
@@ -285,10 +286,12 @@ class NormalizedReader : public PlyReader {
   static std::expected<const std::pair<size_t, Property::Type> *,
                        std::string_view>
   NormalPropertyIndex(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>
-          &properties,
-      const std::string &element_name, const std::string &property_name) {
+      const std::unordered_map<
+          std::string_view,
+          std::unordered_map<std::string_view,
+                             std::pair<size_t, Property::Type>>> &properties,
+      const std::string_view &element_name,
+      const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property && (property->second != Property::FLOAT ||
@@ -304,10 +307,12 @@ class NormalizedReader : public PlyReader {
   static std::expected<const std::pair<size_t, Property::Type> *,
                        std::string_view>
   UVPropertyIndex(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>
-          &properties,
-      const std::string &element_name, const std::string &property_name) {
+      const std::unordered_map<
+          std::string_view,
+          std::unordered_map<std::string_view,
+                             std::pair<size_t, Property::Type>>> &properties,
+      const std::string_view &element_name,
+      const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property && (property->second != Property::FLOAT ||
@@ -323,11 +328,12 @@ class NormalizedReader : public PlyReader {
   static std::expected<const std::pair<size_t, Property::Type> *,
                        std::string_view>
   UVPropertyIndex(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>
-          &properties,
-      const std::string &element_name,
-      std::span<const std::string> property_names) {
+      const std::unordered_map<
+          std::string_view,
+          std::unordered_map<std::string_view,
+                             std::pair<size_t, Property::Type>>> &properties,
+      const std::string_view &element_name,
+      std::span<const std::string_view> property_names) {
     for (const auto &property_name : property_names) {
       auto face_property_index =
           UVPropertyIndex(properties, element_name, property_name);
@@ -342,10 +348,12 @@ class NormalizedReader : public PlyReader {
   static std::expected<const std::pair<size_t, Property::Type> *,
                        std::string_view>
   FacePropertyIndex(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>
-          &properties,
-      const std::string &element_name, const std::string &property_name) {
+      const std::unordered_map<
+          std::string_view,
+          std::unordered_map<std::string_view,
+                             std::pair<size_t, Property::Type>>> &properties,
+      const std::string_view &element_name,
+      const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property && (property->second != Property::INT8_LIST ||
@@ -363,10 +371,11 @@ class NormalizedReader : public PlyReader {
   }
 
  public:
-  std::expected<void, std::string_view> Start(
-      const std::map<std::string,
-                     std::map<std::string, std::pair<size_t, Property::Type>>>
-          &properties) final {
+  std::expected<void, std::string_view>
+  Start(const std::unordered_map<
+        std::string_view,
+        std::unordered_map<std::string_view, std::pair<size_t, Property::Type>>>
+            &properties) final {
     Start();
 
     Clear();
@@ -401,14 +410,14 @@ class NormalizedReader : public PlyReader {
       return std::unexpected(nz.error());
     }
 
-    static const std::string u_names[] = {"u", "s", "texture_u", "texture_s"};
-    auto u = UVPropertyIndex(properties, "vertex", u_names);
+    auto u = UVPropertyIndex(properties, "vertex",
+                             {"u", "s", "texture_u", "texture_s"});
     if (!u) {
       return std::unexpected(u.error());
     }
 
-    static const std::string v_names[] = {"v", "t", "texture_v", "texture_t"};
-    auto v = UVPropertyIndex(properties, "vertex", v_names);
+    auto v = UVPropertyIndex(properties, "vertex",
+                             {"v", "t", "texture_v", "texture_t"});
     if (!v) {
       return std::unexpected(v.error());
     }
