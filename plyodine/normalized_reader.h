@@ -8,13 +8,13 @@
 #include <string_view>
 #include <type_traits>
 
-#include "plyodine/reader.h"
+#include "plyodine/ply_reader.h"
 
 namespace plyodine {
 
 template <std::floating_point LocationType, std::floating_point NormalType,
           std::floating_point UVType, std::integral FaceIndexType>
-class NormalizedReader : public Reader {
+class NormalizedReader : public PlyReader {
  public:
   virtual void Start() = 0;
 

@@ -7,22 +7,22 @@
 
 namespace plyodine {
 
-typedef std::span<const int8_t> Int8Property;
-typedef std::span<const std::span<const int8_t>> Int8PropertyList;
-typedef std::span<const uint8_t> UInt8Property;
-typedef std::span<const std::span<const uint8_t>> UInt8PropertyList;
-typedef std::span<const int16_t> Int16Property;
-typedef std::span<const std::span<const int16_t>> Int16PropertyList;
-typedef std::span<const uint16_t> UInt16Property;
-typedef std::span<const std::span<const uint16_t>> UInt16PropertyList;
-typedef std::span<const int32_t> Int32Property;
-typedef std::span<const std::span<const int32_t>> Int32PropertyList;
-typedef std::span<const uint32_t> UInt32Property;
-typedef std::span<const std::span<const uint32_t>> UInt32PropertyList;
-typedef std::span<const float> FloatProperty;
-typedef std::span<const std::span<const float>> FloatPropertyList;
-typedef std::span<const double> DoubleProperty;
-typedef std::span<const std::span<const double>> DoublePropertyList;
+typedef int8_t Int8Property;
+typedef std::span<const int8_t> Int8PropertyList;
+typedef uint8_t UInt8Property;
+typedef std::span<const uint8_t> UInt8PropertyList;
+typedef int16_t Int16Property;
+typedef std::span<const int16_t> Int16PropertyList;
+typedef uint16_t UInt16Property;
+typedef std::span<const uint16_t> UInt16PropertyList;
+typedef int32_t Int32Property;
+typedef std::span<const int32_t> Int32PropertyList;
+typedef uint32_t UInt32Property;
+typedef std::span<const uint32_t> UInt32PropertyList;
+typedef float FloatProperty;
+typedef std::span<const float> FloatPropertyList;
+typedef double DoubleProperty;
+typedef std::span<const double> DoublePropertyList;
 
 struct Property final
     : public std::variant<Int8Property, Int8PropertyList, UInt8Property,
@@ -58,10 +58,6 @@ struct Property final
   };
 
   constexpr Type type() const { return static_cast<Type>(index()); }
-
-  size_t size() const {
-    return std::visit([](const auto& entry) { return entry.size(); }, *this);
-  }
 };
 
 static_assert(Property(Int8Property()).type() ==

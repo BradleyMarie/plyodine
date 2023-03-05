@@ -2,424 +2,45 @@
 
 #include <bit>
 #include <cassert>
-#include <cctype>
 #include <charconv>
 #include <limits>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
+
+#include "plyodine/ply_header.h"
 
 namespace plyodine {
-namespace internal {
 namespace {
 
-std::expected<std::string_view, Error> ReadNextLine(
-    std::istream& input, std::string& storage, std::string_view line_ending) {
-  storage.clear();
-
-  char c;
-  while (input.get(c)) {
-    if (c == '\r' || c == '\n') {
-      do {
-        if (c != line_ending[0]) {
-          return std::unexpected(Error::ParsingError(
-              "The input contained mismatched line endings"));
-        }
-        line_ending.remove_prefix(1);
-      } while (!line_ending.empty() && input.get(c));
-      break;
-    }
-
-    if (c != ' ' && !std::isgraph(c)) {
-      return std::unexpected(
-          Error::ParsingError("The input contained an invalid character"));
-    }
-
-    storage.push_back(c);
-  }
-
-  return storage;
-}
-
-std::expected<std::optional<std::string_view>, Error> ReadNextTokenOnLine(
-    std::string_view& line) {
-  if (line.empty()) {
-    return std::nullopt;
-  }
-
-  size_t prefix_length = line.find_first_not_of(' ');
-  if (prefix_length == std::string_view::npos) {
-    return std::unexpected(Error::ParsingError(
-        "Non-comment ASCII lines may not contain trailing spaces"));
-  }
-
-  if (prefix_length > 1) {
-    return std::unexpected(
-        Error::ParsingError("Non-comment ASCII lines may only contain a single "
-                            "space between tokens tokens"));
-  }
-
-  line.remove_prefix(prefix_length);
-
-  size_t token_length = line.find(' ');
-  if (token_length == std::string::npos) {
-    token_length = line.length();
-  }
-
-  std::string_view result = line.substr(0u, token_length);
-  line.remove_prefix(token_length);
-
-  return result;
-}
-
-std::expected<std::optional<std::string_view>, Error> ReadFirstTokenOnLine(
-    std::string_view& line) {
-  if (line.empty()) {
-    return std::nullopt;
-  }
-
-  if (line[0] == ' ') {
-    return std::unexpected(
-        Error::ParsingError("ASCII lines may not begin with a space"));
-  }
-
-  return ReadNextTokenOnLine(line);
-}
-
-std::expected<std::string_view, Error> ParseMagicString(std::istream& input) {
-  char c;
-  if (!input.get(c) || c != 'p' || !input.get(c) || c != 'l' || !input.get(c) ||
-      c != 'y' || !input.get(c) || (c != '\r' && c != '\n')) {
-    return std::unexpected(Error::ParsingError(
-        "The first line of the input must exactly contain the magic string"));
-  }
-
-  // The original documentation describing the PLY format mandates the use of
-  // carriage return for all ASCII line endings; however, this requirement seems
-  // to have been lost to time and it is common to find PLY files with any of
-  // the three major line endings. Plyodine therefor supports all three of these
-  // line endings only requiring that parsed files are consistent throughout.
-  if (c == '\n') {
-    return "\n";
-  }
-
-  if (input.peek() == '\n') {
-    input.get();
-    return "\r\n";
-  }
-
-  return "\r";
-}
-
-bool CheckVersion(std::string_view version) {
-  size_t prefix_length = version.find_first_not_of('0');
-  if (prefix_length == std::string_view::npos) {
-    return false;
-  }
-
-  version.remove_prefix(prefix_length);
-
-  if (version[0] != '1') {
-    return false;
-  }
-
-  version.remove_prefix(1);
-
-  if (version.empty()) {
-    return true;
-  }
-
-  if (version[0] != '.') {
-    return false;
-  }
-
-  version.remove_prefix(1);
-
-  if (version.empty()) {
-    return true;
-  }
-
-  for (char c : version) {
-    if (c != '0') {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-std::expected<Format, Error> ParseFormat(std::istream& input,
-                                         std::string& storage,
-                                         std::string_view line_ending) {
-  auto line = ReadNextLine(input, storage, line_ending);
-  if (!line) {
-    return std::unexpected(line.error());
-  }
-
-  auto first_token = ReadFirstTokenOnLine(*line);
-  if (!first_token) {
-    return std::unexpected(line.error());
-  }
-
-  if (!first_token->has_value() || *first_token != "format") {
-    return std::unexpected(Error::ParsingError(
-        "The second line of the input must contain the format specifier"));
-  }
-
-  auto second_token = ReadNextTokenOnLine(*line);
-  if (!second_token) {
-    return std::unexpected(line.error());
-  }
-
-  Format format;
-  if (second_token->has_value() && *second_token == "ascii") {
-    format = Format::ASCII;
-  } else if (second_token->has_value() &&
-             *second_token == "binary_big_endian") {
-    format = Format::BINARY_BIG_ENDIAN;
-  } else if (second_token->has_value() &&
-             *second_token == "binary_little_endian") {
-    format = Format::BINARY_LITTLE_ENDIAN;
-  } else {
-    return std::unexpected(
-        Error::ParsingError("Format must be one of ascii, binary_big_endian, "
-                            "or binary_little_endian"));
-  }
-
-  auto third_token = ReadNextTokenOnLine(*line);
-  if (!third_token) {
-    return std::unexpected(line.error());
-  }
-
-  if (!third_token->has_value() || !CheckVersion(**third_token)) {
-    return std::unexpected(
-        Error::ParsingError("Only PLY version 1.0 supported"));
-  }
-
-  auto next_token = ReadNextTokenOnLine(*line);
-  if (!next_token) {
-    return std::unexpected(next_token.error());
-  }
-
-  if (next_token->has_value()) {
-    return std::unexpected(
-        Error::ParsingError("The format specifier contained too many tokens"));
-  }
-
-  return format;
-}
-
-Error TooFewElementParamsError() {
-  return Error::ParsingError("Too few prameters to element");
-}
-
-std::expected<std::pair<std::string, size_t>, Error> ParseElement(
-    std::string_view line,
-    const std::unordered_set<std::string>& element_names) {
-  auto name = ReadNextTokenOnLine(line);
-  if (!name) {
-    return std::unexpected(name.error());
-  }
-
-  if (!name->has_value()) {
-    return std::unexpected(TooFewElementParamsError());
-  }
-
-  std::string str_name(**name);
-  if (element_names.contains(str_name)) {
-    return std::unexpected(
-        Error::ParsingError("Two elements have the same name"));
-  }
-
-  auto num_in_file = ReadNextTokenOnLine(line);
-  if (!num_in_file) {
-    return std::unexpected(num_in_file.error());
-  }
-
-  if (!num_in_file->has_value()) {
-    return std::unexpected(TooFewElementParamsError());
-  }
-
-  size_t parsed_num_in_file;
-  if (std::from_chars((*num_in_file)->begin(), (*num_in_file)->end(),
-                      parsed_num_in_file)
-          .ec != std::errc{}) {
-    return std::unexpected(
-        Error::ParsingError("Failed to parse element count"));
-  }
-
-  auto next_token = ReadNextTokenOnLine(line);
-  if (!next_token) {
-    return std::unexpected(next_token.error());
-  }
-
-  if (next_token->has_value()) {
-    return std::unexpected(
-        Error::ParsingError("Too many prameters to element"));
-  }
-
-  return std::make_pair(std::move(str_name), parsed_num_in_file);
-}
-
-std::expected<Type, Error> ParseType(std::string_view type_name) {
-  static const std::unordered_map<std::string_view, Type> type_map = {
-      {"char", Type::INT8},     {"uchar", Type::UINT8},  {"short", Type::INT16},
-      {"ushort", Type::UINT16}, {"int", Type::INT32},    {"uint", Type::UINT32},
-      {"float", Type::FLOAT},   {"double", Type::DOUBLE}};
-  auto iter = type_map.find(type_name);
-  if (iter == type_map.end()) {
-    return std::unexpected(
-        Error::ParsingError("A property is of an invalid type"));
-  }
-
-  return iter->second;
-}
-
-Error TooFewPropertyParamsError() {
-  return Error::ParsingError("Too few prameters to property");
-}
-
-Error TooManyPropertyParamsError() {
-  return Error::ParsingError("Too many prameters to property");
-}
-
-Error DuplicatePropertyNameError() {
-  return Error::ParsingError(
-      "An element contains two properties with the same name");
-}
-
-std::expected<Header::Element::Property, Error> ParsePropertyList(
-    std::string_view line,
-    const std::unordered_set<std::string>& property_names) {
-  auto first_token = ReadNextTokenOnLine(line);
-  if (!first_token) {
-    return std::unexpected(first_token.error());
-  }
-
-  if (!first_token->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
-  }
-
-  auto list_type = ParseType(**first_token);
-  if (!list_type) {
-    return std::unexpected(list_type.error());
-  }
-
-  if (*list_type == Type::FLOAT) {
-    return std::unexpected(Error::ParsingError(
-        "A property list cannot have float as its list type"));
-  }
-
-  if (*list_type == Type::DOUBLE) {
-    return std::unexpected(Error::ParsingError(
-        "A property list cannot have double as its list type"));
-  }
-
-  auto second_token = ReadNextTokenOnLine(line);
-  if (!second_token) {
-    return std::unexpected(first_token.error());
-  }
-
-  if (!second_token->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
-  }
-
-  auto data_type = ParseType(**second_token);
-  if (!data_type) {
-    return std::unexpected(data_type.error());
-  }
-
-  auto name = ReadNextTokenOnLine(line);
-  if (!name) {
-    return std::unexpected(name.error());
-  }
-
-  if (!name->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
-  }
-
-  std::string str_name(**name);
-  if (property_names.contains(str_name)) {
-    return std::unexpected(DuplicatePropertyNameError());
-  }
-
-  auto next_token = ReadNextTokenOnLine(line);
-  if (!next_token) {
-    return std::unexpected(next_token.error());
-  }
-
-  if (next_token->has_value()) {
-    return std::unexpected(TooManyPropertyParamsError());
-  }
-
-  return Header::Element::Property{std::move(str_name), *data_type, *list_type};
-}
-
-std::expected<Header::Element::Property, Error> ParseProperty(
-    std::string_view line,
-    const std::unordered_set<std::string>& property_names) {
-  auto first_token = ReadNextTokenOnLine(line);
-  if (!first_token) {
-    return std::unexpected(first_token.error());
-  }
-
-  if (!first_token->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
-  }
-
-  if (*first_token == "list") {
-    return ParsePropertyList(line, property_names);
-  }
-
-  auto data_type = ParseType(**first_token);
-  if (!data_type) {
-    return std::unexpected(data_type.error());
-  }
-
-  auto name = ReadNextTokenOnLine(line);
-  if (!name) {
-    return std::unexpected(name.error());
-  }
-
-  if (!name->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
-  }
-
-  std::string str_name(**name);
-  if (property_names.contains(str_name)) {
-    return std::unexpected(DuplicatePropertyNameError());
-  }
-
-  auto next_token = ReadNextTokenOnLine(line);
-  if (!next_token) {
-    return std::unexpected(next_token.error());
-  }
-
-  if (next_token->has_value()) {
-    return std::unexpected(TooManyPropertyParamsError());
-  }
-
-  return Header::Element::Property{std::move(str_name), *data_type};
-}
-
-Error UnexpectedEOF() { return Error::ParsingError("Unexpected EOF"); }
+struct Context {
+  PlyReader* reader_;
+  std::vector<int8_t> int8_;
+  std::vector<uint8_t> uint8_;
+  std::vector<int16_t> int16_;
+  std::vector<uint16_t> uint16_;
+  std::vector<int32_t> int32_;
+  std::vector<uint32_t> uint32_;
+  std::vector<float> float_;
+  std::vector<double> double_;
+};
+
+std::string_view UnexpectedEOF() { return "Unexpected EOF"; }
 
 template <std::endian Endianness, typename T, typename ReadType = T>
-std::optional<Error> ReadBinaryPropertyDataImpl(std::istream& input,
-                                                std::vector<T>& output) {
+std::expected<void, std::string_view> ReadBinaryPropertyDataImpl(
+    std::istream& input, std::vector<T>& output) {
   static_assert(sizeof(T) == sizeof(ReadType));
 
   if constexpr (std::endian::native == Endianness) {
     T data;
     if (!input.read(reinterpret_cast<char*>(&data), sizeof(T))) {
-      return UnexpectedEOF();
+      return std::unexpected(UnexpectedEOF());
     }
 
     output.push_back(data);
   } else {
     ReadType data;
     if (!input.read(reinterpret_cast<char*>(&data), sizeof(T))) {
-      return UnexpectedEOF();
+      return std::unexpected(UnexpectedEOF());
     }
 
     data = std::byteswap(data);
@@ -431,60 +52,84 @@ std::optional<Error> ReadBinaryPropertyDataImpl(std::istream& input,
     }
   }
 
-  return std::nullopt;
+  return std::expected<void, std::string_view>();
+}
+
+template <std::endian Endianness, typename T, typename ReadType = T>
+std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
+    std::istream& input, std::string_view element_name,
+    std::string_view property_name, size_t property_index,
+    std::vector<T>& storage, PlyReader* reader) {
+  storage.clear();
+
+  auto result =
+      ReadBinaryPropertyDataImpl<Endianness, T, ReadType>(input, storage);
+
+  reader->Parse(element_name, property_name, property_index, storage[0]);
+
+  return result;
 }
 
 template <std::endian Endianness>
-std::optional<Error> ReadBinaryPropertyData(
-    std::istream& input, const Header::Element::Property& header_property,
-    internal::Element::Property& data_property) {
-  std::optional<Error> result;
+std::expected<void, std::string_view> ReadBinaryPropertyScalar(
+    std::istream& input, std::string_view element_name,
+    const PlyHeader::Property& header_property, size_t property_index,
+    Context& context) {
+  std::expected<void, std::string_view> result;
 
   switch (header_property.data_type) {
-    case Type::INT8:
-      result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<Element::Single<int8_t>>(data_property).entries);
+    case PlyHeader::Property::INT8:
+      result = ReadBinaryPropertyScalarData<Endianness>(
+          input, element_name, header_property.name, property_index,
+          context.int8_, context.reader_);
       break;
-    case Type::UINT8:
-      result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<Element::Single<uint8_t>>(data_property).entries);
+    case PlyHeader::Property::UINT8:
+      result = ReadBinaryPropertyScalarData<Endianness>(
+          input, element_name, header_property.name, property_index,
+          context.uint8_, context.reader_);
       break;
-    case Type::INT16:
-      result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<Element::Single<int16_t>>(data_property).entries);
+    case PlyHeader::Property::INT16:
+      result = ReadBinaryPropertyScalarData<Endianness>(
+          input, element_name, header_property.name, property_index,
+          context.int16_, context.reader_);
       break;
-    case Type::UINT16:
-      result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<Element::Single<uint16_t>>(data_property).entries);
+    case PlyHeader::Property::UINT16:
+      result = ReadBinaryPropertyScalarData<Endianness>(
+          input, element_name, header_property.name, property_index,
+          context.uint16_, context.reader_);
       break;
-    case Type::INT32:
-      result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<Element::Single<int32_t>>(data_property).entries);
+    case PlyHeader::Property::INT32:
+      result = ReadBinaryPropertyScalarData<Endianness>(
+          input, element_name, header_property.name, property_index,
+          context.int32_, context.reader_);
       break;
-    case Type::UINT32:
-      result = ReadBinaryPropertyDataImpl<Endianness>(
-          input, std::get<Element::Single<uint32_t>>(data_property).entries);
+    case PlyHeader::Property::UINT32:
+      result = ReadBinaryPropertyScalarData<Endianness>(
+          input, element_name, header_property.name, property_index,
+          context.uint32_, context.reader_);
       break;
-    case Type::FLOAT:
-      result = ReadBinaryPropertyDataImpl<Endianness, float, uint32_t>(
-          input, std::get<Element::Single<float>>(data_property).entries);
+    case PlyHeader::Property::FLOAT:
+      result = ReadBinaryPropertyScalarData<Endianness, float, uint32_t>(
+          input, element_name, header_property.name, property_index,
+          context.float_, context.reader_);
       break;
-    case Type::DOUBLE:
-      result = ReadBinaryPropertyDataImpl<Endianness, double, uint64_t>(
-          input, std::get<Element::Single<double>>(data_property).entries);
+    case PlyHeader::Property::DOUBLE:
+      result = ReadBinaryPropertyScalarData<Endianness, double, uint64_t>(
+          input, element_name, header_property.name, property_index,
+          context.double_, context.reader_);
       break;
   }
 
   return result;
 }
 
-Error NegativeListSize() {
-  return Error::ParsingError(
-      "The input contained a property list with a negative size");
+std::string_view NegativeListSize() {
+  return "The input contained a property list with a negative size";
 }
 
 template <std::endian Endianness, typename T>
-std::expected<size_t, Error> ReadBinaryListSizeImpl(std::istream& input) {
+std::expected<size_t, std::string_view> ReadBinaryListSizeImpl(
+    std::istream& input) {
   T result;
 
   if (!input.read(reinterpret_cast<char*>(&result), sizeof(T))) {
@@ -505,27 +150,27 @@ std::expected<size_t, Error> ReadBinaryListSizeImpl(std::istream& input) {
 }
 
 template <std::endian Endianness>
-std::expected<size_t, Error> ReadBinaryListSize(std::istream& input,
-                                                Type type) {
-  std::expected<size_t, Error> result;
+std::expected<size_t, std::string_view> ReadBinaryListSize(
+    std::istream& input, PlyHeader::Property::Type type) {
+  std::expected<size_t, std::string_view> result;
 
   switch (type) {
-    case Type::INT8:
+    case PlyHeader::Property::INT8:
       result = ReadBinaryListSizeImpl<Endianness, int8_t>(input);
       break;
-    case Type::UINT8:
+    case PlyHeader::Property::UINT8:
       result = ReadBinaryListSizeImpl<Endianness, uint8_t>(input);
       break;
-    case Type::INT16:
+    case PlyHeader::Property::INT16:
       result = ReadBinaryListSizeImpl<Endianness, int16_t>(input);
       break;
-    case Type::UINT16:
+    case PlyHeader::Property::UINT16:
       result = ReadBinaryListSizeImpl<Endianness, uint16_t>(input);
       break;
-    case Type::INT32:
+    case PlyHeader::Property::INT32:
       result = ReadBinaryListSizeImpl<Endianness, int32_t>(input);
       break;
-    case Type::UINT32:
+    case PlyHeader::Property::UINT32:
       result = ReadBinaryListSizeImpl<Endianness, uint32_t>(input);
       break;
     default:
@@ -536,67 +181,77 @@ std::expected<size_t, Error> ReadBinaryListSize(std::istream& input,
 }
 
 template <std::endian Endianness, typename T, typename ReadType = T>
-std::optional<Error> ReadBinaryPropertyListData(std::istream& input,
-                                                Element::List<T>& list,
-                                                size_t num_to_read) {
-  list.extents.emplace_back(list.data.size(), num_to_read);
+std::expected<void, std::string_view> ReadBinaryPropertyListData(
+    std::istream& input, std::string_view element_name,
+    std::string_view property_name, size_t property_index,
+    std::vector<T>& storage, size_t num_to_read, PlyReader* reader) {
+  storage.clear();
 
   for (size_t i = 0; i < num_to_read; i++) {
     auto error =
-        ReadBinaryPropertyDataImpl<Endianness, T, ReadType>(input, list.data);
+        ReadBinaryPropertyDataImpl<Endianness, T, ReadType>(input, storage);
     if (error) {
       return error;
     }
   }
 
-  return std::nullopt;
+  reader->Parse(element_name, property_name, property_index, storage);
+
+  return std::expected<void, std::string_view>();
 }
 
 template <std::endian Endianness>
-std::optional<Error> ReadBinaryPropertyList(
-    std::istream& input, const Header::Element::Property& header_property,
-    internal::Element::Property& data_property) {
+std::expected<void, std::string_view> ReadBinaryPropertyList(
+    std::istream& input, std::string_view element_name,
+    const PlyHeader::Property& header_property, size_t property_index,
+    Context& context) {
   auto num_to_read =
       ReadBinaryListSize<Endianness>(input, *header_property.list_type);
   if (!num_to_read) {
-    return num_to_read.error();
+    return std::unexpected(num_to_read.error());
   }
 
-  std::optional<Error> result;
+  std::expected<void, std::string_view> result;
   switch (header_property.data_type) {
-    case Type::INT8:
+    case PlyHeader::Property::INT8:
       result = ReadBinaryPropertyListData<Endianness>(
-          input, std::get<Element::List<int8_t>>(data_property), *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.int8_, *num_to_read, context.reader_);
       break;
-    case Type::UINT8:
+    case PlyHeader::Property::UINT8:
       result = ReadBinaryPropertyListData<Endianness>(
-          input, std::get<Element::List<uint8_t>>(data_property), *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.uint8_, *num_to_read, context.reader_);
       break;
-    case Type::INT16:
+    case PlyHeader::Property::INT16:
       result = ReadBinaryPropertyListData<Endianness>(
-          input, std::get<Element::List<int16_t>>(data_property), *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.int16_, *num_to_read, context.reader_);
       break;
-    case Type::UINT16:
+    case PlyHeader::Property::UINT16:
       result = ReadBinaryPropertyListData<Endianness>(
-          input, std::get<Element::List<uint16_t>>(data_property),
-          *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.uint16_, *num_to_read, context.reader_);
       break;
-    case Type::INT32:
+    case PlyHeader::Property::INT32:
       result = ReadBinaryPropertyListData<Endianness>(
-          input, std::get<Element::List<int32_t>>(data_property), *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.int32_, *num_to_read, context.reader_);
       break;
-    case Type::UINT32:
+    case PlyHeader::Property::UINT32:
       result = ReadBinaryPropertyListData<Endianness>(
-          input, std::get<Element::List<uint32_t>>(data_property),
-          *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.uint32_, *num_to_read, context.reader_);
       break;
-    case Type::FLOAT:
+    case PlyHeader::Property::FLOAT:
       result = ReadBinaryPropertyListData<Endianness, float, uint32_t>(
-          input, std::get<Element::List<float>>(data_property), *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.float_, *num_to_read, context.reader_);
       break;
-    case Type::DOUBLE:
+    case PlyHeader::Property::DOUBLE:
       result = ReadBinaryPropertyListData<Endianness, double, uint64_t>(
-          input, std::get<Element::List<double>>(data_property), *num_to_read);
+          input, element_name, header_property.name, property_index,
+          context.double_, *num_to_read, context.reader_);
       break;
   }
 
@@ -604,326 +259,59 @@ std::optional<Error> ReadBinaryPropertyList(
 }
 
 template <std::endian Endianness>
-std::optional<Error> ReadBinaryData(std::istream& input,
-                                    const internal::Header& header,
-                                    std::vector<internal::Element>& result) {
+std::expected<void, std::string_view> ReadBinaryData(std::istream& input,
+                                                     const PlyHeader& header,
+                                                     Context& context) {
+  size_t property_index = 0;
   for (const auto& element : header.elements) {
     for (size_t e = 0; e < element.num_in_file; e++) {
       for (size_t p = 0; p < element.properties.size(); p++) {
         if (element.properties[p].list_type) {
           auto error = ReadBinaryPropertyList<Endianness>(
-              input, element.properties[p], result.back().properties[p]);
+              input, element.name, element.properties[p], property_index + p,
+              context);
           if (!error) {
             return error;
           }
         } else {
-          auto error = ReadBinaryPropertyData<Endianness>(
-              input, element.properties[p], result.back().properties[p]);
+          auto error = ReadBinaryPropertyScalar<Endianness>(
+              input, element.name, element.properties[p], property_index + p,
+              context);
           if (!error) {
             return error;
           }
         }
       }
     }
+    property_index += element.properties.size();
   }
 
-  return std::nullopt;
-}
-
-template <typename T>
-std::optional<T> GetPropertyImpl(const PlyReader reader,
-                                 std::string_view element_name,
-                                 std::string_view property_name) {
-  const auto* contents =
-      std::get_if<T>(reader.GetProperty(element_name, property_name));
-  if (!contents) {
-    return std::nullopt;
-  }
-
-  return *contents;
+  return std::expected<void, std::string_view>();
 }
 
 }  // namespace
 
-std::expected<Header, Error> ParseHeader(std::istream& input) {
-  if (input.fail()) {
-    return std::unexpected(Error::IoError("Bad stream passed"));
+std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
+  auto header = ReadPlyHeader(input);
+  if (!header) {
+    return std::unexpected(header.error());
   }
 
-  auto line_ending = ParseMagicString(input);
-  if (!line_ending) {
-    return std::unexpected(line_ending.error());
-  }
+  Context context = {this};
 
-  std::string storage;
-  auto format = ParseFormat(input, storage, *line_ending);
-  if (!format) {
-    return std::unexpected(format.error());
-  }
-
-  std::vector<std::string> comments;
-  std::vector<Header::Element> elements;
-  std::unordered_set<std::string> element_names;
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      property_names;
-  for (;;) {
-    auto line = ReadNextLine(input, storage, *line_ending);
-    if (!line) {
-      return std::unexpected(line.error());
-    }
-
-    auto first_token = ReadFirstTokenOnLine(*line);
-    if (!first_token) {
-      return std::unexpected(first_token.error());
-    }
-
-    if (first_token->has_value() && *first_token == "property") {
-      if (elements.empty()) {
-        return std::unexpected(Error::ParsingError(
-            "A property could not be associated with an element"));
-      }
-
-      auto& element_property_names = property_names[elements.back().name];
-      auto property = ParseProperty(*line, element_property_names);
-      if (!property) {
-        return std::unexpected(property.error());
-      }
-
-      elements.back().properties.push_back(*property);
-      element_property_names.insert(property->name);
-      continue;
-    }
-
-    if (first_token->has_value() && *first_token == "element") {
-      auto element = ParseElement(*line, element_names);
-      if (!element) {
-        return std::unexpected(element.error());
-      }
-
-      element_names.insert(element->first);
-      elements.emplace_back(element->first, element->second);
-      continue;
-    }
-
-    if (first_token->has_value() && *first_token == "comment") {
-      if (!line->empty()) {
-        line->remove_prefix(1);
-      }
-
-      comments.emplace_back(*line);
-      continue;
-    }
-
-    if (first_token->has_value() && *first_token == "end_header") {
-      auto next_token = ReadNextTokenOnLine(*line);
-      if (!next_token) {
-        return std::unexpected(next_token.error());
-      }
-
-      if (next_token->has_value()) {
-        return std::unexpected(
-            Error::ParsingError("The last line of the header may only contain "
-                                "the end_header keyword"));
-      }
-
+  std::expected<void, std::string_view> result;
+  switch (header->format) {
+    case PlyHeader::ASCII:
       break;
-    }
-
-    return std::unexpected(
-        Error::ParsingError("The input contained an invalid header"));
-  }
-
-  return Header{*format, *line_ending,        1u,
-                0u,      std::move(comments), std::move(elements)};
-}
-
-std::expected<std::vector<Element>, Error> ReadData(std::istream& input,
-                                                    const Header& header) {
-  std::vector<internal::Element> result;
-  for (const auto& element : header.elements) {
-    result.emplace_back();
-    for (const auto& property : element.properties) {
-      if (property.list_type) {
-        switch (property.data_type) {
-          case Type::INT8:
-            result.back().properties.emplace_back(Element::List<int8_t>());
-            break;
-          case Type::UINT8:
-            result.back().properties.emplace_back(Element::List<uint8_t>());
-            break;
-          case Type::INT16:
-            result.back().properties.emplace_back(Element::List<int16_t>());
-            break;
-          case Type::UINT16:
-            result.back().properties.emplace_back(Element::List<uint16_t>());
-            break;
-          case Type::INT32:
-            result.back().properties.emplace_back(Element::List<int32_t>());
-            break;
-          case Type::UINT32:
-            result.back().properties.emplace_back(Element::List<uint32_t>());
-            break;
-          case Type::FLOAT:
-            result.back().properties.emplace_back(Element::List<float>());
-            break;
-          case Type::DOUBLE:
-            result.back().properties.emplace_back(Element::List<double>());
-            break;
-        }
-      } else {
-        switch (property.data_type) {
-          case Type::INT8:
-            result.back().properties.emplace_back(Element::Single<int8_t>());
-            break;
-          case Type::UINT8:
-            result.back().properties.emplace_back(Element::Single<uint8_t>());
-            break;
-          case Type::INT16:
-            result.back().properties.emplace_back(Element::Single<int16_t>());
-            break;
-          case Type::UINT16:
-            result.back().properties.emplace_back(Element::Single<uint16_t>());
-            break;
-          case Type::INT32:
-            result.back().properties.emplace_back(Element::Single<int32_t>());
-            break;
-          case Type::UINT32:
-            result.back().properties.emplace_back(Element::Single<uint32_t>());
-            break;
-          case Type::FLOAT:
-            result.back().properties.emplace_back(Element::Single<float>());
-            break;
-          case Type::DOUBLE:
-            result.back().properties.emplace_back(Element::Single<double>());
-            break;
-        }
-      }
-    }
-  }
-
-  std::optional<Error> error;
-  switch (header.format) {
-    case internal::Format::ASCII:
+    case PlyHeader::BINARY_BIG_ENDIAN:
+      result = ReadBinaryData<std::endian::big>(input, *header, context);
       break;
-    case internal::Format::BINARY_BIG_ENDIAN:
-      error = internal::ReadBinaryData<std::endian::big>(input, header, result);
+    case PlyHeader::BINARY_LITTLE_ENDIAN:
+      result = ReadBinaryData<std::endian::little>(input, *header, context);
       break;
-    case internal::Format::BINARY_LITTLE_ENDIAN:
-      error =
-          internal::ReadBinaryData<std::endian::little>(input, header, result);
-      break;
-  }
-
-  for (const auto& element : result) {
-    for (const auto& property : element.properties) {
-      std::visit(
-          [&](auto& contents) {
-            if constexpr (std::is_class<decltype(contents.entries[0])>::value) {
-              for (const auto& extent : contents.extents) {
-                contents.entries.emplace_back(
-                    contents.data.data() + extent.index,
-                    contents.data.data() + extent.index + extent.size);
-              }
-              contents.extents.clear();
-            }
-          },
-          property);
-    }
-  }
-
-  if (error) {
-    return std::unexpected(*error);
   }
 
   return result;
-}
-
-}  // namespace internal
-
-std::optional<Error> PlyReader::ReadFrom(std::istream& input) {
-  elements_.clear();
-  element_names_.clear();
-  property_names_.clear();
-  properties_.clear();
-
-  auto header = internal::ParseHeader(input);
-  if (!header) {
-    return header.error();
-  }
-
-  auto elements = internal::ReadData(input, *header);
-  if (!elements) {
-    return elements.error();
-  }
-
-  elements_ = std::move(elements.value());
-
-  for (const auto& comment : header->comments) {
-    comments_.push_back(comment);
-  }
-
-  for (size_t e = 0; e < header->elements.size(); e++) {
-    const auto& element_name = header->elements[e].name;
-    element_names_.push_back(element_name);
-    for (size_t p = 0; p < header->elements[e].properties.size(); p++) {
-      const auto& property_name = header->elements[e].properties[p].name;
-      property_names_[element_names_.back()].push_back(property_name);
-
-      properties_[element_name][property_name] = std::visit(
-          [&](const auto& contents) -> Property { return contents.entries; },
-          elements_[e].properties[p]);
-    }
-  }
-
-  return std::nullopt;
-}
-
-std::span<const std::string> PlyReader::GetComments() const {
-  return comments_;
-}
-
-std::span<const std::string> PlyReader::GetElements() const {
-  return element_names_;
-}
-
-std::optional<std::span<const std::string>> PlyReader::GetProperties(
-    std::string_view element_name) const {
-  auto iter = property_names_.find(element_name);
-  if (iter == property_names_.end()) {
-    return std::nullopt;
-  }
-
-  return iter->second;
-}
-
-std::optional<Property::Type> PlyReader::GetPropertyType(
-    std::string_view element_name, std::string_view property_name) const {
-  auto element_iter = properties_.find(element_name);
-  if (element_iter == properties_.end()) {
-    return std::nullopt;
-  }
-
-  auto property_iter = element_iter->second.find(property_name);
-  if (property_iter == element_iter->second.end()) {
-    return std::nullopt;
-  }
-
-  return property_iter->second.type();
-}
-
-const Property* PlyReader::GetProperty(std::string_view element_name,
-                                       std::string_view property_name) const {
-  auto element_iter = properties_.find(element_name);
-  if (element_iter == properties_.end()) {
-    return nullptr;
-  }
-
-  auto property_iter = element_iter->second.find(property_name);
-  if (property_iter == element_iter->second.end()) {
-    return nullptr;
-  }
-
-  return &property_iter->second;
 }
 
 // Static assertions to ensure float types are properly sized
