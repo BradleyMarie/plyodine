@@ -6,8 +6,8 @@ cc_library(
     name = "normalized_reader",
     hdrs = ["normalized_reader.h"],
     deps = [
-        ":ply_reader",
         ":ply_property",
+        ":ply_reader",
     ],
 )
 
@@ -86,5 +86,19 @@ cc_library(
     hdrs = ["ply_writer.h"],
     deps = [
         ":ply_property",
+    ],
+)
+
+cc_test(
+    name = "ply_writer_test",
+    srcs = ["ply_writer_test.cc"],
+    data = [
+        "test_data/ply_ascii_empty.ply",
+        "test_data/ply_big_empty.ply",
+        "test_data/ply_little_empty.ply",
+    ],
+    deps = [
+        ":ply_writer",
+        "@com_google_googletest//:gtest_main",
     ],
 )
