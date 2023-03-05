@@ -2,6 +2,7 @@
 #define _PLYODINE_PLY_READER_
 
 #include <expected>
+#include <istream>
 #include <span>
 #include <string_view>
 #include <unordered_map>

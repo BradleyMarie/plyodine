@@ -25,18 +25,26 @@ typedef double DoubleProperty;
 typedef std::span<const double> DoublePropertyList;
 
 struct Property final
-    : public std::variant<Int8Property, Int8PropertyList, UInt8Property,
-                          UInt8PropertyList, Int16Property, Int16PropertyList,
-                          UInt16Property, UInt16PropertyList, Int32Property,
-                          Int32PropertyList, UInt32Property, UInt32PropertyList,
-                          FloatProperty, FloatPropertyList, DoubleProperty,
-                          DoublePropertyList> {
-  using std::variant<Int8Property, Int8PropertyList, UInt8Property,
-                     UInt8PropertyList, Int16Property, Int16PropertyList,
-                     UInt16Property, UInt16PropertyList, Int32Property,
-                     Int32PropertyList, UInt32Property, UInt32PropertyList,
-                     FloatProperty, FloatPropertyList, DoubleProperty,
-                     DoublePropertyList>::variant;
+    : public std::variant<
+          std::span<const Int8Property>, std::span<const Int8PropertyList>,
+          std::span<const UInt8Property>, std::span<const UInt8PropertyList>,
+          std::span<const Int16Property>, std::span<const Int16PropertyList>,
+          std::span<const UInt16Property>, std::span<const UInt16PropertyList>,
+          std::span<const Int32Property>, std::span<const Int32PropertyList>,
+          std::span<const UInt32Property>, std::span<const UInt32PropertyList>,
+          std::span<const FloatProperty>, std::span<const FloatPropertyList>,
+          std::span<const DoubleProperty>,
+          std::span<const DoublePropertyList>> {
+  using std::variant<
+      std::span<const Int8Property>, std::span<const Int8PropertyList>,
+      std::span<const UInt8Property>, std::span<const UInt8PropertyList>,
+      std::span<const Int16Property>, std::span<const Int16PropertyList>,
+      std::span<const UInt16Property>, std::span<const UInt16PropertyList>,
+      std::span<const Int32Property>, std::span<const Int32PropertyList>,
+      std::span<const UInt32Property>, std::span<const UInt32PropertyList>,
+      std::span<const FloatProperty>, std::span<const FloatPropertyList>,
+      std::span<const DoubleProperty>,
+      std::span<const DoublePropertyList>>::variant;
 
   enum Type {
     INT8 = 0u,
@@ -58,39 +66,43 @@ struct Property final
   };
 
   constexpr Type type() const { return static_cast<Type>(index()); }
+
+  size_t size() const {
+    return std::visit([](const auto& entry) { return entry.size(); }, *this);
+  }
 };
 
-static_assert(Property(Int8Property()).type() ==
+static_assert(Property(std::span<const Int8Property>()).type() ==
               static_cast<size_t>(Property::Type::INT8));
-static_assert(Property(Int8PropertyList()).type() ==
+static_assert(Property(std::span<const Int8PropertyList>()).type() ==
               static_cast<size_t>(Property::Type::INT8_LIST));
-static_assert(Property(UInt8Property()).type() ==
+static_assert(Property(std::span<const UInt8Property>()).type() ==
               static_cast<size_t>(Property::Type::UINT8));
-static_assert(Property(UInt8PropertyList()).type() ==
+static_assert(Property(std::span<const UInt8PropertyList>()).type() ==
               static_cast<size_t>(Property::Type::UINT8_LIST));
-static_assert(Property(Int16Property()).type() ==
+static_assert(Property(std::span<const Int16Property>()).type() ==
               static_cast<size_t>(Property::Type::INT16));
-static_assert(Property(Int16PropertyList()).type() ==
+static_assert(Property(std::span<const Int16PropertyList>()).type() ==
               static_cast<size_t>(Property::Type::INT16_LIST));
-static_assert(Property(UInt16Property()).type() ==
+static_assert(Property(std::span<const UInt16Property>()).type() ==
               static_cast<size_t>(Property::Type::UINT16));
-static_assert(Property(UInt16PropertyList()).type() ==
+static_assert(Property(std::span<const UInt16PropertyList>()).type() ==
               static_cast<size_t>(Property::Type::UINT16_LIST));
-static_assert(Property(Int32Property()).type() ==
+static_assert(Property(std::span<const Int32Property>()).type() ==
               static_cast<size_t>(Property::Type::INT32));
-static_assert(Property(Int32PropertyList()).type() ==
+static_assert(Property(std::span<const Int32PropertyList>()).type() ==
               static_cast<size_t>(Property::Type::INT32_LIST));
-static_assert(Property(UInt32Property()).type() ==
+static_assert(Property(std::span<const UInt32Property>()).type() ==
               static_cast<size_t>(Property::Type::UINT32));
-static_assert(Property(UInt32PropertyList()).type() ==
+static_assert(Property(std::span<const UInt32PropertyList>()).type() ==
               static_cast<size_t>(Property::Type::UINT32_LIST));
-static_assert(Property(FloatProperty()).type() ==
+static_assert(Property(std::span<const FloatProperty>()).type() ==
               static_cast<size_t>(Property::Type::FLOAT));
-static_assert(Property(FloatPropertyList()).type() ==
+static_assert(Property(std::span<const FloatPropertyList>()).type() ==
               static_cast<size_t>(Property::Type::FLOAT_LIST));
-static_assert(Property(DoubleProperty()).type() ==
+static_assert(Property(std::span<const DoubleProperty>()).type() ==
               static_cast<size_t>(Property::Type::DOUBLE));
-static_assert(Property(DoublePropertyList()).type() ==
+static_assert(Property(std::span<const DoublePropertyList>()).type() ==
               static_cast<size_t>(Property::Type::DOUBLE_LIST));
 
 }  // namespace plyodine

@@ -1,2 +1,2 @@
 # plyodine
-A high-performance PLY file parser for C++23
+A high-performance PLY file reader and writer for C++23

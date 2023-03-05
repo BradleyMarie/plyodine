@@ -79,3 +79,12 @@ cc_library(
         ":ply_property",
     ],
 )
+
+cc_library(
+    name = "ply_writer",
+    srcs = ["ply_writer.cc"],
+    hdrs = ["ply_writer.h"],
+    deps = [
+        ":ply_property",
+    ],
+)
