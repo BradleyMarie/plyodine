@@ -207,7 +207,14 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
     const std::map<std::string_view, std::map<std::string_view, Property>>&
         properties,
     std::span<const std::string_view> comments) {
-  auto list_sizes = WriteHeader(stream, properties, comments, "ascii");
+  std::string_view format;
+  if constexpr (Endianness == std::endian::big) {
+    format = "binary_big_endian";
+  } else {
+    format = "binary_little_endian";
+  }
+
+  auto list_sizes = WriteHeader(stream, properties, comments, format);
   if (!list_sizes) {
     return std::unexpected(list_sizes.error());
   }

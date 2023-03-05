@@ -1,1 +1,1 @@
-plyformat ascii 1.0end_header
+plyformat binary_little_endian 1.0end_header
