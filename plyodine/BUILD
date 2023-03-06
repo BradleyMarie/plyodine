@@ -93,8 +93,11 @@ cc_test(
     name = "ply_writer_test",
     srcs = ["ply_writer_test.cc"],
     data = [
+        "test_data/ply_ascii_data.ply",
         "test_data/ply_ascii_empty.ply",
+        "test_data/ply_big_data.ply",
         "test_data/ply_big_empty.ply",
+        "test_data/ply_little_data.ply",
         "test_data/ply_little_empty.ply",
     ],
     deps = [

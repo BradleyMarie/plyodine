@@ -181,9 +181,8 @@ WriteHeader(std::ostream& stream,
                      << " " << type_strings.at(property.second.type()) << " "
                      << property.first << "\r";
             } else {
-              stream << "property "
-                     << " " << type_strings.at(property.second.type()) << " "
-                     << property.first << "\r";
+              stream << "property " << type_strings.at(property.second.type())
+                     << " " << property.first << "\r";
             }
           },
           property.second);
@@ -401,7 +400,7 @@ std::expected<void, std::string_view> WriteToASCII(
                                                 decltype(entry)>::max_digits10)
                            << entry;
                   } else {
-                    stream << " " << entry;
+                    stream << " " << +entry;
                   }
                 }
               } else if constexpr (std::is_floating_point<std::decay_t<
@@ -411,7 +410,7 @@ std::expected<void, std::string_view> WriteToASCII(
                                   decltype(entries[0])>>::max_digits10)
                        << entries[i];
               } else {
-                stream << entries[i];
+                stream << +entries[i];
               }
             },
             property.second);
