@@ -1,5 +1,6 @@
 #include "plyodine/ply_writer.h"
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cctype>
@@ -91,12 +92,11 @@ GetListSizes(const std::map<std::string_view,
     for (const auto& property : element.second) {
       bool success = std::visit(
           [&](const auto& entries) {
-            if constexpr (std::is_class<decltype(entries)>::value) {
+            if constexpr (std::is_class<
+                              std::decay_t<decltype(entries[0])>>::value) {
               size_t max_size = 0;
               for (const auto& entry : entries) {
-                if (entry.size() > max_size) {
-                  max_size = entry.size();
-                }
+                max_size = std::max(max_size, entry.size());
               }
 
               if (max_size < std::numeric_limits<uint8_t>::max()) {
@@ -173,7 +173,8 @@ WriteHeader(std::ostream& stream,
 
       std::visit(
           [&](const auto& entries) {
-            if constexpr (std::is_class<decltype(entries)>::value) {
+            if constexpr (std::is_class<
+                              std::decay_t<decltype(entries[0])>>::value) {
               stream << "property list "
                      << type_strings.at(
                             list_sizes->at(element.first).at(property.first))

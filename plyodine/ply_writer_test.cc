@@ -7,6 +7,59 @@
 
 #include "googletest/include/gtest/gtest.h"
 
+TEST(Validate, BadElementNames) {
+  std::stringstream output;
+  EXPECT_EQ(plyodine::WriteToASCII(output, {{"", {}}}).error(),
+            "Names of properties and elements may not be empty");
+  EXPECT_EQ(
+      plyodine::WriteToASCII(output, {{" ", {}}}).error(),
+      "Names of properties and elements may only contain graphic characters");
+}
+
+TEST(Validate, BadPropertyNames) {
+  std::stringstream output;
+  EXPECT_EQ(plyodine::WriteToASCII(output, {{"element", {{"", {}}}}}).error(),
+            "Names of properties and elements may not be empty");
+  EXPECT_EQ(
+      plyodine::WriteToASCII(output, {{"element", {{" ", {}}}}}).error(),
+      "Names of properties and elements may only contain graphic characters");
+}
+
+TEST(Validate, MismatchedProperties) {
+  std::vector<float> elements0;
+  std::vector<float> elements1 = {1.0};
+  std::stringstream output;
+  EXPECT_EQ(plyodine::WriteToASCII(
+                output,
+                {{"element", {{"node0", {elements0}}, {"node1", {elements1}}}}})
+                .error(),
+            "All properties of an element must have the same size");
+}
+
+TEST(Validate, BadComment) {
+  std::stringstream output;
+  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {{"\r"}}).error(),
+            "A comment may not contain line feed or carriage return");
+  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {{"\n"}}).error(),
+            "A comment may not contain line feed or carriage return");
+}
+
+TEST(Validate, ListTooBig) {
+  if constexpr (std::numeric_limits<uint32_t>::max() <
+                std::numeric_limits<size_t>::max()) {
+    float value;
+    std::span<const float> entries(
+        &value, static_cast<size_t>(std::numeric_limits<uint32_t>::max()) +
+                    static_cast<size_t>(1u));
+    std::vector<std::span<const float>> list({entries});
+
+    std::stringstream output;
+    EXPECT_EQ(plyodine::WriteToASCII(output, {{"element", {{"node0", {list}}}}})
+                  .error(),
+              "A property list contained too many values");
+  }
+}
+
 TEST(ASCII, Empty) {
   std::stringstream output;
   ASSERT_TRUE(plyodine::WriteToASCII(output, {}));
