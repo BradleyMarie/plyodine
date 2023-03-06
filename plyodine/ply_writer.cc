@@ -4,6 +4,7 @@
 #include <array>
 #include <bit>
 #include <cctype>
+#include <cmath>
 #include <iomanip>
 #include <limits>
 #include <optional>
@@ -383,18 +384,22 @@ std::expected<void, std::string_view> WriteToASCII(
 
         first = false;
 
-        std::visit(
+        bool float_error = std::visit(
             [&](const auto& entries) {
               if constexpr (std::is_class<
                                 std::decay_t<decltype(entries[0])>>::value) {
                 stream << entries[i].size();
                 if (!stream) {
-                  return;
+                  return false;
                 }
 
                 for (auto entry : entries[i]) {
                   if constexpr (std::is_floating_point<
                                     decltype(entry)>::value) {
+                    if (!std::isfinite(entry)) {
+                      return true;
+                    }
+
                     stream << " "
                            << std::setprecision(std::numeric_limits<
                                                 decltype(entry)>::max_digits10)
@@ -405,6 +410,10 @@ std::expected<void, std::string_view> WriteToASCII(
                 }
               } else if constexpr (std::is_floating_point<std::decay_t<
                                        decltype(entries[0])>>::value) {
+                if (!std::isfinite(entries[i])) {
+                  return true;
+                }
+
                 stream << std::setprecision(
                               std::numeric_limits<std::decay_t<
                                   decltype(entries[0])>>::max_digits10)
@@ -412,8 +421,16 @@ std::expected<void, std::string_view> WriteToASCII(
               } else {
                 stream << +entries[i];
               }
+
+              return false;
             },
             property.second);
+
+        if (float_error) {
+          return std::unexpected(
+              "Only finite floating point values may be serialized to an ASCII "
+              "output");
+        }
 
         if (!stream) {
           return std::unexpected(WriteFailure());

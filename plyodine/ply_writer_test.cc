@@ -110,6 +110,31 @@ TEST(ASCII, Empty) {
   EXPECT_EQ(expected, output.str());
 }
 
+TEST(ASCII, NonFinite) {
+  std::vector<float> a = {std::numeric_limits<float>::infinity()};
+  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+      data;
+  data["vertex"]["a"] = a;
+
+  std::stringstream output;
+  EXPECT_EQ(
+      plyodine::WriteToASCII(output, data).error(),
+      "Only finite floating point values may be serialized to an ASCII output");
+}
+
+TEST(ASCII, NonFiniteList) {
+  std::vector<float> a = {std::numeric_limits<float>::infinity()};
+  std::vector<std::span<const float>> al = {{a}};
+  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+      data;
+  data["vertex"]["a"] = al;
+
+  std::stringstream output;
+  EXPECT_EQ(
+      plyodine::WriteToASCII(output, data).error(),
+      "Only finite floating point values may be serialized to an ASCII output");
+}
+
 TEST(ASCII, TestData) {
   std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
   std::stringstream output;
