@@ -101,11 +101,11 @@ GetListSizes(const std::map<std::string_view,
                 max_size = std::max(max_size, entry.size());
               }
 
-              if (max_size < std::numeric_limits<uint8_t>::max()) {
+              if (max_size <= std::numeric_limits<uint8_t>::max()) {
                 list_sizes[element.first][property.first] = LIST_SIZE_UINT8;
-              } else if (max_size < std::numeric_limits<uint16_t>::max()) {
+              } else if (max_size <= std::numeric_limits<uint16_t>::max()) {
                 list_sizes[element.first][property.first] = LIST_SIZE_UINT16;
-              } else if (max_size < std::numeric_limits<uint32_t>::max()) {
+              } else if (max_size <= std::numeric_limits<uint32_t>::max()) {
                 list_sizes[element.first][property.first] = LIST_SIZE_UINT32;
               } else {
                 return false;

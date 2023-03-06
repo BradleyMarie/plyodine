@@ -95,10 +95,15 @@ cc_test(
     data = [
         "test_data/ply_ascii_data.ply",
         "test_data/ply_ascii_empty.ply",
+        "test_data/ply_ascii_large_fp.ply",
+        "test_data/ply_ascii_list_sizes.ply",
+        "test_data/ply_ascii_small_fp.ply",
         "test_data/ply_big_data.ply",
         "test_data/ply_big_empty.ply",
+        "test_data/ply_big_list_sizes.ply",
         "test_data/ply_little_data.ply",
         "test_data/ply_little_empty.ply",
+        "test_data/ply_little_list_sizes.ply",
     ],
     deps = [
         ":ply_writer",

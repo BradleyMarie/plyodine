@@ -48,6 +48,29 @@ BuildTestData() {
   return result;
 }
 
+std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+BuildListSizeTestData() {
+  static const std::vector<uint8_t> values(
+      std::numeric_limits<uint16_t>::max() + 1u, 0x88);
+  static const std::vector<std::span<const uint8_t>> l0 = {
+      {values.begin(), values.begin() + std::numeric_limits<uint8_t>::max()}};
+  static const std::vector<std::span<const uint8_t>> l1 = {
+      {values.begin(),
+       values.begin() + std::numeric_limits<uint8_t>::max() + 1u}};
+  static const std::vector<std::span<const uint8_t>> l2 = {
+      {values.begin(), values.begin() + std::numeric_limits<uint16_t>::max()}};
+  static const std::vector<std::span<const uint8_t>> l3 = {
+      {values.begin(), values.end()}};
+
+  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+      result;
+  result["vertex"]["l0"] = l0;
+  result["vertex"]["l1"] = l1;
+  result["vertex"]["l2"] = l2;
+  result["vertex"]["l3"] = l3;
+  return result;
+}
+
 TEST(Validate, BadElementNames) {
   std::stringstream output;
   EXPECT_EQ(plyodine::WriteToASCII(output, {{"", {}}}).error(),
@@ -145,6 +168,15 @@ TEST(ASCII, TestData) {
   EXPECT_EQ(expected, output.str());
 }
 
+TEST(ASCII, ListSizes) {
+  std::stringstream output;
+  ASSERT_TRUE(plyodine::WriteToASCII(output, BuildListSizeTestData()));
+
+  std::ifstream input("plyodine/test_data/ply_ascii_list_sizes.ply");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
+}
+
 TEST(ASCII, LargeFP) {
   std::vector<double> a = {18446744073709551616.0};
   std::vector<std::span<const double>> al = {{a}};
@@ -194,6 +226,15 @@ TEST(BigEndian, TestData) {
   EXPECT_EQ(expected, output.str());
 }
 
+TEST(BigEndian, ListSizes) {
+  std::stringstream output;
+  ASSERT_TRUE(plyodine::WriteToBigEndian(output, BuildListSizeTestData()));
+
+  std::ifstream input("plyodine/test_data/ply_big_list_sizes.ply");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
+}
+
 TEST(LittleEndian, Empty) {
   std::stringstream output;
   ASSERT_TRUE(plyodine::WriteToLittleEndian(output, {}));
@@ -209,6 +250,15 @@ TEST(LittleEndian, TestData) {
   ASSERT_TRUE(plyodine::WriteToLittleEndian(output, BuildTestData(), comments));
 
   std::ifstream input("plyodine/test_data/ply_little_data.ply");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
+}
+
+TEST(LittleEndian, ListSizes) {
+  std::stringstream output;
+  ASSERT_TRUE(plyodine::WriteToLittleEndian(output, BuildListSizeTestData()));
+
+  std::ifstream input("plyodine/test_data/ply_little_list_sizes.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -239,6 +289,21 @@ TEST(Native, TestData) {
     EXPECT_EQ(expected, output.str());
   } else {
     std::ifstream input("plyodine/test_data/ply_little_data.ply");
+    std::string expected(std::istreambuf_iterator<char>(input), {});
+    EXPECT_EQ(expected, output.str());
+  }
+}
+
+TEST(Native, ListSizes) {
+  std::stringstream output;
+  ASSERT_TRUE(plyodine::WriteToBinary(output, BuildListSizeTestData()));
+
+  if constexpr (std::endian::native == std::endian::big) {
+    std::ifstream input("plyodine/test_data/ply_big_list_sizes.ply");
+    std::string expected(std::istreambuf_iterator<char>(input), {});
+    EXPECT_EQ(expected, output.str());
+  } else {
+    std::ifstream input("plyodine/test_data/ply_little_list_sizes.ply");
     std::string expected(std::istreambuf_iterator<char>(input), {});
     EXPECT_EQ(expected, output.str());
   }
