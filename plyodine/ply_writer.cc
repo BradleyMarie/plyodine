@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <limits>
 #include <optional>
+#include <sstream>
 #include <type_traits>
 #include <vector>
 
@@ -354,6 +355,29 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
   return std::expected<void, std::string_view>();
 }
 
+template <std::floating_point T>
+std::string_view SerializeFP(std::stringstream& stream, T value) {
+  stream.str("");
+
+  int log = static_cast<int>(std::log10(std::abs(value))) + 1;
+  int num_digits = std::max(std::numeric_limits<T>::max_digits10 - log, 0);
+  stream << std::fixed << std::setprecision(num_digits) << value;
+
+  std::string_view result = stream.view();
+
+  size_t dot = result.find(".");
+  if (dot == std::string_view::npos) {
+    return result;
+  }
+
+  result = result.substr(0u, result.find_last_not_of("0") + 1u);
+  if (result.back() == '.') {
+    result.remove_suffix(1u);
+  }
+
+  return result;
+}
+
 }  // namespace
 
 std::expected<void, std::string_view> WriteToASCII(
@@ -366,6 +390,7 @@ std::expected<void, std::string_view> WriteToASCII(
     return std::unexpected(list_sizes.error());
   }
 
+  std::stringstream fp_stream_storage;
   for (const auto& element : properties) {
     if (element.second.empty()) {
       continue;
@@ -400,10 +425,7 @@ std::expected<void, std::string_view> WriteToASCII(
                       return true;
                     }
 
-                    stream << " "
-                           << std::setprecision(std::numeric_limits<
-                                                decltype(entry)>::max_digits10)
-                           << entry;
+                    stream << " " << SerializeFP(fp_stream_storage, entry);
                   } else {
                     stream << " " << +entry;
                   }
@@ -414,10 +436,7 @@ std::expected<void, std::string_view> WriteToASCII(
                   return true;
                 }
 
-                stream << std::setprecision(
-                              std::numeric_limits<std::decay_t<
-                                  decltype(entries[0])>>::max_digits10)
-                       << entries[i];
+                stream << SerializeFP(fp_stream_storage, entries[i]);
               } else {
                 stream << +entries[i];
               }

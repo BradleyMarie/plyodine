@@ -145,6 +145,36 @@ TEST(ASCII, TestData) {
   EXPECT_EQ(expected, output.str());
 }
 
+TEST(ASCII, LargeFP) {
+  std::vector<double> a = {18446744073709551616.0};
+  std::vector<std::span<const double>> al = {{a}};
+  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+      data;
+  data["vertex"]["a"] = al;
+
+  std::stringstream output;
+  ASSERT_TRUE(plyodine::WriteToASCII(output, data));
+
+  std::ifstream input("plyodine/test_data/ply_ascii_large_fp.ply");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
+}
+
+TEST(ASCII, SmallFP) {
+  std::vector<double> a = {0.000000000000000000000025};
+  std::vector<std::span<const double>> al = {{a}};
+  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+      data;
+  data["vertex"]["a"] = al;
+
+  std::stringstream output;
+  ASSERT_TRUE(plyodine::WriteToASCII(output, data));
+
+  std::ifstream input("plyodine/test_data/ply_ascii_small_fp.ply");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
+}
+
 TEST(BigEndian, Empty) {
   std::stringstream output;
   ASSERT_TRUE(plyodine::WriteToBigEndian(output, {}));
