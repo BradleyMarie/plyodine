@@ -15,26 +15,26 @@ class NormalizedReader : public PlyReader {
  public:
   virtual void Start() = 0;
 
-  virtual void Parse(LocationType position[3], NormalType maybe_normals[3],
-                     UVType maybe_uv[2]) = 0;
+  virtual void Handle(LocationType position[3], NormalType maybe_normals[3],
+                      UVType maybe_uv[2]) = 0;
 
-  virtual void Parse(FaceIndexType face[3]) = 0;
+  virtual void Handle(FaceIndexType face[3]) = 0;
 
  private:
   template <typename T>
-  void Parse(const std::vector<std::function<void(T)>> &parse_functions,
-             size_t property_index, T value) {
+  void Handle(const std::vector<std::function<void(T)>> &parse_functions,
+              size_t property_index, T value) {
     if (property_index < parse_functions.size() &&
         parse_functions[property_index]) {
       parse_functions[property_index](value);
     }
 
     if (property_index == parse_functions.size() - 1u) {
-      Parse(xyz_, normals_, uvs_);
+      Handle(xyz_, normals_, uvs_);
     }
   }
 
-  struct ParseX {
+  struct HandleX {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -45,7 +45,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseY {
+  struct HandleY {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -56,7 +56,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseZ {
+  struct HandleZ {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -67,7 +67,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseNX {
+  struct HandleNX {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -78,7 +78,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseNY {
+  struct HandleNY {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -89,7 +89,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseNZ {
+  struct HandleNZ {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -100,7 +100,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseU {
+  struct HandleU {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -111,7 +111,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseV {
+  struct HandleV {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -122,7 +122,7 @@ class NormalizedReader : public PlyReader {
     }
   };
 
-  struct ParseVertexIndices {
+  struct HandleVertexIndices {
     template <typename T>
     std::function<void(T)> GetCallback(NormalizedReader *reader) const {
       return [reader](T value) {
@@ -133,7 +133,7 @@ class NormalizedReader : public PlyReader {
             for (size_t i = 0; i < value.size() - 2; i++) {
               faces[1] = static_cast<FaceIndexType>(value[i]);
               faces[2] = static_cast<FaceIndexType>(value[i + 1]);
-              reader->Parse(faces);
+              reader->Handle(faces);
             }
           }
         }
@@ -371,11 +371,12 @@ class NormalizedReader : public PlyReader {
   }
 
  public:
-  std::expected<void, std::string_view>
-  Start(const std::unordered_map<
-        std::string_view,
-        std::unordered_map<std::string_view, std::pair<size_t, Property::Type>>>
-            &properties) final {
+  std::expected<void, std::string_view> Start(
+      const std::unordered_map<
+          std::string_view,
+          std::unordered_map<std::string_view,
+                             std::pair<size_t, Property::Type>>> &properties,
+      std::span<const std::string_view> comments) final {
     Start();
 
     Clear();
@@ -432,23 +433,23 @@ class NormalizedReader : public PlyReader {
       return std::unexpected("Element vertex must have properties x, y, and z");
     }
 
-    FillCallback<ParseX>(**x);
-    FillCallback<ParseY>(**y);
-    FillCallback<ParseZ>(**z);
+    FillCallback<HandleX>(**x);
+    FillCallback<HandleY>(**y);
+    FillCallback<HandleZ>(**z);
 
     if (*nx && *ny && *nz) {
       normals_ = normals_storage_;
-      FillCallback<ParseNX>(**nx);
-      FillCallback<ParseNY>(**ny);
-      FillCallback<ParseNZ>(**nz);
+      FillCallback<HandleNX>(**nx);
+      FillCallback<HandleNY>(**ny);
+      FillCallback<HandleNZ>(**nz);
     } else {
       normals_ = nullptr;
     }
 
     if (*u && *v) {
       uvs_ = uv_storage_;
-      FillCallback<ParseU>(**u);
-      FillCallback<ParseV>(**v);
+      FillCallback<HandleU>(**u);
+      FillCallback<HandleV>(**v);
     } else {
       uvs_ = nullptr;
     }
@@ -457,136 +458,133 @@ class NormalizedReader : public PlyReader {
       return std::unexpected("Element face must have property vertex_indices");
     }
 
-    FillCallback<ParseVertexIndices>(**vertex_indices);
+    FillCallback<HandleVertexIndices>(**vertex_indices);
 
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              Int8Property value) final {
-    Parse(parse_int8_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               Int8Property value) final {
+    Handle(parse_int8_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              Int8PropertyList values) final {
-    Parse(parse_int8_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               Int8PropertyList values) final {
+    Handle(parse_int8_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              UInt8Property value) final {
-    Parse(parse_uint8_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               UInt8Property value) final {
+    Handle(parse_uint8_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              UInt8PropertyList values) final {
-    Parse(parse_uint8_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               UInt8PropertyList values) final {
+    Handle(parse_uint8_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              Int16Property value) final {
-    Parse(parse_int16_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               Int16Property value) final {
+    Handle(parse_int16_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              Int16PropertyList values) final {
-    Parse(parse_int16_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               Int16PropertyList values) final {
+    Handle(parse_int16_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              UInt16Property value) final {
-    Parse(parse_uint16_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               UInt16Property value) final {
+    Handle(parse_uint16_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              UInt16PropertyList values) final {
-    Parse(parse_uint16_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(
+      std::string_view element_name, std::string_view property_name,
+      size_t property_index, UInt16PropertyList values) final {
+    Handle(parse_uint16_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              Int32Property value) final {
-    Parse(parse_int32_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               Int32Property value) final {
+    Handle(parse_int32_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              Int32PropertyList values) final {
-    Parse(parse_int32_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               Int32PropertyList values) final {
+    Handle(parse_int32_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              UInt32Property value) final {
-    Parse(parse_uint32_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               UInt32Property value) final {
+    Handle(parse_uint32_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              UInt32PropertyList values) final {
-    Parse(parse_uint32_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(
+      std::string_view element_name, std::string_view property_name,
+      size_t property_index, UInt32PropertyList values) final {
+    Handle(parse_uint32_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              FloatProperty value) final {
-    Parse(parse_float_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               FloatProperty value) final {
+    Handle(parse_float_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              FloatPropertyList values) final {
-    Parse(parse_float_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               FloatPropertyList values) final {
+    Handle(parse_float_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              DoubleProperty value) final {
-    Parse(parse_double_property_, property_index, value);
+  std::expected<void, std::string_view> Handle(std::string_view element_name,
+                                               std::string_view property_name,
+                                               size_t property_index,
+                                               DoubleProperty value) final {
+    Handle(parse_double_property_, property_index, value);
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<void, std::string_view> Parse(std::string_view element_name,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              DoublePropertyList values) final {
-    Parse(parse_double_property_list_, property_index, values);
+  std::expected<void, std::string_view> Handle(
+      std::string_view element_name, std::string_view property_name,
+      size_t property_index, DoublePropertyList values) final {
+    Handle(parse_double_property_list_, property_index, values);
     return std::expected<void, std::string_view>();
   }
 

@@ -65,7 +65,7 @@ std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
   auto result =
       ReadBinaryPropertyDataImpl<Endianness, T, ReadType>(input, storage);
 
-  reader->Parse(element_name, property_name, property_index, storage[0]);
+  reader->Handle(element_name, property_name, property_index, storage[0]);
 
   return result;
 }
@@ -195,7 +195,7 @@ std::expected<void, std::string_view> ReadBinaryPropertyListData(
     }
   }
 
-  reader->Parse(element_name, property_name, property_index, storage);
+  reader->Handle(element_name, property_name, property_index, storage);
 
   return std::expected<void, std::string_view>();
 }
@@ -381,7 +381,12 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
     all_properties[element.name] = properties;
   }
 
-  Start(all_properties);
+  std::vector<std::string_view> comments;
+  for (const auto& comment : header->comments) {
+    comments.emplace_back(comment);
+  }
+
+  Start(all_properties, comments);
 
   Context context = {this};
 
