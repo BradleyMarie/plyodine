@@ -64,10 +64,12 @@ std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
 
   auto result =
       ReadBinaryPropertyDataImpl<Endianness, T, ReadType>(input, storage);
+  if (!result) {
+    return result;
+  }
 
-  reader->Handle(element_name, property_name, property_index, storage[0]);
-
-  return result;
+  return reader->Handle(element_name, property_name, property_index,
+                        storage[0]);
 }
 
 template <std::endian Endianness>
@@ -195,9 +197,7 @@ std::expected<void, std::string_view> ReadBinaryPropertyListData(
     }
   }
 
-  reader->Handle(element_name, property_name, property_index, storage);
-
-  return std::expected<void, std::string_view>();
+  return reader->Handle(element_name, property_name, property_index, storage);
 }
 
 template <std::endian Endianness>

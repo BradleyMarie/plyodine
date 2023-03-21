@@ -84,6 +84,7 @@ cc_test(
     name = "ply_reader_test",
     srcs = ["ply_reader_test.cc"],
     data = [
+        "test_data/header_format_bad.ply",
         "test_data/ply_ascii_empty.ply",
         "test_data/ply_big_empty.ply",
         "test_data/ply_little_empty.ply",

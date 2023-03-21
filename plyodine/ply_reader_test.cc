@@ -164,6 +164,65 @@ class MockPlyReader final : public plyodine::PlyReader {
   }
 };
 
+TEST(Error, BadHeader) {
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+
+  std::ifstream stream("plyodine/test_data/header_format_bad.ply");
+  auto result = reader.ReadFrom(stream);
+  EXPECT_EQ(
+      "Format must be one of ascii, binary_big_endian, or binary_little_endian",
+      result.error());
+}
+
 TEST(ASCII, Empty) {
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(testing::IsEmpty(), testing::IsEmpty()))
