@@ -80,6 +80,20 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "ply_reader_test",
+    srcs = ["ply_reader_test.cc"],
+    data = [
+        "test_data/ply_ascii_empty.ply",
+        "test_data/ply_big_empty.ply",
+        "test_data/ply_little_empty.ply",
+    ],
+    deps = [
+        ":ply_reader",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "ply_writer",
     srcs = ["ply_writer.cc"],
