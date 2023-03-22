@@ -138,14 +138,14 @@ std::expected<size_t, std::string_view> ReadBinaryListSizeImpl(
     return std::unexpected(UnexpectedEOF());
   }
 
+  if constexpr (std::endian::native != Endianness) {
+    result = std::byteswap(result);
+  }
+
   if constexpr (std::is_signed<T>::value) {
     if (result < 0) {
       return std::unexpected(NegativeListSize());
     }
-  }
-
-  if constexpr (std::endian::native != Endianness) {
-    result = std::byteswap(result);
   }
 
   return result;

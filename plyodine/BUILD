@@ -89,9 +89,11 @@ cc_test(
         "test_data/ply_big_data.ply",
         "test_data/ply_big_empty.ply",
         "test_data/ply_big_list_sizes.ply",
+        "test_data/ply_big_signed_list_sizes.ply",
         "test_data/ply_little_data.ply",
         "test_data/ply_little_empty.ply",
         "test_data/ply_little_list_sizes.ply",
+        "test_data/ply_little_signed_list_sizes.ply",
     ],
     deps = [
         ":ply_reader",

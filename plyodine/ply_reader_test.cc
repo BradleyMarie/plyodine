@@ -673,6 +673,49 @@ TEST(BigEndian, WithUIntListSizesError) {
   RunReadErrorTest("plyodine/test_data/ply_big_list_sizes.ply", 1000u);
 }
 
+TEST(BigEndian, WithIntListSizes) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint8_t> values;
+
+  values.resize(std::numeric_limits<int8_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<int8_t>::max() + 1, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 1, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<int16_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 2, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<int16_t>::max() + 1, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 3, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_big_signed_list_sizes.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(BigEndian, WithIntListSizesError) {
+  RunReadErrorTest("plyodine/test_data/ply_big_signed_list_sizes.ply", 1000u);
+}
+
 TEST(LittleEndian, Empty) {
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(testing::IsEmpty(), testing::IsEmpty()))
@@ -931,4 +974,48 @@ TEST(LittleEndian, WithUIntListSizes) {
 
 TEST(LittleEndian, WithUIntListSizesError) {
   RunReadErrorTest("plyodine/test_data/ply_little_list_sizes.ply", 1000u);
+}
+
+TEST(LittleEndian, WithIntListSizes) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint8_t> values;
+
+  values.resize(std::numeric_limits<int8_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<int8_t>::max() + 1, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 1, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<int16_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 2, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<int16_t>::max() + 1, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 3, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_little_signed_list_sizes.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(LittleEndian, WithIntListSizesError) {
+  RunReadErrorTest("plyodine/test_data/ply_little_signed_list_sizes.ply",
+                   1000u);
 }
