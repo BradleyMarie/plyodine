@@ -548,6 +548,45 @@ TEST(BigEndian, WithData) {
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
+TEST(BigEndian, WithUIntListSizes) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint8_t> values;
+
+  values.resize(std::numeric_limits<uint8_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<uint8_t>::max() + 1u, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 1, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<uint16_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 2, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<uint16_t>::max() + 1u, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 3, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_big_list_sizes.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
 TEST(LittleEndian, Empty) {
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(testing::IsEmpty(), testing::IsEmpty()))
@@ -758,5 +797,44 @@ TEST(LittleEndian, WithData) {
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_little_data.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(LittleEndian, WithUIntListSizes) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint8_t> values;
+
+  values.resize(std::numeric_limits<uint8_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<uint8_t>::max() + 1u, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 1, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<uint16_t>::max(), 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 2, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  values.resize(std::numeric_limits<uint16_t>::max() + 1u, 136u);
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 3, ValuesAre(values)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_little_list_sizes.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
