@@ -164,6 +164,60 @@ class MockPlyReader final : public plyodine::PlyReader {
   }
 };
 
+MATCHER_P(PropertiesAre, properties, "") {
+  if (properties.size() != arg.size()) {
+    return false;
+  }
+
+  for (const auto& [element_name, element_properties] : properties) {
+    if (!arg.contains(element_name) ||
+        arg.at(element_name).size() != element_properties.size()) {
+      return false;
+    }
+
+    for (const auto& [property_name, property_id_and_type] :
+         arg.at(element_name)) {
+      if (!element_properties.contains(property_name) ||
+          element_properties.at(property_name).first !=
+              property_id_and_type.first ||
+          element_properties.at(property_name).second !=
+              property_id_and_type.second) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+MATCHER_P(CommentsAre, comments, "") {
+  if (comments.size() != arg.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < comments.size(); i++) {
+    if (comments[i] != arg[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+MATCHER_P(ValuesAre, values, "") {
+  if (values.size() != arg.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < values.size(); i++) {
+    if (values[i] != arg[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 TEST(Error, BadHeader) {
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(testing::_, testing::_)).Times(0);
@@ -339,6 +393,161 @@ TEST(BigEndian, Empty) {
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
+TEST(BigEndian, WithData) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"a", std::make_pair(0, plyodine::Property::INT8)},
+            {"b", std::make_pair(1, plyodine::Property::UINT8)},
+            {"c", std::make_pair(2, plyodine::Property::INT16)},
+            {"d", std::make_pair(3, plyodine::Property::UINT16)},
+            {"e", std::make_pair(4, plyodine::Property::INT32)},
+            {"f", std::make_pair(5, plyodine::Property::UINT32)},
+            {"g", std::make_pair(6, plyodine::Property::FLOAT)},
+            {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}},
+          {"vertex_lists",
+           {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
+            {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
+            {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
+            {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
+            {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
+            {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
+            {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
+            {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
+  std::vector<std::string_view> comments = {"comment 1", "comment 2"};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), CommentsAre(comments)))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, -1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, -1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 3, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 3, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 3, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 4, -1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 4, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 4, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 5, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 5, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 5, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 6, 1.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 6, 2.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 6, 3.14159274f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 7, 1.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 7, 2.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 7, 3.1415926535897931))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  std::vector<int8_t> values_int8 = {-1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleInt8List("vertex_lists", "a", 8, ValuesAre(values_int8)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint8_t> values_uint8 = {1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleUInt8List("vertex_lists", "b", 9, ValuesAre(values_uint8)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<int16_t> values_int16 = {-1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleInt16List("vertex_lists", "c", 10, ValuesAre(values_int16)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint16_t> values_uint16 = {1, 2, 0};
+  EXPECT_CALL(reader, HandleUInt16List("vertex_lists", "d", 11,
+                                       ValuesAre(values_uint16)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<int32_t> values_int32 = {-1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleInt32List("vertex_lists", "e", 12, ValuesAre(values_int32)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint32_t> values_uint32 = {1, 2, 0};
+  EXPECT_CALL(reader, HandleUInt32List("vertex_lists", "f", 13,
+                                       ValuesAre(values_uint32)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<float> values_float = {1.5f, 2.5f, 3.14159274f};
+  EXPECT_CALL(reader,
+              HandleFloatList("vertex_lists", "g", 14, ValuesAre(values_float)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<double> values_double = {1.5, 2.5, 3.1415926535897931};
+  EXPECT_CALL(reader, HandleDoubleList("vertex_lists", "h", 15,
+                                       ValuesAre(values_double)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_big_data.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
 TEST(LittleEndian, Empty) {
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(testing::IsEmpty(), testing::IsEmpty()))
@@ -394,5 +603,160 @@ TEST(LittleEndian, Empty) {
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_little_empty.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(LittleEndian, WithData) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"a", std::make_pair(0, plyodine::Property::INT8)},
+            {"b", std::make_pair(1, plyodine::Property::UINT8)},
+            {"c", std::make_pair(2, plyodine::Property::INT16)},
+            {"d", std::make_pair(3, plyodine::Property::UINT16)},
+            {"e", std::make_pair(4, plyodine::Property::INT32)},
+            {"f", std::make_pair(5, plyodine::Property::UINT32)},
+            {"g", std::make_pair(6, plyodine::Property::FLOAT)},
+            {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}},
+          {"vertex_lists",
+           {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
+            {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
+            {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
+            {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
+            {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
+            {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
+            {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
+            {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
+  std::vector<std::string_view> comments = {"comment 1", "comment 2"};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), CommentsAre(comments)))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, -1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, -1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 3, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 3, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 3, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 4, -1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 4, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 4, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 5, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 5, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 5, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 6, 1.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 6, 2.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 6, 3.14159274f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 7, 1.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 7, 2.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 7, 3.1415926535897931))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  std::vector<int8_t> values_int8 = {-1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleInt8List("vertex_lists", "a", 8, ValuesAre(values_int8)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint8_t> values_uint8 = {1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleUInt8List("vertex_lists", "b", 9, ValuesAre(values_uint8)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<int16_t> values_int16 = {-1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleInt16List("vertex_lists", "c", 10, ValuesAre(values_int16)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint16_t> values_uint16 = {1, 2, 0};
+  EXPECT_CALL(reader, HandleUInt16List("vertex_lists", "d", 11,
+                                       ValuesAre(values_uint16)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<int32_t> values_int32 = {-1, 2, 0};
+  EXPECT_CALL(reader,
+              HandleInt32List("vertex_lists", "e", 12, ValuesAre(values_int32)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<uint32_t> values_uint32 = {1, 2, 0};
+  EXPECT_CALL(reader, HandleUInt32List("vertex_lists", "f", 13,
+                                       ValuesAre(values_uint32)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<float> values_float = {1.5f, 2.5f, 3.14159274f};
+  EXPECT_CALL(reader,
+              HandleFloatList("vertex_lists", "g", 14, ValuesAre(values_float)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::vector<double> values_double = {1.5, 2.5, 3.1415926535897931};
+  EXPECT_CALL(reader, HandleDoubleList("vertex_lists", "h", 15,
+                                       ValuesAre(values_double)))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_little_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }

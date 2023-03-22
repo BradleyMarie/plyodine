@@ -190,10 +190,10 @@ std::expected<void, std::string_view> ReadBinaryPropertyListData(
   storage.clear();
 
   for (size_t i = 0; i < num_to_read; i++) {
-    auto error =
+    auto result =
         ReadBinaryPropertyDataImpl<Endianness, T, ReadType>(input, storage);
-    if (error) {
-      return error;
+    if (!result) {
+      return result;
     }
   }
 
