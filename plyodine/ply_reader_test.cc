@@ -218,6 +218,84 @@ MATCHER_P(ValuesAre, values, "") {
   return true;
 }
 
+void ExpectError(std::istream& stream) {
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
+
+  EXPECT_FALSE(reader.ReadFrom(stream));
+}
+
+void RunReadErrorTest(const std::string& file_name,
+                      size_t num_bytes = std::numeric_limits<size_t>::max()) {
+  std::ifstream input(file_name);
+
+  char c;
+  std::string base_string;
+  while (input.get(c)) {
+    base_string += c;
+  }
+
+  if (num_bytes < base_string.size()) {
+    base_string.resize(num_bytes);
+  }
+
+  for (size_t i = 0; i < base_string.size(); i++) {
+    std::string string_copy = base_string;
+    string_copy.resize(i);
+    std::stringstream stream(string_copy);
+    ExpectError(stream);
+  }
+}
+
 TEST(Error, BadHeader) {
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(testing::_, testing::_)).Times(0);
@@ -548,6 +626,10 @@ TEST(BigEndian, WithData) {
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
+TEST(BigEndian, WithDataError) {
+  RunReadErrorTest("plyodine/test_data/ply_big_data.ply");
+}
+
 TEST(BigEndian, WithUIntListSizes) {
   std::unordered_map<
       std::string_view,
@@ -585,6 +667,10 @@ TEST(BigEndian, WithUIntListSizes) {
 
   std::ifstream stream("plyodine/test_data/ply_big_list_sizes.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(BigEndian, WithUIntListSizesError) {
+  RunReadErrorTest("plyodine/test_data/ply_big_list_sizes.ply", 1000u);
 }
 
 TEST(LittleEndian, Empty) {
@@ -800,6 +886,10 @@ TEST(LittleEndian, WithData) {
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
+TEST(LittleEndian, WithDataError) {
+  RunReadErrorTest("plyodine/test_data/ply_little_data.ply");
+}
+
 TEST(LittleEndian, WithUIntListSizes) {
   std::unordered_map<
       std::string_view,
@@ -837,4 +927,8 @@ TEST(LittleEndian, WithUIntListSizes) {
 
   std::ifstream stream("plyodine/test_data/ply_little_list_sizes.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(LittleEndian, WithUIntListSizesError) {
+  RunReadErrorTest("plyodine/test_data/ply_little_list_sizes.ply", 1000u);
 }
