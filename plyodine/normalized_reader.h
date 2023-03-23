@@ -376,7 +376,7 @@ class NormalizedReader : public PlyReader {
           std::string_view,
           std::unordered_map<std::string_view,
                              std::pair<size_t, Property::Type>>> &properties,
-      std::span<const std::string_view> comments) final {
+      std::span<const std::string> comments) final {
     Start();
 
     Clear();

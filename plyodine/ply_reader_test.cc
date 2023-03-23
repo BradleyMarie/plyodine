@@ -13,7 +13,7 @@ class MockPlyReader final : public plyodine::PlyReader {
            std::string_view,
            std::unordered_map<std::string_view,
                               std::pair<size_t, plyodine::Property::Type>>>&),
-       std::span<const std::string_view>),
+       std::span<const std::string>),
       (override));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt8,
@@ -495,7 +495,7 @@ TEST(BigEndian, WithData) {
             {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
             {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
             {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
-  std::vector<std::string_view> comments = {"comment 1", "comment 2"};
+  std::vector<std::string> comments = {"comment 1", "comment 2"};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), CommentsAre(comments)))
@@ -861,7 +861,7 @@ TEST(LittleEndian, WithData) {
             {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
             {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
             {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
-  std::vector<std::string_view> comments = {"comment 1", "comment 2"};
+  std::vector<std::string> comments = {"comment 1", "comment 2"};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), CommentsAre(comments)))

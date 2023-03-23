@@ -381,12 +381,7 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
     all_properties[element.name] = properties;
   }
 
-  std::vector<std::string_view> comments;
-  for (const auto& comment : header->comments) {
-    comments.emplace_back(comment);
-  }
-
-  Start(all_properties, comments);
+  Start(all_properties, header->comments);
 
   Context context = {this};
 
