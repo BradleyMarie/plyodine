@@ -708,12 +708,75 @@ TEST(BigEndian, WithIntListSizes) {
   EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 3, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
-  std::ifstream stream("plyodine/test_data/ply_big_signed_list_sizes.ply");
+  std::ifstream stream("plyodine/test_data/ply_big_list_sizes_signed.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(BigEndian, WithIntListSizesError) {
-  RunReadErrorTest("plyodine/test_data/ply_big_signed_list_sizes.ply", 1000u);
+  RunReadErrorTest("plyodine/test_data/ply_big_list_sizes_signed.ply", 1000u);
+}
+
+TEST(BigEndian, WithNegativeInt8ListSize) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream(
+      "plyodine/test_data/ply_big_list_sizes_negative_int8.ply");
+  auto result = reader.ReadFrom(stream);
+  EXPECT_EQ("The input contained a property list with a negative size",
+            result.error());
+}
+
+TEST(BigEndian, WithNegativeInt16ListSize) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream(
+      "plyodine/test_data/ply_big_list_sizes_negative_int16.ply");
+  auto result = reader.ReadFrom(stream);
+  EXPECT_EQ("The input contained a property list with a negative size",
+            result.error());
+}
+
+TEST(BigEndian, WithNegativeInt32ListSize) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream(
+      "plyodine/test_data/ply_big_list_sizes_negative_int32.ply");
+  auto result = reader.ReadFrom(stream);
+  EXPECT_EQ("The input contained a property list with a negative size",
+            result.error());
 }
 
 TEST(LittleEndian, Empty) {
@@ -1011,11 +1074,74 @@ TEST(LittleEndian, WithIntListSizes) {
   EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 3, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
-  std::ifstream stream("plyodine/test_data/ply_little_signed_list_sizes.ply");
+  std::ifstream stream("plyodine/test_data/ply_little_list_sizes_signed.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(LittleEndian, WithIntListSizesError) {
   RunReadErrorTest("plyodine/test_data/ply_little_signed_list_sizes.ply",
                    1000u);
+}
+
+TEST(LittleEndian, WithNegativeInt8ListSize) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream(
+      "plyodine/test_data/ply_little_list_sizes_negative_int8.ply");
+  auto result = reader.ReadFrom(stream);
+  EXPECT_EQ("The input contained a property list with a negative size",
+            result.error());
+}
+
+TEST(LittleEndian, WithNegativeInt16ListSize) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream(
+      "plyodine/test_data/ply_little_list_sizes_negative_int16.ply");
+  auto result = reader.ReadFrom(stream);
+  EXPECT_EQ("The input contained a property list with a negative size",
+            result.error());
+}
+
+TEST(LittleEndian, WithNegativeInt32ListSize) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {
+          {"vertex",
+           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream(
+      "plyodine/test_data/ply_little_list_sizes_negative_int32.ply");
+  auto result = reader.ReadFrom(stream);
+  EXPECT_EQ("The input contained a property list with a negative size",
+            result.error());
 }
