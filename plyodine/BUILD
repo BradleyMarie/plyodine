@@ -40,6 +40,8 @@ cc_test(
         "test_data/header_invalid_keyword.ply",
         "test_data/header_loose_property.ply",
         "test_data/header_mismatched_endings.ply",
+        "test_data/header_obj_info_allows_spaces.ply",
+        "test_data/header_obj_info_empty.ply",
         "test_data/header_property_list_data_type_bad.ply",
         "test_data/header_property_list_data_type_none.ply",
         "test_data/header_property_list_list_type_bad.ply",

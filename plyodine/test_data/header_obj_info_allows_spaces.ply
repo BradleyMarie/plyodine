@@ -1,0 +1,4 @@
+ply
+format ascii 1.0
+obj_info  comment with multiple  spaces  
+end_header

@@ -133,6 +133,7 @@ WriteHeader(std::ostream& stream,
             const std::map<std::string_view,
                            std::map<std::string_view, Property>>& properties,
             std::span<const std::string_view> comments,
+            std::span<const std::string_view> object_info,
             std::string_view format) {
   auto properties_valid = ValidateProperties(properties);
   if (!properties_valid) {
@@ -142,6 +143,12 @@ WriteHeader(std::ostream& stream,
   auto comments_valid = ValidateComments(comments);
   if (!comments_valid) {
     return std::unexpected(comments_valid.error());
+  }
+
+  auto object_info_valid = ValidateComments(object_info);
+  if (!object_info_valid) {
+    return std::unexpected(
+        "A obj_info may not contain line feed or carriage return");
   }
 
   auto list_sizes = GetListSizes(properties);
@@ -156,6 +163,13 @@ WriteHeader(std::ostream& stream,
 
   for (const auto& comment : comments) {
     stream << "comment " << comment << "\r";
+    if (!stream) {
+      return std::unexpected(WriteFailure());
+    }
+  }
+
+  for (const auto& info : object_info) {
+    stream << "obj_info " << info << "\r";
     if (!stream) {
       return std::unexpected(WriteFailure());
     }
@@ -208,7 +222,8 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
     std::ostream& stream,
     const std::map<std::string_view, std::map<std::string_view, Property>>&
         properties,
-    std::span<const std::string_view> comments) {
+    std::span<const std::string_view> comments,
+    std::span<const std::string_view> object_info) {
   std::string_view format;
   if constexpr (Endianness == std::endian::big) {
     format = "binary_big_endian";
@@ -216,7 +231,8 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
     format = "binary_little_endian";
   }
 
-  auto list_sizes = WriteHeader(stream, properties, comments, format);
+  auto list_sizes =
+      WriteHeader(stream, properties, comments, object_info, format);
   if (!list_sizes) {
     return std::unexpected(list_sizes.error());
   }
@@ -384,8 +400,10 @@ std::expected<void, std::string_view> WriteToASCII(
     std::ostream& stream,
     const std::map<std::string_view, std::map<std::string_view, Property>>&
         properties,
-    std::span<const std::string_view> comments) {
-  auto list_sizes = WriteHeader(stream, properties, comments, "ascii");
+    std::span<const std::string_view> comments,
+    std::span<const std::string_view> object_info) {
+  auto list_sizes =
+      WriteHeader(stream, properties, comments, object_info, "ascii");
   if (!list_sizes) {
     return std::unexpected(list_sizes.error());
   }
@@ -470,24 +488,30 @@ std::expected<void, std::string_view> WriteToBinary(
     std::ostream& stream,
     const std::map<std::string_view, std::map<std::string_view, Property>>&
         properties,
-    std::span<const std::string_view> comments) {
-  return WriteToBinaryImpl<std::endian::native>(stream, properties, comments);
+    std::span<const std::string_view> comments,
+    std::span<const std::string_view> object_info) {
+  return WriteToBinaryImpl<std::endian::native>(stream, properties, comments,
+                                                object_info);
 }
 
 std::expected<void, std::string_view> WriteToBigEndian(
     std::ostream& stream,
     const std::map<std::string_view, std::map<std::string_view, Property>>&
         properties,
-    std::span<const std::string_view> comments) {
-  return WriteToBinaryImpl<std::endian::big>(stream, properties, comments);
+    std::span<const std::string_view> comments,
+    std::span<const std::string_view> object_info) {
+  return WriteToBinaryImpl<std::endian::big>(stream, properties, comments,
+                                             object_info);
 }
 
 std::expected<void, std::string_view> WriteToLittleEndian(
     std::ostream& stream,
     const std::map<std::string_view, std::map<std::string_view, Property>>&
         properties,
-    std::span<const std::string_view> comments) {
-  return WriteToBinaryImpl<std::endian::little>(stream, properties, comments);
+    std::span<const std::string_view> comments,
+    std::span<const std::string_view> object_info) {
+  return WriteToBinaryImpl<std::endian::little>(stream, properties, comments,
+                                                object_info);
 }
 
 // Static assertions to ensure float types are properly sized

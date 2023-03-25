@@ -108,6 +108,14 @@ TEST(Validate, BadComment) {
             "A comment may not contain line feed or carriage return");
 }
 
+TEST(Validate, BadObjInfo) {
+  std::stringstream output;
+  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {}, {{"\r"}}).error(),
+            "A obj_info may not contain line feed or carriage return");
+  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {}, {{"\n"}}).error(),
+            "A obj_info may not contain line feed or carriage return");
+}
+
 TEST(Validate, ListTooBig) {
   if constexpr (std::numeric_limits<uint32_t>::max() <
                 std::numeric_limits<size_t>::max()) {
@@ -160,8 +168,10 @@ TEST(ASCII, NonFiniteList) {
 
 TEST(ASCII, TestData) {
   std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToASCII(output, BuildTestData(), comments));
+  ASSERT_TRUE(
+      plyodine::WriteToASCII(output, BuildTestData(), comments, object_info));
 
   std::ifstream input("plyodine/test_data/ply_ascii_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -218,8 +228,10 @@ TEST(BigEndian, Empty) {
 
 TEST(BigEndian, TestData) {
   std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToBigEndian(output, BuildTestData(), comments));
+  ASSERT_TRUE(plyodine::WriteToBigEndian(output, BuildTestData(), comments,
+                                         object_info));
 
   std::ifstream input("plyodine/test_data/ply_big_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -246,8 +258,10 @@ TEST(LittleEndian, Empty) {
 
 TEST(LittleEndian, TestData) {
   std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToLittleEndian(output, BuildTestData(), comments));
+  ASSERT_TRUE(plyodine::WriteToLittleEndian(output, BuildTestData(), comments,
+                                            object_info));
 
   std::ifstream input("plyodine/test_data/ply_little_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -281,7 +295,9 @@ TEST(Native, Empty) {
 TEST(Native, TestData) {
   std::stringstream output;
   std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
-  ASSERT_TRUE(plyodine::WriteToBinary(output, BuildTestData(), comments));
+  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
+  ASSERT_TRUE(
+      plyodine::WriteToBinary(output, BuildTestData(), comments, object_info));
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input("plyodine/test_data/ply_big_data.ply");

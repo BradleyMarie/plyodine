@@ -21,7 +21,8 @@ class PlyReader {
           std::string_view,
           std::unordered_map<std::string_view,
                              std::pair<size_t, Property::Type>>>& properties,
-      std::span<const std::string> comments) = 0;
+      std::span<const std::string> comments,
+      std::span<const std::string> object_info) = 0;
 
   virtual std::expected<void, std::string_view> Handle(
       std::string_view element_name, std::string_view property_name,

@@ -381,7 +381,7 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
     all_properties[element.name] = properties;
   }
 
-  Start(all_properties, header->comments);
+  Start(all_properties, header->comments, header->object_info);
 
   Context context = {this};
 

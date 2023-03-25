@@ -2,6 +2,8 @@ ply
 format ascii 1.0
 comment author: Greg Turk
 comment object: another cube
+obj_info obj info 0
+obj_info obj info 1
 element vertex 8
 property float x
 property float y

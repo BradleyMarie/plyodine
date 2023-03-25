@@ -413,6 +413,7 @@ std::expected<PlyHeader, std::string_view> ReadPlyHeader(std::istream& input) {
   }
 
   std::vector<std::string> comments;
+  std::vector<std::string> object_info;
   std::vector<PlyHeader::Element> elements;
   std::unordered_set<std::string> element_names;
   std::unordered_map<std::string, std::unordered_set<std::string>>
@@ -465,6 +466,15 @@ std::expected<PlyHeader, std::string_view> ReadPlyHeader(std::istream& input) {
       continue;
     }
 
+    if (first_token->has_value() && *first_token == "obj_info") {
+      if (!line->empty()) {
+        line->remove_prefix(1);
+      }
+
+      object_info.emplace_back(*line);
+      continue;
+    }
+
     if (first_token->has_value() && *first_token == "end_header") {
       auto next_token = ReadNextTokenOnLine(*line);
       if (!next_token) {
@@ -483,8 +493,13 @@ std::expected<PlyHeader, std::string_view> ReadPlyHeader(std::istream& input) {
     return std::unexpected("The input contained an invalid header");
   }
 
-  return PlyHeader{*format, *line_ending,        1u,
-                   0u,      std::move(comments), std::move(elements)};
+  return PlyHeader{*format,
+                   *line_ending,
+                   1u,
+                   0u,
+                   std::move(comments),
+                   std::move(object_info),
+                   std::move(elements)};
 }
 
 }  // namespace plyodine

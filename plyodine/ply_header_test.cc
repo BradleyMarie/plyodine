@@ -357,6 +357,18 @@ TEST(ReadPlyHeader, CommentEmpty) {
   EXPECT_TRUE(result->comments.at(0).empty());
 }
 
+TEST(ReadPlyHeader, ObjInfoAllowsSpaces) {
+  std::ifstream input("plyodine/test_data/header_obj_info_allows_spaces.ply");
+  auto result = plyodine::ReadPlyHeader(input);
+  EXPECT_EQ(" comment with multiple  spaces  ", result->object_info.at(0));
+}
+
+TEST(ReadPlyHeader, ObjInfoEmpty) {
+  std::ifstream input("plyodine/test_data/header_obj_info_empty.ply");
+  auto result = plyodine::ReadPlyHeader(input);
+  EXPECT_TRUE(result->object_info.at(0).empty());
+}
+
 TEST(ReadPlyHeader, EndTooMany) {
   std::ifstream input("plyodine/test_data/header_end_too_many.ply");
   auto result = plyodine::ReadPlyHeader(input);
@@ -395,6 +407,8 @@ TEST(ReadPlyHeader, Valid) {
     EXPECT_EQ(2u, result->comments.size());
     EXPECT_EQ("author: Greg Turk", result->comments.at(0));
     EXPECT_EQ("object: another cube", result->comments.at(1));
+    EXPECT_EQ("obj info 0", result->object_info.at(0));
+    EXPECT_EQ("obj info 1", result->object_info.at(1));
     EXPECT_EQ(3u, result->elements.size());
 
     EXPECT_EQ("vertex", result->elements.at(0).name);

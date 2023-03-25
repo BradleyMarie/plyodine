@@ -30,6 +30,7 @@ struct PlyHeader final {
   uint8_t major_version;
   uint8_t minor_version;
   std::vector<std::string> comments;
+  std::vector<std::string> object_info;
   std::vector<Element> elements;
 };
 

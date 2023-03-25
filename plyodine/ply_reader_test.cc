@@ -13,7 +13,7 @@ class MockPlyReader final : public plyodine::PlyReader {
            std::string_view,
            std::unordered_map<std::string_view,
                               std::pair<size_t, plyodine::Property::Type>>>&),
-       std::span<const std::string>),
+       std::span<const std::string>, std::span<const std::string>),
       (override));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt8,
@@ -190,20 +190,6 @@ MATCHER_P(PropertiesAre, properties, "") {
   return true;
 }
 
-MATCHER_P(CommentsAre, comments, "") {
-  if (comments.size() != arg.size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < comments.size(); i++) {
-    if (comments[i] != arg[i]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 MATCHER_P(ValuesAre, values, "") {
   if (values.size() != arg.size()) {
     return false;
@@ -220,7 +206,7 @@ MATCHER_P(ValuesAre, values, "") {
 
 void ExpectError(std::istream& stream) {
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(testing::_, testing::_))
+  EXPECT_CALL(reader, Start(testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
   EXPECT_CALL(reader,
               HandleInt8(testing::_, testing::_, testing::_, testing::_))
@@ -298,7 +284,7 @@ void RunReadErrorTest(const std::string& file_name,
 
 TEST(Error, BadHeader) {
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, Start(testing::_, testing::_, testing::_)).Times(0);
   EXPECT_CALL(reader,
               HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
@@ -357,7 +343,8 @@ TEST(Error, BadHeader) {
 
 TEST(ASCII, Empty) {
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(testing::IsEmpty(), testing::IsEmpty()))
+  EXPECT_CALL(reader,
+              Start(testing::IsEmpty(), testing::IsEmpty(), testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   EXPECT_CALL(reader,
@@ -415,7 +402,8 @@ TEST(ASCII, Empty) {
 
 TEST(BigEndian, Empty) {
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(testing::IsEmpty(), testing::IsEmpty()))
+  EXPECT_CALL(reader,
+              Start(testing::IsEmpty(), testing::IsEmpty(), testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   EXPECT_CALL(reader,
@@ -496,9 +484,11 @@ TEST(BigEndian, WithData) {
             {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
             {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
+  std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), CommentsAre(comments)))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), ValuesAre(comments),
+                            ValuesAre(object_info)))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -643,7 +633,8 @@ TEST(BigEndian, WithUIntListSizes) {
             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -686,7 +677,8 @@ TEST(BigEndian, WithIntListSizes) {
             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -726,7 +718,8 @@ TEST(BigEndian, WithNegativeInt8ListSize) {
            {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -747,7 +740,8 @@ TEST(BigEndian, WithNegativeInt16ListSize) {
            {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -768,7 +762,8 @@ TEST(BigEndian, WithNegativeInt32ListSize) {
            {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -781,7 +776,8 @@ TEST(BigEndian, WithNegativeInt32ListSize) {
 
 TEST(LittleEndian, Empty) {
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(testing::IsEmpty(), testing::IsEmpty()))
+  EXPECT_CALL(reader,
+              Start(testing::IsEmpty(), testing::IsEmpty(), testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   EXPECT_CALL(reader,
@@ -862,9 +858,11 @@ TEST(LittleEndian, WithData) {
             {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
             {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
+  std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), CommentsAre(comments)))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), ValuesAre(comments),
+                            ValuesAre(object_info)))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -1009,7 +1007,8 @@ TEST(LittleEndian, WithUIntListSizes) {
             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -1052,7 +1051,8 @@ TEST(LittleEndian, WithIntListSizes) {
             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -1093,7 +1093,8 @@ TEST(LittleEndian, WithNegativeInt8ListSize) {
            {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -1114,7 +1115,8 @@ TEST(LittleEndian, WithNegativeInt16ListSize) {
            {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
@@ -1135,7 +1137,8 @@ TEST(LittleEndian, WithNegativeInt32ListSize) {
            {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
 
   MockPlyReader reader;
-  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty()))
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
