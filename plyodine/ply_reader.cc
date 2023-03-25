@@ -546,7 +546,6 @@ std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
   size_t property_index = 0;
   for (const auto& element : header.elements) {
     for (uint64_t e = 0; e < element.num_in_file; e++) {
-      std::string readable_line;
       line.str("");
       line.clear();
 
@@ -567,8 +566,11 @@ std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
           break;
         }
 
+        if (c != ' ' && !std::isgraph(c)) {
+          return std::unexpected("The input contained an invalid character");
+        }
+
         line.put(c);
-        readable_line.push_back(c);
       }
 
       for (size_t p = 0; p < element.properties.size(); p++) {
