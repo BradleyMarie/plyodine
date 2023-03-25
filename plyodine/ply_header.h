@@ -21,7 +21,7 @@ struct PlyHeader final {
 
   struct Element final {
     std::string name;
-    size_t num_in_file;
+    uint64_t num_in_file;
     std::vector<Property> properties;
   };
 

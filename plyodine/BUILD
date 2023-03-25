@@ -87,7 +87,13 @@ cc_test(
     srcs = ["ply_reader_test.cc"],
     data = [
         "test_data/header_format_bad.ply",
+        "test_data/ply_ascii_data.ply",
         "test_data/ply_ascii_empty.ply",
+        "test_data/ply_ascii_list_sizes.ply",
+        "test_data/ply_ascii_list_sizes_negative_int16.ply",
+        "test_data/ply_ascii_list_sizes_negative_int32.ply",
+        "test_data/ply_ascii_list_sizes_negative_int8.ply",
+        "test_data/ply_ascii_list_sizes_signed.ply",
         "test_data/ply_big_data.ply",
         "test_data/ply_big_empty.ply",
         "test_data/ply_big_list_sizes.ply",

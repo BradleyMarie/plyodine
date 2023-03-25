@@ -187,7 +187,7 @@ TEST(ReadPlyHeader, ElementCountNegative) {
 TEST(ReadPlyHeader, ElementCountTooLarge) {
   std::ifstream input("plyodine/test_data/header_element_count_too_large.ply");
   auto result = plyodine::ReadPlyHeader(input);
-  EXPECT_EQ("Failed to parse element count", result.error());
+  EXPECT_EQ("Out of range element count", result.error());
 }
 
 TEST(ReadPlyHeader, ElementCountTooMany) {

@@ -4,6 +4,7 @@
 #include <cassert>
 #include <charconv>
 #include <limits>
+#include <sstream>
 #include <type_traits>
 
 #include "plyodine/ply_header.h"
@@ -21,9 +22,14 @@ struct Context {
   std::vector<uint32_t> uint32_;
   std::vector<float> float_;
   std::vector<double> double_;
+  std::string token_;
 };
 
 std::string_view UnexpectedEOF() { return "Unexpected EOF"; }
+
+std::string_view NegativeListSize() {
+  return "The input contained a property list with a negative size";
+}
 
 template <std::endian Endianness, typename T, typename ReadType = T>
 std::expected<void, std::string_view> ReadBinaryPropertyDataImpl(
@@ -53,6 +59,28 @@ std::expected<void, std::string_view> ReadBinaryPropertyDataImpl(
   }
 
   return std::expected<void, std::string_view>();
+}
+
+template <std::endian Endianness, typename T>
+std::expected<size_t, std::string_view> ReadBinaryListSizeImpl(
+    std::istream& input) {
+  T result;
+
+  if (!input.read(reinterpret_cast<char*>(&result), sizeof(T))) {
+    return std::unexpected(UnexpectedEOF());
+  }
+
+  if constexpr (std::endian::native != Endianness) {
+    result = std::byteswap(result);
+  }
+
+  if constexpr (std::is_signed<T>::value) {
+    if (result < 0) {
+      return std::unexpected(NegativeListSize());
+    }
+  }
+
+  return result;
 }
 
 template <std::endian Endianness, typename T, typename ReadType = T>
@@ -120,32 +148,6 @@ std::expected<void, std::string_view> ReadBinaryPropertyScalar(
           input, element_name, header_property.name, property_index,
           context.double_, context.reader_);
       break;
-  }
-
-  return result;
-}
-
-std::string_view NegativeListSize() {
-  return "The input contained a property list with a negative size";
-}
-
-template <std::endian Endianness, typename T>
-std::expected<size_t, std::string_view> ReadBinaryListSizeImpl(
-    std::istream& input) {
-  T result;
-
-  if (!input.read(reinterpret_cast<char*>(&result), sizeof(T))) {
-    return std::unexpected(UnexpectedEOF());
-  }
-
-  if constexpr (std::endian::native != Endianness) {
-    result = std::byteswap(result);
-  }
-
-  if constexpr (std::is_signed<T>::value) {
-    if (result < 0) {
-      return std::unexpected(NegativeListSize());
-    }
   }
 
   return result;
@@ -264,7 +266,7 @@ std::expected<void, std::string_view> ReadBinaryData(std::istream& input,
                                                      Context& context) {
   size_t property_index = 0;
   for (const auto& element : header.elements) {
-    for (size_t e = 0; e < element.num_in_file; e++) {
+    for (uint64_t e = 0; e < element.num_in_file; e++) {
       for (size_t p = 0; p < element.properties.size(); p++) {
         if (element.properties[p].list_type) {
           auto error = ReadBinaryPropertyList<Endianness>(
@@ -280,6 +282,317 @@ std::expected<void, std::string_view> ReadBinaryData(std::istream& input,
           if (!error) {
             return error;
           }
+        }
+      }
+    }
+    property_index += element.properties.size();
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+std::expected<void, std::string_view> ReadNextAsciiToken(std::istream& input,
+                                                         std::string& token) {
+  token.clear();
+
+  char c;
+  while (input.get(c)) {
+    if (c == ' ') {
+      break;
+    }
+
+    if (!std::isgraph(c)) {
+      return std::unexpected("The input contained an invalid character");
+    }
+
+    token.push_back(c);
+  }
+
+  if (token.empty()) {
+    return std::unexpected("The input contained an empty token");
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+template <typename T>
+std::expected<void, std::string_view> ReadAsciiPropertyDataImpl(
+    std::istream& input, std::string& token, std::vector<T>& output) {
+  auto success = ReadNextAsciiToken(input, token);
+  if (!success) {
+    return std::unexpected(success.error());
+  }
+
+  T data;
+  auto parsing_result =
+      std::from_chars(token.data(), token.data() + token.size(), data);
+  if (parsing_result.ec == std::errc::result_out_of_range) {
+    return std::unexpected(
+        "The input contained a property entry that was out of range");
+  } else if (parsing_result.ec != std::errc{}) {
+    return std::unexpected("The input contained an unparsable property entry");
+  }
+
+  output.push_back(data);
+
+  return std::expected<void, std::string_view>();
+}
+
+template <typename T>
+std::expected<size_t, std::string_view> ReadAsciiListSizeImpl(
+    std::istream& input, std::string& token) {
+  auto success = ReadNextAsciiToken(input, token);
+  if (!success) {
+    return std::unexpected(success.error());
+  }
+
+  T result;
+  auto parsing_result =
+      std::from_chars(token.data(), token.data() + token.size(), result);
+  if (parsing_result.ec == std::errc::result_out_of_range) {
+    return std::unexpected(
+        "The input contained a property list size that was out of range");
+  } else if (parsing_result.ec != std::errc{}) {
+    return std::unexpected(
+        "The input contained an unparsable property list size");
+  }
+
+  if constexpr (std::is_signed<T>::value) {
+    if (result < 0) {
+      return std::unexpected(NegativeListSize());
+    }
+  }
+
+  return result;
+}
+
+template <typename T>
+std::expected<void, std::string_view> ReadAsciiPropertyScalarData(
+    std::istream& input, std::string_view element_name,
+    std::string_view property_name, size_t property_index, std::string& token,
+    std::vector<T>& storage, PlyReader* reader) {
+  storage.clear();
+
+  auto result = ReadAsciiPropertyDataImpl(input, token, storage);
+  if (!result) {
+    return result;
+  }
+
+  return reader->Handle(element_name, property_name, property_index,
+                        storage[0]);
+}
+
+std::expected<void, std::string_view> ReadAsciiPropertyScalar(
+    std::istream& input, std::string_view element_name,
+    const PlyHeader::Property& header_property, size_t property_index,
+    Context& context) {
+  std::expected<void, std::string_view> result;
+
+  switch (header_property.data_type) {
+    case PlyHeader::Property::INT8:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.int8_, context.reader_);
+      break;
+    case PlyHeader::Property::UINT8:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.uint8_, context.reader_);
+      break;
+    case PlyHeader::Property::INT16:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.int16_, context.reader_);
+      break;
+    case PlyHeader::Property::UINT16:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.uint16_, context.reader_);
+      break;
+    case PlyHeader::Property::INT32:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.int32_, context.reader_);
+      break;
+    case PlyHeader::Property::UINT32:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.uint32_, context.reader_);
+      break;
+    case PlyHeader::Property::FLOAT:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.float_, context.reader_);
+      break;
+    case PlyHeader::Property::DOUBLE:
+      result = ReadAsciiPropertyScalarData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.double_, context.reader_);
+      break;
+  }
+
+  return result;
+}
+
+std::expected<size_t, std::string_view> ReadAsciiListSize(
+    std::istream& input, std::string& token, PlyHeader::Property::Type type) {
+  std::expected<size_t, std::string_view> result;
+
+  switch (type) {
+    case PlyHeader::Property::INT8:
+      result = ReadAsciiListSizeImpl<int8_t>(input, token);
+      break;
+    case PlyHeader::Property::UINT8:
+      result = ReadAsciiListSizeImpl<uint8_t>(input, token);
+      break;
+    case PlyHeader::Property::INT16:
+      result = ReadAsciiListSizeImpl<int16_t>(input, token);
+      break;
+    case PlyHeader::Property::UINT16:
+      result = ReadAsciiListSizeImpl<uint16_t>(input, token);
+      break;
+    case PlyHeader::Property::INT32:
+      result = ReadAsciiListSizeImpl<int32_t>(input, token);
+      break;
+    case PlyHeader::Property::UINT32:
+      result = ReadAsciiListSizeImpl<uint32_t>(input, token);
+      break;
+    default:
+      assert(false);
+  }
+
+  return result;
+}
+
+template <typename T>
+std::expected<void, std::string_view> ReadAsciiPropertyListData(
+    std::istream& input, std::string_view element_name,
+    std::string_view property_name, size_t property_index, std::string& token,
+    std::vector<T>& storage, size_t num_to_read, PlyReader* reader) {
+  storage.clear();
+
+  for (size_t i = 0; i < num_to_read; i++) {
+    auto result = ReadAsciiPropertyDataImpl<T>(input, token, storage);
+    if (!result) {
+      return result;
+    }
+  }
+
+  return reader->Handle(element_name, property_name, property_index, storage);
+}
+
+std::expected<void, std::string_view> ReadAsciiPropertyList(
+    std::istream& input, std::string_view element_name,
+    const PlyHeader::Property& header_property, size_t property_index,
+    Context& context) {
+  auto num_to_read =
+      ReadAsciiListSize(input, context.token_, *header_property.list_type);
+  if (!num_to_read) {
+    return std::unexpected(num_to_read.error());
+  }
+
+  std::expected<void, std::string_view> result;
+  switch (header_property.data_type) {
+    case PlyHeader::Property::INT8:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.int8_, *num_to_read, context.reader_);
+      break;
+    case PlyHeader::Property::UINT8:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.uint8_, *num_to_read, context.reader_);
+      break;
+    case PlyHeader::Property::INT16:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.int16_, *num_to_read, context.reader_);
+      break;
+    case PlyHeader::Property::UINT16:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.uint16_, *num_to_read, context.reader_);
+      break;
+    case PlyHeader::Property::INT32:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.int32_, *num_to_read, context.reader_);
+      break;
+    case PlyHeader::Property::UINT32:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.uint32_, *num_to_read, context.reader_);
+      break;
+    case PlyHeader::Property::FLOAT:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.float_, *num_to_read, context.reader_);
+      break;
+    case PlyHeader::Property::DOUBLE:
+      result = ReadAsciiPropertyListData(
+          input, element_name, header_property.name, property_index,
+          context.token_, context.double_, *num_to_read, context.reader_);
+      break;
+  }
+
+  return result;
+}
+
+std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
+                                                    const PlyHeader& header,
+                                                    Context& context) {
+  std::stringstream line;
+
+  size_t property_index = 0;
+  for (const auto& element : header.elements) {
+    for (uint64_t e = 0; e < element.num_in_file; e++) {
+      std::string readable_line;
+      line.str("");
+      line.clear();
+
+      char c;
+      while (input.get(c)) {
+        if (c == header.line_ending[0]) {
+          auto line_ending = header.line_ending;
+          line_ending.remove_prefix(1);
+
+          while (!line_ending.empty() && input.get(c)) {
+            if (c != line_ending[0]) {
+              return std::unexpected(
+                  "The input contained mismatched line endings");
+            }
+            line_ending.remove_prefix(1);
+          }
+
+          break;
+        }
+
+        line.put(c);
+        readable_line.push_back(c);
+      }
+
+      for (size_t p = 0; p < element.properties.size(); p++) {
+        if (element.properties[p].list_type) {
+          auto error =
+              ReadAsciiPropertyList(line, element.name, element.properties[p],
+                                    property_index + p, context);
+          if (!error) {
+            return error;
+          }
+        } else {
+          auto error =
+              ReadAsciiPropertyScalar(line, element.name, element.properties[p],
+                                      property_index + p, context);
+          if (!error) {
+            return error;
+          }
+        }
+      }
+
+      while (line.get(c)) {
+        if (std::isgraph(c)) {
+          return std::unexpected(
+              "The input contained an element with unused tokens");
         }
       }
     }
@@ -388,6 +701,7 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
   std::expected<void, std::string_view> result;
   switch (header->format) {
     case PlyHeader::ASCII:
+      result = ReadAsciiData(input, *header, context);
       break;
     case PlyHeader::BINARY_BIG_ENDIAN:
       result = ReadBinaryData<std::endian::big>(input, *header, context);

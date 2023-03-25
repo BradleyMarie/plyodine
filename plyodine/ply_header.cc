@@ -204,7 +204,7 @@ std::string_view TooFewElementParamsError() {
   return "Too few prameters to element";
 }
 
-std::expected<std::pair<std::string, size_t>, std::string_view> ParseElement(
+std::expected<std::pair<std::string, uint64_t>, std::string_view> ParseElement(
     std::string_view line,
     const std::unordered_set<std::string>& element_names) {
   auto name = ReadNextTokenOnLine(line);
@@ -230,10 +230,12 @@ std::expected<std::pair<std::string, size_t>, std::string_view> ParseElement(
     return std::unexpected(TooFewElementParamsError());
   }
 
-  size_t parsed_num_in_file;
-  if (std::from_chars((*num_in_file)->begin(), (*num_in_file)->end(),
-                      parsed_num_in_file)
-          .ec != std::errc{}) {
+  uint64_t parsed_num_in_file;
+  auto parsing_result = std::from_chars(
+      (*num_in_file)->begin(), (*num_in_file)->end(), parsed_num_in_file);
+  if (parsing_result.ec == std::errc::result_out_of_range) {
+    return std::unexpected("Out of range element count");
+  } else if (parsing_result.ec != std::errc{}) {
     return std::unexpected("Failed to parse element count");
   }
 
