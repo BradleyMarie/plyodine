@@ -301,10 +301,6 @@ std::expected<void, std::string_view> ReadNextAsciiToken(std::istream& input,
       break;
     }
 
-    if (!std::isgraph(c)) {
-      return std::unexpected("The input contained an invalid character");
-    }
-
     token.push_back(c);
   }
 

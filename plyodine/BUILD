@@ -89,6 +89,7 @@ cc_test(
         "test_data/header_format_bad.ply",
         "test_data/ply_ascii_data.ply",
         "test_data/ply_ascii_empty.ply",
+        "test_data/ply_ascii_empty_token.ply",
         "test_data/ply_ascii_invalid_character.ply",
         "test_data/ply_ascii_list_sizes.ply",
         "test_data/ply_ascii_list_sizes_negative_int16.ply",

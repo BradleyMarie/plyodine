@@ -535,6 +535,73 @@ TEST(ASCII, InvalidCharacter) {
             "The input contained an invalid character");
 }
 
+TEST(ASCII, EmptyToken) {
+  std::unordered_map<
+      std::string_view,
+      std::unordered_map<std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>
+      properties = {{"vertex",
+                     {{"a", std::make_pair(0, plyodine::Property::INT8)},
+                      {"b", std::make_pair(1, plyodine::Property::INT8)}}}};
+
+  MockPlyReader reader;
+  EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                            testing::IsEmpty()))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, 1))
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+
+  std::ifstream stream("plyodine/test_data/ply_ascii_empty_token.ply");
+  EXPECT_EQ(reader.ReadFrom(stream).error(),
+            "The input contained an empty token");
+}
+
 TEST(ASCII, UnusedTokens) {
   std::unordered_map<
       std::string_view,
