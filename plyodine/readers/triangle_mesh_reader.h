@@ -1,6 +1,7 @@
 #ifndef _PLYODINE_READERS_TRIANGLE_MESH_READER_
 #define _PLYODINE_READERS_TRIANGLE_MESH_READER_
 
+#include <cmath>
 #include <concepts>
 #include <functional>
 #include <type_traits>
@@ -22,121 +23,182 @@ class TriangleMeshReader : public PlyReader {
 
  private:
   template <typename T>
-  void Handle(const std::vector<std::function<void(T)>> &parse_functions,
-              size_t property_index, T value) {
+  std::expected<void, std::string_view> Handle(
+      const std::vector<std::function<void(T)>> &parse_functions,
+      size_t property_index, T value) {
+    std::expected<void, std::string_view> result;
     if (property_index < parse_functions.size() &&
         parse_functions[property_index]) {
-      parse_functions[property_index](value);
+      result = parse_functions[property_index](value);
     }
 
     if (property_index == parse_functions.size() - 1u) {
       Handle(xyz_, normals_, uvs_);
     }
+
+    return result;
   }
 
   struct HandleX {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[0] = static_cast<LocationType>(value);
+          if (!std::isfinite(reader->xyz_[0])) {
+            return std::unexpected("Input contained an non-finite value for x");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleY {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[1] = static_cast<LocationType>(value);
+          if (!std::isfinite(reader->xyz_[1])) {
+            return std::unexpected("Input contained an non-finite value for y");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleZ {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[2] = static_cast<LocationType>(value);
+          if (!std::isfinite(reader->xyz_[2])) {
+            return std::unexpected("Input contained an non-finite value for z");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleNX {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[0] = static_cast<NormalType>(value);
+          if (!std::isfinite(reader->normals_storage_[0])) {
+            return std::unexpected("Input contained an non-finite value for nx");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleNY {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[1] = static_cast<NormalType>(value);
+          if (!std::isfinite(reader->normals_storage_[1])) {
+            return std::unexpected("Input contained an non-finite value for ny");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleNZ {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[2] = static_cast<NormalType>(value);
+          if (!std::isfinite(reader->normals_storage_[2])) {
+            return std::unexpected("Input contained an non-finite value for nz");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleU {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[0] = static_cast<UVType>(value);
+          if (!std::isfinite(reader->uv_storage_[0])) {
+            return std::unexpected("Input contained an non-finite value for u");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleV {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[1] = static_cast<UVType>(value);
+          if (!std::isfinite(reader->uv_storage_[1])) {
+            return std::unexpected("Input contained an non-finite value for v");
+          }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
 
   struct HandleVertexIndices {
     template <typename T>
-    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
-      return [reader](T value) {
+    std::function<std::expected<void, std::string_view>(T)> GetCallback(
+        TriangleMeshReader *reader, uint64_t num_vertices) const {
+      return [reader, num_vertices](T value) {
         if constexpr (std::is_class<T>::value) {
           if (value.size() >= 3) {
+            if (value[0] < 0 || value[0] >= num_vertices ||
+                value[0] > std::numeric_limits<FaceIndexType>::max()) {
+              return std::unexpected("A vertex index was out of range");
+            }
+
+            if (value[1] < 0 || value[1] >= num_vertices ||
+                value[1] > std::numeric_limits<FaceIndexType>::max()) {
+              return std::unexpected("A vertex index was out of range");
+            }
+
             FaceIndexType faces[3];
             faces[0] = static_cast<FaceIndexType>(value[0]);
             for (size_t i = 0; i < value.size() - 2; i++) {
+              if (value[i + 1] < 0 || value[i + 1] >= num_vertices ||
+                  value[i + 1] > std::numeric_limits<FaceIndexType>::max()) {
+                return std::unexpected("A vertex index was out of range");
+              }
+
               faces[1] = static_cast<FaceIndexType>(value[i]);
               faces[2] = static_cast<FaceIndexType>(value[i + 1]);
               reader->Handle(faces);
             }
           }
         }
+        return std::expected<void, std::string_view>();
       };
     }
   };
@@ -244,8 +306,10 @@ class TriangleMeshReader : public PlyReader {
   static const std::pair<size_t, Property::Type> *LookupProperty(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>> &properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>
+          &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
     auto element_iter = properties.find(element_name);
@@ -253,8 +317,8 @@ class TriangleMeshReader : public PlyReader {
       return nullptr;
     }
 
-    auto property_iter = element_iter->second.find(property_name);
-    if (property_iter == element_iter->second.end()) {
+    auto property_iter = element_iter->second.second.find(property_name);
+    if (property_iter == element_iter->second.second.end()) {
       return nullptr;
     }
 
@@ -266,8 +330,10 @@ class TriangleMeshReader : public PlyReader {
   LocationPropertyIndex(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>> &properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>
+          &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
@@ -276,8 +342,7 @@ class TriangleMeshReader : public PlyReader {
                      property->second != Property::DOUBLE)) {
       return std::unexpected(
           "The type of properties x, y, and z, on vertex elements must be "
-          "either "
-          "float or double");
+          "either float or double");
     }
 
     return property;
@@ -288,8 +353,10 @@ class TriangleMeshReader : public PlyReader {
   NormalPropertyIndex(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>> &properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>
+          &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
@@ -309,8 +376,10 @@ class TriangleMeshReader : public PlyReader {
   UVPropertyIndex(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>> &properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>
+          &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
@@ -330,8 +399,10 @@ class TriangleMeshReader : public PlyReader {
   UVPropertyIndex(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>> &properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>
+          &properties,
       const std::string_view &element_name,
       std::span<const std::string_view> property_names) {
     for (const auto &property_name : property_names) {
@@ -350,8 +421,10 @@ class TriangleMeshReader : public PlyReader {
   FacePropertyIndex(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>> &properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>
+          &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
@@ -374,8 +447,10 @@ class TriangleMeshReader : public PlyReader {
   std::expected<void, std::string_view> Start(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>> &properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>
+          &properties,
       std::span<const std::string> comments,
       std::span<const std::string> obj_infos) final {
     Start();
@@ -459,7 +534,8 @@ class TriangleMeshReader : public PlyReader {
       return std::unexpected("Element face must have property vertex_indices");
     }
 
-    FillCallback<HandleVertexIndices>(**vertex_indices);
+    FillCallback<HandleVertexIndices>(**vertex_indices,
+                                      properties.at("vertex").first);
 
     return std::expected<void, std::string_view>();
   }
@@ -468,150 +544,159 @@ class TriangleMeshReader : public PlyReader {
                                                std::string_view property_name,
                                                size_t property_index,
                                                Int8Property value) final {
-    Handle(parse_int8_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_int8_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                Int8PropertyList values) final {
-    Handle(parse_int8_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_int8_property_list_, property_index, values);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                UInt8Property value) final {
-    Handle(parse_uint8_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_uint8_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                UInt8PropertyList values) final {
-    Handle(parse_uint8_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_uint8_property_list_, property_index, values);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                Int16Property value) final {
-    Handle(parse_int16_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_int16_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                Int16PropertyList values) final {
-    Handle(parse_int16_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_int16_property_list_, property_index, values);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                UInt16Property value) final {
-    Handle(parse_uint16_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_uint16_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(
       std::string_view element_name, std::string_view property_name,
       size_t property_index, UInt16PropertyList values) final {
-    Handle(parse_uint16_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_uint16_property_list_, property_index, values);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                Int32Property value) final {
-    Handle(parse_int32_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_int32_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                Int32PropertyList values) final {
-    Handle(parse_int32_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_int32_property_list_, property_index, values);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                UInt32Property value) final {
-    Handle(parse_uint32_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_uint32_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(
       std::string_view element_name, std::string_view property_name,
       size_t property_index, UInt32PropertyList values) final {
-    Handle(parse_uint32_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_uint32_property_list_, property_index, values);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                FloatProperty value) final {
-    Handle(parse_float_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_float_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                FloatPropertyList values) final {
-    Handle(parse_float_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_float_property_list_, property_index, values);
   }
 
   std::expected<void, std::string_view> Handle(std::string_view element_name,
                                                std::string_view property_name,
                                                size_t property_index,
                                                DoubleProperty value) final {
-    Handle(parse_double_property_, property_index, value);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_double_property_, property_index, value);
   }
 
   std::expected<void, std::string_view> Handle(
       std::string_view element_name, std::string_view property_name,
       size_t property_index, DoublePropertyList values) final {
-    Handle(parse_double_property_list_, property_index, values);
-    return std::expected<void, std::string_view>();
+    return Handle(parse_double_property_list_, property_index, values);
   }
 
  private:
-  std::vector<std::function<void(Int8Property)>> parse_int8_property_;
-  std::vector<std::function<void(Int8PropertyList)>> parse_int8_property_list_;
-  std::vector<std::function<void(UInt8Property)>> parse_uint8_property_;
-  std::vector<std::function<void(UInt8PropertyList)>>
+  std::vector<
+      std::function<std::expected<void, std::string_view>(Int8Property)>>
+      parse_int8_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(Int8PropertyList)>>
+      parse_int8_property_list_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(UInt8Property)>>
+      parse_uint8_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(UInt8PropertyList)>>
       parse_uint8_property_list_;
-  std::vector<std::function<void(Int16Property)>> parse_int16_property_;
-  std::vector<std::function<void(Int16PropertyList)>>
+  std::vector<
+      std::function<std::expected<void, std::string_view>(Int16Property)>>
+      parse_int16_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(Int16PropertyList)>>
       parse_int16_property_list_;
-  std::vector<std::function<void(UInt16Property)>> parse_uint16_property_;
-  std::vector<std::function<void(UInt16PropertyList)>>
+  std::vector<
+      std::function<std::expected<void, std::string_view>(UInt16Property)>>
+      parse_uint16_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(UInt16PropertyList)>>
       parse_uint16_property_list_;
-  std::vector<std::function<void(Int32Property)>> parse_int32_property_;
-  std::vector<std::function<void(Int32PropertyList)>>
+  std::vector<
+      std::function<std::expected<void, std::string_view>(Int32Property)>>
+      parse_int32_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(Int32PropertyList)>>
       parse_int32_property_list_;
-  std::vector<std::function<void(UInt32Property)>> parse_uint32_property_;
-  std::vector<std::function<void(UInt32PropertyList)>>
+  std::vector<
+      std::function<std::expected<void, std::string_view>(UInt32Property)>>
+      parse_uint32_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(UInt32PropertyList)>>
       parse_uint32_property_list_;
-  std::vector<std::function<void(FloatProperty)>> parse_float_property_;
-  std::vector<std::function<void(FloatPropertyList)>>
+  std::vector<
+      std::function<std::expected<void, std::string_view>(FloatProperty)>>
+      parse_float_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(FloatPropertyList)>>
       parse_float_property_list_;
-  std::vector<std::function<void(DoubleProperty)>> parse_double_property_;
-  std::vector<std::function<void(DoublePropertyList)>>
+  std::vector<
+      std::function<std::expected<void, std::string_view>(DoubleProperty)>>
+      parse_double_property_;
+  std::vector<
+      std::function<std::expected<void, std::string_view>(DoublePropertyList)>>
       parse_double_property_list_;
 
   NormalType *normals_ = nullptr;

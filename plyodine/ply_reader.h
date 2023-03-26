@@ -19,8 +19,10 @@ class PlyReader {
   virtual std::expected<void, std::string_view> Start(
       const std::unordered_map<
           std::string_view,
-          std::unordered_map<std::string_view,
-                             std::pair<size_t, Property::Type>>>& properties,
+          std::pair<uint64_t,
+                    std::unordered_map<std::string_view,
+                                       std::pair<size_t, Property::Type>>>>&
+          properties,
       std::span<const std::string> comments,
       std::span<const std::string> object_info) = 0;
 

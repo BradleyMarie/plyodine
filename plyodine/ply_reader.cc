@@ -615,7 +615,9 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
   size_t property_index = 0;
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view, std::pair<size_t, Property::Type>>>
+      std::pair<uint64_t,
+                std::unordered_map<std::string_view,
+                                   std::pair<size_t, Property::Type>>>>
       all_properties;
   for (const auto& element : header->elements) {
     std::unordered_map<std::string_view, std::pair<size_t, Property::Type>>
@@ -693,7 +695,8 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
         }
       }
     }
-    all_properties[element.name] = properties;
+    all_properties[element.name] =
+        std::make_pair(element.num_in_file, std::move(properties));
   }
 
   Start(all_properties, header->comments, header->object_info);

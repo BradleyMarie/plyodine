@@ -11,8 +11,10 @@ class MockPlyReader final : public plyodine::PlyReader {
       (std::expected<void, std::string_view>), Start,
       ((const std::unordered_map<
            std::string_view,
-           std::unordered_map<std::string_view,
-                              std::pair<size_t, plyodine::Property::Type>>>&),
+           std::pair<uint64_t,
+                     std::unordered_map<
+                         std::string_view,
+                         std::pair<size_t, plyodine::Property::Type>>>>&),
        std::span<const std::string>, std::span<const std::string>),
       (override));
 
@@ -171,16 +173,18 @@ MATCHER_P(PropertiesAre, properties, "") {
 
   for (const auto& [element_name, element_properties] : properties) {
     if (!arg.contains(element_name) ||
-        arg.at(element_name).size() != element_properties.size()) {
+        arg.at(element_name).first != element_properties.first ||
+        arg.at(element_name).second.size() !=
+            element_properties.second.size()) {
       return false;
     }
 
     for (const auto& [property_name, property_id_and_type] :
-         arg.at(element_name)) {
-      if (!element_properties.contains(property_name) ||
-          element_properties.at(property_name).first !=
+         arg.at(element_name).second) {
+      if (!element_properties.second.contains(property_name) ||
+          element_properties.second.at(property_name).first !=
               property_id_and_type.first ||
-          element_properties.at(property_name).second !=
+          element_properties.second.at(property_name).second !=
               property_id_and_type.second) {
         return false;
       }
@@ -403,10 +407,12 @@ TEST(ASCII, Empty) {
 TEST(ASCII, MismatchedLineEndings) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
-          {"vertex", {{"a", std::make_pair(0, plyodine::Property::INT8)}}}};
+          {"vertex",
+           {2u, {{"a", std::make_pair(0, plyodine::Property::INT8)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -471,10 +477,12 @@ TEST(ASCII, MismatchedLineEndings) {
 TEST(ASCII, InvalidCharacter) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
-          {"vertex", {{"a", std::make_pair(0, plyodine::Property::INT8)}}}};
+          {"vertex",
+           {2u, {{"a", std::make_pair(0, plyodine::Property::INT8)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -538,11 +546,12 @@ TEST(ASCII, InvalidCharacter) {
 TEST(ASCII, ListMissingEntries) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -605,10 +614,12 @@ TEST(ASCII, ListMissingEntries) {
 TEST(ASCII, MissingElement) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
-          {"vertex", {{"l", std::make_pair(0, plyodine::Property::INT8)}}}};
+          {"vertex",
+           {2u, {{"l", std::make_pair(0, plyodine::Property::INT8)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -670,11 +681,13 @@ TEST(ASCII, MissingElement) {
 TEST(ASCII, EmptyToken) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {{"vertex",
-                     {{"a", std::make_pair(0, plyodine::Property::INT8)},
-                      {"b", std::make_pair(1, plyodine::Property::INT8)}}}};
+                     {2u,
+                      {{"a", std::make_pair(0, plyodine::Property::INT8)},
+                       {"b", std::make_pair(1, plyodine::Property::INT8)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -738,11 +751,12 @@ TEST(ASCII, ListSizeTooLarge) {
   auto impl = [](const std::string& name) {
     std::unordered_map<
         std::string_view,
-        std::unordered_map<std::string_view,
-                           std::pair<size_t, plyodine::Property::Type>>>
+        std::pair<uint64_t, std::unordered_map<
+                                std::string_view,
+                                std::pair<size_t, plyodine::Property::Type>>>>
         properties = {
             {"vertex",
-             {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+             {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
     MockPlyReader reader;
     EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -815,11 +829,12 @@ TEST(ASCII, ListSizeBad) {
   auto impl = [](const std::string& name) {
     std::unordered_map<
         std::string_view,
-        std::unordered_map<std::string_view,
-                           std::pair<size_t, plyodine::Property::Type>>>
+        std::pair<uint64_t, std::unordered_map<
+                                std::string_view,
+                                std::pair<size_t, plyodine::Property::Type>>>>
         properties = {
             {"vertex",
-             {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+             {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
     MockPlyReader reader;
     EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -892,9 +907,10 @@ TEST(ASCII, EntryBad) {
   auto impl = [](const std::string& name, plyodine::Property::Type type) {
     std::unordered_map<
         std::string_view,
-        std::unordered_map<std::string_view,
-                           std::pair<size_t, plyodine::Property::Type>>>
-        properties = {{"vertex", {{"l", std::make_pair(0, type)}}}};
+        std::pair<uint64_t, std::unordered_map<
+                                std::string_view,
+                                std::pair<size_t, plyodine::Property::Type>>>>
+        properties = {{"vertex", {1u, {{"l", std::make_pair(0, type)}}}}};
 
     MockPlyReader reader;
     EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -977,9 +993,10 @@ TEST(ASCII, EntryTooBig) {
   auto impl = [](const std::string& name, plyodine::Property::Type type) {
     std::unordered_map<
         std::string_view,
-        std::unordered_map<std::string_view,
-                           std::pair<size_t, plyodine::Property::Type>>>
-        properties = {{"vertex", {{"l", std::make_pair(0, type)}}}};
+        std::pair<uint64_t, std::unordered_map<
+                                std::string_view,
+                                std::pair<size_t, plyodine::Property::Type>>>>
+        properties = {{"vertex", {1u, {{"l", std::make_pair(0, type)}}}}};
 
     MockPlyReader reader;
     EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1061,10 +1078,12 @@ TEST(ASCII, EntryTooBig) {
 TEST(ASCII, UnusedTokens) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
-          {"vertex", {{"a", std::make_pair(0, plyodine::Property::INT8)}}}};
+          {"vertex",
+           {2u, {{"a", std::make_pair(0, plyodine::Property::INT8)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1127,27 +1146,30 @@ TEST(ASCII, UnusedTokens) {
 TEST(ASCII, WithData) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"a", std::make_pair(0, plyodine::Property::INT8)},
-            {"b", std::make_pair(1, plyodine::Property::UINT8)},
-            {"c", std::make_pair(2, plyodine::Property::INT16)},
-            {"d", std::make_pair(3, plyodine::Property::UINT16)},
-            {"e", std::make_pair(4, plyodine::Property::INT32)},
-            {"f", std::make_pair(5, plyodine::Property::UINT32)},
-            {"g", std::make_pair(6, plyodine::Property::FLOAT)},
-            {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}},
+           {3u,
+            {{"a", std::make_pair(0, plyodine::Property::INT8)},
+             {"b", std::make_pair(1, plyodine::Property::UINT8)},
+             {"c", std::make_pair(2, plyodine::Property::INT16)},
+             {"d", std::make_pair(3, plyodine::Property::UINT16)},
+             {"e", std::make_pair(4, plyodine::Property::INT32)},
+             {"f", std::make_pair(5, plyodine::Property::UINT32)},
+             {"g", std::make_pair(6, plyodine::Property::FLOAT)},
+             {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}}},
           {"vertex_lists",
-           {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
-            {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
-            {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
-            {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
-            {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
-            {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
-            {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
-            {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
+           {1u,
+            {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
+             {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
+             {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
+             {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
+             {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
+             {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
+             {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
+             {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
   std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
 
@@ -1284,14 +1306,16 @@ TEST(ASCII, WithData) {
 TEST(ASCII, WithUIntListSizes) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
-            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
-            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
-            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+           {1u,
+            {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+             {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+             {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1324,14 +1348,16 @@ TEST(ASCII, WithUIntListSizes) {
 TEST(ASCII, WithIntListSizes) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
-            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
-            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
-            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+           {1u,
+            {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+             {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+             {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1364,11 +1390,12 @@ TEST(ASCII, WithIntListSizes) {
 TEST(ASCII, WithNegativeInt8ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1386,11 +1413,12 @@ TEST(ASCII, WithNegativeInt8ListSize) {
 TEST(ASCII, WithNegativeInt16ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1408,11 +1436,12 @@ TEST(ASCII, WithNegativeInt16ListSize) {
 TEST(ASCII, WithNegativeInt32ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1489,27 +1518,30 @@ TEST(BigEndian, Empty) {
 TEST(BigEndian, WithData) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"a", std::make_pair(0, plyodine::Property::INT8)},
-            {"b", std::make_pair(1, plyodine::Property::UINT8)},
-            {"c", std::make_pair(2, plyodine::Property::INT16)},
-            {"d", std::make_pair(3, plyodine::Property::UINT16)},
-            {"e", std::make_pair(4, plyodine::Property::INT32)},
-            {"f", std::make_pair(5, plyodine::Property::UINT32)},
-            {"g", std::make_pair(6, plyodine::Property::FLOAT)},
-            {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}},
+           {3u,
+            {{"a", std::make_pair(0, plyodine::Property::INT8)},
+             {"b", std::make_pair(1, plyodine::Property::UINT8)},
+             {"c", std::make_pair(2, plyodine::Property::INT16)},
+             {"d", std::make_pair(3, plyodine::Property::UINT16)},
+             {"e", std::make_pair(4, plyodine::Property::INT32)},
+             {"f", std::make_pair(5, plyodine::Property::UINT32)},
+             {"g", std::make_pair(6, plyodine::Property::FLOAT)},
+             {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}}},
           {"vertex_lists",
-           {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
-            {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
-            {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
-            {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
-            {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
-            {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
-            {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
-            {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
+           {1u,
+            {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
+             {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
+             {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
+             {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
+             {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
+             {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
+             {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
+             {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
   std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
 
@@ -1650,14 +1682,16 @@ TEST(BigEndian, WithDataError) {
 TEST(BigEndian, WithUIntListSizes) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
-            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
-            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
-            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+           {1u,
+            {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+             {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+             {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1694,14 +1728,16 @@ TEST(BigEndian, WithUIntListSizesError) {
 TEST(BigEndian, WithIntListSizes) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
-            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
-            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
-            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+           {1u,
+            {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+             {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+             {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1738,11 +1774,12 @@ TEST(BigEndian, WithIntListSizesError) {
 TEST(BigEndian, WithNegativeInt8ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1760,11 +1797,12 @@ TEST(BigEndian, WithNegativeInt8ListSize) {
 TEST(BigEndian, WithNegativeInt16ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1782,11 +1820,12 @@ TEST(BigEndian, WithNegativeInt16ListSize) {
 TEST(BigEndian, WithNegativeInt32ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -1863,27 +1902,30 @@ TEST(LittleEndian, Empty) {
 TEST(LittleEndian, WithData) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"a", std::make_pair(0, plyodine::Property::INT8)},
-            {"b", std::make_pair(1, plyodine::Property::UINT8)},
-            {"c", std::make_pair(2, plyodine::Property::INT16)},
-            {"d", std::make_pair(3, plyodine::Property::UINT16)},
-            {"e", std::make_pair(4, plyodine::Property::INT32)},
-            {"f", std::make_pair(5, plyodine::Property::UINT32)},
-            {"g", std::make_pair(6, plyodine::Property::FLOAT)},
-            {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}},
+           {3u,
+            {{"a", std::make_pair(0, plyodine::Property::INT8)},
+             {"b", std::make_pair(1, plyodine::Property::UINT8)},
+             {"c", std::make_pair(2, plyodine::Property::INT16)},
+             {"d", std::make_pair(3, plyodine::Property::UINT16)},
+             {"e", std::make_pair(4, plyodine::Property::INT32)},
+             {"f", std::make_pair(5, plyodine::Property::UINT32)},
+             {"g", std::make_pair(6, plyodine::Property::FLOAT)},
+             {"h", std::make_pair(7, plyodine::Property::DOUBLE)}}}},
           {"vertex_lists",
-           {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
-            {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
-            {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
-            {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
-            {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
-            {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
-            {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
-            {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}};
+           {1u,
+            {{"a", std::make_pair(8, plyodine::Property::INT8_LIST)},
+             {"b", std::make_pair(9, plyodine::Property::UINT8_LIST)},
+             {"c", std::make_pair(10, plyodine::Property::INT16_LIST)},
+             {"d", std::make_pair(11, plyodine::Property::UINT16_LIST)},
+             {"e", std::make_pair(12, plyodine::Property::INT32_LIST)},
+             {"f", std::make_pair(13, plyodine::Property::UINT32_LIST)},
+             {"g", std::make_pair(14, plyodine::Property::FLOAT_LIST)},
+             {"h", std::make_pair(15, plyodine::Property::DOUBLE_LIST)}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
   std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
 
@@ -2024,14 +2066,16 @@ TEST(LittleEndian, WithDataError) {
 TEST(LittleEndian, WithUIntListSizes) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
-            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
-            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
-            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+           {1u,
+            {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+             {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+             {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -2068,14 +2112,16 @@ TEST(LittleEndian, WithUIntListSizesError) {
 TEST(LittleEndian, WithIntListSizes) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
-            {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
-            {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
-            {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}};
+           {1u,
+            {{"l0", std::make_pair(0, plyodine::Property::UINT8_LIST)},
+             {"l1", std::make_pair(1, plyodine::Property::UINT8_LIST)},
+             {"l2", std::make_pair(2, plyodine::Property::UINT8_LIST)},
+             {"l3", std::make_pair(3, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -2113,11 +2159,12 @@ TEST(LittleEndian, WithIntListSizesError) {
 TEST(LittleEndian, WithNegativeInt8ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -2135,11 +2182,12 @@ TEST(LittleEndian, WithNegativeInt8ListSize) {
 TEST(LittleEndian, WithNegativeInt16ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
@@ -2157,11 +2205,12 @@ TEST(LittleEndian, WithNegativeInt16ListSize) {
 TEST(LittleEndian, WithNegativeInt32ListSize) {
   std::unordered_map<
       std::string_view,
-      std::unordered_map<std::string_view,
-                         std::pair<size_t, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::unordered_map<
+                              std::string_view,
+                              std::pair<size_t, plyodine::Property::Type>>>>
       properties = {
           {"vertex",
-           {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+           {1u, {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
