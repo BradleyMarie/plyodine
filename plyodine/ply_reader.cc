@@ -699,7 +699,10 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
         std::make_pair(element.num_in_file, std::move(properties));
   }
 
-  Start(all_properties, header->comments, header->object_info);
+  auto started = Start(all_properties, header->comments, header->object_info);
+  if (!started) {
+    return started;
+  }
 
   Context context = {this};
 

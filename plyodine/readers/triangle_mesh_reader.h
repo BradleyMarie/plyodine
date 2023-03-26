@@ -24,7 +24,8 @@ class TriangleMeshReader : public PlyReader {
  private:
   template <typename T>
   std::expected<void, std::string_view> Handle(
-      const std::vector<std::function<void(T)>> &parse_functions,
+      const std::vector<std::function<std::expected<void, std::string_view>(T)>>
+          &parse_functions,
       size_t property_index, T value) {
     std::expected<void, std::string_view> result;
     if (property_index < parse_functions.size() &&
@@ -42,8 +43,8 @@ class TriangleMeshReader : public PlyReader {
   struct HandleX {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[0] = static_cast<LocationType>(value);
           if (!std::isfinite(reader->xyz_[0])) {
@@ -58,8 +59,8 @@ class TriangleMeshReader : public PlyReader {
   struct HandleY {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[1] = static_cast<LocationType>(value);
           if (!std::isfinite(reader->xyz_[1])) {
@@ -74,8 +75,8 @@ class TriangleMeshReader : public PlyReader {
   struct HandleZ {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[2] = static_cast<LocationType>(value);
           if (!std::isfinite(reader->xyz_[2])) {
@@ -90,12 +91,13 @@ class TriangleMeshReader : public PlyReader {
   struct HandleNX {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[0] = static_cast<NormalType>(value);
           if (!std::isfinite(reader->normals_storage_[0])) {
-            return std::unexpected("Input contained an non-finite value for nx");
+            return std::unexpected(
+                "Input contained an non-finite value for nx");
           }
         }
         return std::expected<void, std::string_view>();
@@ -106,12 +108,13 @@ class TriangleMeshReader : public PlyReader {
   struct HandleNY {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[1] = static_cast<NormalType>(value);
           if (!std::isfinite(reader->normals_storage_[1])) {
-            return std::unexpected("Input contained an non-finite value for ny");
+            return std::unexpected(
+                "Input contained an non-finite value for ny");
           }
         }
         return std::expected<void, std::string_view>();
@@ -122,12 +125,13 @@ class TriangleMeshReader : public PlyReader {
   struct HandleNZ {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[2] = static_cast<NormalType>(value);
           if (!std::isfinite(reader->normals_storage_[2])) {
-            return std::unexpected("Input contained an non-finite value for nz");
+            return std::unexpected(
+                "Input contained an non-finite value for nz");
           }
         }
         return std::expected<void, std::string_view>();
@@ -138,8 +142,8 @@ class TriangleMeshReader : public PlyReader {
   struct HandleU {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[0] = static_cast<UVType>(value);
           if (!std::isfinite(reader->uv_storage_[0])) {
@@ -154,8 +158,8 @@ class TriangleMeshReader : public PlyReader {
   struct HandleV {
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
-        TriangleMeshReader *reader) const {
-      return [reader](T value) {
+        TriangleMeshReader *reader, uint64_t unused) const {
+      return [reader](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[1] = static_cast<UVType>(value);
           if (!std::isfinite(reader->uv_storage_[1])) {
@@ -168,28 +172,55 @@ class TriangleMeshReader : public PlyReader {
   };
 
   struct HandleVertexIndices {
+    template <typename StorageType, typename IndexType>
+    static std::expected<void, std::string_view> Validate(
+        IndexType index, uint64_t num_vertices) {
+      static const char *message = "A vertex index was out of range";
+
+      if constexpr (std::is_signed<IndexType>::value) {
+        if (index < 0) {
+          return std::unexpected(message);
+        }
+      }
+
+      uint64_t unsigned_index = static_cast<uint64_t>(index);
+
+      if (unsigned_index >= num_vertices) {
+        return std::unexpected(message);
+      }
+
+      if (unsigned_index >
+          static_cast<uint64_t>(std::numeric_limits<StorageType>::max())) {
+        return std::unexpected(message);
+      }
+
+      return std::expected<void, std::string_view>();
+    }
+
     template <typename T>
     std::function<std::expected<void, std::string_view>(T)> GetCallback(
         TriangleMeshReader *reader, uint64_t num_vertices) const {
-      return [reader, num_vertices](T value) {
+      return [reader,
+              num_vertices](T value) -> std::expected<void, std::string_view> {
         if constexpr (std::is_class<T>::value) {
           if (value.size() >= 3) {
-            if (value[0] < 0 || value[0] >= num_vertices ||
-                value[0] > std::numeric_limits<FaceIndexType>::max()) {
-              return std::unexpected("A vertex index was out of range");
+            auto v0_valid = Validate<FaceIndexType>(value[0], num_vertices);
+            if (!v0_valid) {
+              return v0_valid;
             }
 
-            if (value[1] < 0 || value[1] >= num_vertices ||
-                value[1] > std::numeric_limits<FaceIndexType>::max()) {
-              return std::unexpected("A vertex index was out of range");
+            auto v1_valid = Validate<FaceIndexType>(value[1], num_vertices);
+            if (!v1_valid) {
+              return v1_valid;
             }
 
             FaceIndexType faces[3];
             faces[0] = static_cast<FaceIndexType>(value[0]);
             for (size_t i = 0; i < value.size() - 2; i++) {
-              if (value[i + 1] < 0 || value[i + 1] >= num_vertices ||
-                  value[i + 1] > std::numeric_limits<FaceIndexType>::max()) {
-                return std::unexpected("A vertex index was out of range");
+              auto vn_valid =
+                  Validate<FaceIndexType>(value[i + 1], num_vertices);
+              if (!vn_valid) {
+                return vn_valid;
               }
 
               faces[1] = static_cast<FaceIndexType>(value[i]);
@@ -231,74 +262,75 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <typename T>
-  void FillCallback(const std::pair<size_t, Property::Type> &entry) {
+  void FillCallback(const std::pair<size_t, Property::Type> &entry,
+                    uint64_t num_vertices) {
     Grow(entry.first);
 
     T object;
     switch (entry.second) {
       case Property::INT8:
         parse_int8_property_[entry.first] =
-            object.template GetCallback<Int8Property>(this);
+            object.template GetCallback<Int8Property>(this, num_vertices);
         break;
       case Property::INT8_LIST:
         parse_int8_property_list_[entry.first] =
-            object.template GetCallback<Int8PropertyList>(this);
+            object.template GetCallback<Int8PropertyList>(this, num_vertices);
         break;
       case Property::UINT8:
         parse_uint8_property_[entry.first] =
-            object.template GetCallback<UInt8Property>(this);
+            object.template GetCallback<UInt8Property>(this, num_vertices);
         break;
       case Property::UINT8_LIST:
         parse_uint8_property_list_[entry.first] =
-            object.template GetCallback<UInt8PropertyList>(this);
+            object.template GetCallback<UInt8PropertyList>(this, num_vertices);
         break;
       case Property::INT16:
         parse_int16_property_[entry.first] =
-            object.template GetCallback<Int16Property>(this);
+            object.template GetCallback<Int16Property>(this, num_vertices);
         break;
       case Property::INT16_LIST:
         parse_int16_property_list_[entry.first] =
-            object.template GetCallback<Int16PropertyList>(this);
+            object.template GetCallback<Int16PropertyList>(this, num_vertices);
         break;
       case Property::UINT16:
         parse_uint16_property_[entry.first] =
-            object.template GetCallback<UInt16Property>(this);
+            object.template GetCallback<UInt16Property>(this, num_vertices);
         break;
       case Property::UINT16_LIST:
         parse_uint16_property_list_[entry.first] =
-            object.template GetCallback<UInt16PropertyList>(this);
+            object.template GetCallback<UInt16PropertyList>(this, num_vertices);
         break;
       case Property::INT32:
         parse_int32_property_[entry.first] =
-            object.template GetCallback<Int32Property>(this);
+            object.template GetCallback<Int32Property>(this, num_vertices);
         break;
       case Property::INT32_LIST:
         parse_int32_property_list_[entry.first] =
-            object.template GetCallback<Int32PropertyList>(this);
+            object.template GetCallback<Int32PropertyList>(this, num_vertices);
         break;
       case Property::UINT32:
         parse_uint32_property_[entry.first] =
-            object.template GetCallback<UInt32Property>(this);
+            object.template GetCallback<UInt32Property>(this, num_vertices);
         break;
       case Property::UINT32_LIST:
         parse_uint32_property_list_[entry.first] =
-            object.template GetCallback<UInt32PropertyList>(this);
+            object.template GetCallback<UInt32PropertyList>(this, num_vertices);
         break;
       case Property::FLOAT:
         parse_float_property_[entry.first] =
-            object.template GetCallback<FloatProperty>(this);
+            object.template GetCallback<FloatProperty>(this, num_vertices);
         break;
       case Property::FLOAT_LIST:
         parse_float_property_list_[entry.first] =
-            object.template GetCallback<FloatPropertyList>(this);
+            object.template GetCallback<FloatPropertyList>(this, num_vertices);
         break;
       case Property::DOUBLE:
         parse_double_property_[entry.first] =
-            object.template GetCallback<DoubleProperty>(this);
+            object.template GetCallback<DoubleProperty>(this, num_vertices);
         break;
       case Property::DOUBLE_LIST:
         parse_double_property_list_[entry.first] =
-            object.template GetCallback<DoublePropertyList>(this);
+            object.template GetCallback<DoublePropertyList>(this, num_vertices);
         break;
     }
   }
@@ -509,23 +541,25 @@ class TriangleMeshReader : public PlyReader {
       return std::unexpected("Element vertex must have properties x, y, and z");
     }
 
-    FillCallback<HandleX>(**x);
-    FillCallback<HandleY>(**y);
-    FillCallback<HandleZ>(**z);
+    uint64_t num_vertices = properties.at("vertex").first;
+
+    FillCallback<HandleX>(**x, num_vertices);
+    FillCallback<HandleY>(**y, num_vertices);
+    FillCallback<HandleZ>(**z, num_vertices);
 
     if (*nx && *ny && *nz) {
       normals_ = normals_storage_;
-      FillCallback<HandleNX>(**nx);
-      FillCallback<HandleNY>(**ny);
-      FillCallback<HandleNZ>(**nz);
+      FillCallback<HandleNX>(**nx, num_vertices);
+      FillCallback<HandleNY>(**ny, num_vertices);
+      FillCallback<HandleNZ>(**nz, num_vertices);
     } else {
       normals_ = nullptr;
     }
 
     if (*u && *v) {
       uvs_ = uv_storage_;
-      FillCallback<HandleU>(**u);
-      FillCallback<HandleV>(**v);
+      FillCallback<HandleU>(**u, num_vertices);
+      FillCallback<HandleV>(**v, num_vertices);
     } else {
       uvs_ = nullptr;
     }
@@ -534,8 +568,7 @@ class TriangleMeshReader : public PlyReader {
       return std::unexpected("Element face must have property vertex_indices");
     }
 
-    FillCallback<HandleVertexIndices>(**vertex_indices,
-                                      properties.at("vertex").first);
+    FillCallback<HandleVertexIndices>(**vertex_indices, num_vertices);
 
     return std::expected<void, std::string_view>();
   }
