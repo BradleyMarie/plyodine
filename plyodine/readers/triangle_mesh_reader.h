@@ -34,6 +34,11 @@ class TriangleMeshReader : public PlyReader {
     }
 
     if (property_index == parse_functions.size() - 1u) {
+      if (normals_ && normals_[0] == 0.0 && normals_[1] == 0.0 &&
+          normals_[2] == 0.0) {
+        return std::unexpected("Input contained a zero length surface normal");
+      }
+
       Handle(xyz_, normals_, uvs_);
     }
 
