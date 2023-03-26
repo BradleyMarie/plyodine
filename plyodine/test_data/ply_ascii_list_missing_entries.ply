@@ -1,6 +1,1 @@
-ply
-format ascii 1.0
-element vertex 1
-property list uchar uchar l
-end_header
-2 1
+plyformat ascii 1.0element vertex 1property list uchar uchar lend_header1

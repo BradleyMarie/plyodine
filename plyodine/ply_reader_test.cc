@@ -667,7 +667,8 @@ TEST(ASCII, ListMissingEntries) {
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_list_missing_entries.ply");
-  EXPECT_EQ(reader.ReadFrom(stream).error(), "Unexpected EOF");
+  EXPECT_EQ(reader.ReadFrom(stream).error(),
+            "The input contained an element with too few tokens");
 }
 
 TEST(ASCII, MissingElement) {
