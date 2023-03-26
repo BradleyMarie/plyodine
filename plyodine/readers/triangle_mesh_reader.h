@@ -1,5 +1,5 @@
-#ifndef _PLYODINE_NORMALIZED_READER_
-#define _PLYODINE_NORMALIZED_READER_
+#ifndef _PLYODINE_READERS_TRIANGLE_MESH_READER_
+#define _PLYODINE_READERS_TRIANGLE_MESH_READER_
 
 #include <concepts>
 #include <functional>
@@ -11,7 +11,7 @@ namespace plyodine {
 
 template <std::floating_point LocationType, std::floating_point NormalType,
           std::floating_point UVType, std::integral FaceIndexType>
-class NormalizedReader : public PlyReader {
+class TriangleMeshReader : public PlyReader {
  public:
   virtual void Start() = 0;
 
@@ -36,7 +36,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleX {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[0] = static_cast<LocationType>(value);
@@ -47,7 +47,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleY {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[1] = static_cast<LocationType>(value);
@@ -58,7 +58,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleZ {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[2] = static_cast<LocationType>(value);
@@ -69,7 +69,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleNX {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[0] = static_cast<NormalType>(value);
@@ -80,7 +80,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleNY {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[1] = static_cast<NormalType>(value);
@@ -91,7 +91,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleNZ {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[2] = static_cast<NormalType>(value);
@@ -102,7 +102,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleU {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[0] = static_cast<UVType>(value);
@@ -113,7 +113,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleV {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[1] = static_cast<UVType>(value);
@@ -124,7 +124,7 @@ class NormalizedReader : public PlyReader {
 
   struct HandleVertexIndices {
     template <typename T>
-    std::function<void(T)> GetCallback(NormalizedReader *reader) const {
+    std::function<void(T)> GetCallback(TriangleMeshReader *reader) const {
       return [reader](T value) {
         if constexpr (std::is_class<T>::value) {
           if (value.size() >= 3) {
@@ -413,13 +413,13 @@ class NormalizedReader : public PlyReader {
     }
 
     auto u = UVPropertyIndex(properties, "vertex",
-                             {"u", "s", "texture_u", "texture_s"});
+                             {{"u", "s", "texture_u", "texture_s"}});
     if (!u) {
       return std::unexpected(u.error());
     }
 
     auto v = UVPropertyIndex(properties, "vertex",
-                             {"v", "t", "texture_v", "texture_t"});
+                             {{"v", "t", "texture_v", "texture_t"}});
     if (!v) {
       return std::unexpected(v.error());
     }
@@ -624,4 +624,4 @@ class NormalizedReader : public PlyReader {
 
 }  // namespace plyodine
 
-#endif  // _PLYODINE_STREAMING_PLY_READER_
+#endif  // _PLYODINE_READERS_TRIANGLE_MESH_READER_
