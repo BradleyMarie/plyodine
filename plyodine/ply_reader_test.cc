@@ -756,6 +756,176 @@ TEST(ASCII, ListSizeBad) {
   impl("plyodine/test_data/ply_ascii_list_sizes_bad_uint32.ply");
 }
 
+TEST(ASCII, EntryBad) {
+  auto impl = [](const std::string& name, plyodine::Property::Type type) {
+    std::unordered_map<
+        std::string_view,
+        std::unordered_map<std::string_view,
+                           std::pair<size_t, plyodine::Property::Type>>>
+        properties = {{"vertex", {{"l", std::make_pair(0, type)}}}};
+
+    MockPlyReader reader;
+    EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                              testing::IsEmpty()))
+        .Times(1)
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+
+    std::ifstream stream(name);
+    EXPECT_EQ(reader.ReadFrom(stream).error(),
+              "The input contained an unparsable property entry");
+  };
+
+  impl("plyodine/test_data/ply_ascii_entry_bad_double.ply",
+       plyodine::Property::DOUBLE);
+  impl("plyodine/test_data/ply_ascii_entry_bad_float.ply",
+       plyodine::Property::FLOAT);
+  impl("plyodine/test_data/ply_ascii_entry_bad_int8.ply",
+       plyodine::Property::INT8);
+  impl("plyodine/test_data/ply_ascii_entry_bad_int16.ply",
+       plyodine::Property::INT16);
+  impl("plyodine/test_data/ply_ascii_entry_bad_int32.ply",
+       plyodine::Property::INT32);
+  impl("plyodine/test_data/ply_ascii_entry_bad_uint8.ply",
+       plyodine::Property::UINT8);
+  impl("plyodine/test_data/ply_ascii_entry_bad_uint16.ply",
+       plyodine::Property::UINT16);
+  impl("plyodine/test_data/ply_ascii_entry_bad_uint32.ply",
+       plyodine::Property::UINT32);
+}
+
+TEST(ASCII, EntryTooBig) {
+  auto impl = [](const std::string& name, plyodine::Property::Type type) {
+    std::unordered_map<
+        std::string_view,
+        std::unordered_map<std::string_view,
+                           std::pair<size_t, plyodine::Property::Type>>>
+        properties = {{"vertex", {{"l", std::make_pair(0, type)}}}};
+
+    MockPlyReader reader;
+    EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                              testing::IsEmpty()))
+        .Times(1)
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+
+    std::ifstream stream(name);
+    EXPECT_EQ(reader.ReadFrom(stream).error(),
+              "The input contained a property entry that was out of range");
+  };
+
+  impl("plyodine/test_data/ply_ascii_entry_too_large_double.ply",
+       plyodine::Property::DOUBLE);
+  impl("plyodine/test_data/ply_ascii_entry_too_large_float.ply",
+       plyodine::Property::FLOAT);
+  impl("plyodine/test_data/ply_ascii_entry_too_large_int8.ply",
+       plyodine::Property::INT8);
+  impl("plyodine/test_data/ply_ascii_entry_too_large_int16.ply",
+       plyodine::Property::INT16);
+  impl("plyodine/test_data/ply_ascii_entry_too_large_int32.ply",
+       plyodine::Property::INT32);
+  impl("plyodine/test_data/ply_ascii_entry_too_large_uint8.ply",
+       plyodine::Property::UINT8);
+  impl("plyodine/test_data/ply_ascii_entry_too_large_uint16.ply",
+       plyodine::Property::UINT16);
+  impl("plyodine/test_data/ply_ascii_entry_too_large_uint32.ply",
+       plyodine::Property::UINT32);
+}
+
 TEST(ASCII, UnusedTokens) {
   std::unordered_map<
       std::string_view,

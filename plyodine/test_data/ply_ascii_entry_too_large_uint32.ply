@@ -1,0 +1,6 @@
+ply
+format ascii 1.0
+element vertex 1
+property uint l
+end_header
+4294967296
