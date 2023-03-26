@@ -33,7 +33,7 @@ class TriangleMeshReader : public PlyReader {
       result = parse_functions[property_index](value);
     }
 
-    if (property_index == parse_functions.size() - 1u) {
+    if (property_index == handle_vertex_index_) {
       if (normals_ && normals_[0] == 0.0 && normals_[1] == 0.0 &&
           normals_[2] == 0.0) {
         return std::unexpected("Input contained a zero length surface normal");
@@ -53,7 +53,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[0] = static_cast<LocationType>(value);
           if (!std::isfinite(reader->xyz_[0])) {
-            return std::unexpected("Input contained an non-finite value for x");
+            return std::unexpected("Input contained a non-finite value for x");
           }
         }
         return std::expected<void, std::string_view>();
@@ -69,7 +69,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[1] = static_cast<LocationType>(value);
           if (!std::isfinite(reader->xyz_[1])) {
-            return std::unexpected("Input contained an non-finite value for y");
+            return std::unexpected("Input contained a non-finite value for y");
           }
         }
         return std::expected<void, std::string_view>();
@@ -85,7 +85,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->xyz_[2] = static_cast<LocationType>(value);
           if (!std::isfinite(reader->xyz_[2])) {
-            return std::unexpected("Input contained an non-finite value for z");
+            return std::unexpected("Input contained a non-finite value for z");
           }
         }
         return std::expected<void, std::string_view>();
@@ -101,8 +101,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[0] = static_cast<NormalType>(value);
           if (!std::isfinite(reader->normals_storage_[0])) {
-            return std::unexpected(
-                "Input contained an non-finite value for nx");
+            return std::unexpected("Input contained a non-finite value for nx");
           }
         }
         return std::expected<void, std::string_view>();
@@ -118,8 +117,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[1] = static_cast<NormalType>(value);
           if (!std::isfinite(reader->normals_storage_[1])) {
-            return std::unexpected(
-                "Input contained an non-finite value for ny");
+            return std::unexpected("Input contained a non-finite value for ny");
           }
         }
         return std::expected<void, std::string_view>();
@@ -135,8 +133,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->normals_storage_[2] = static_cast<NormalType>(value);
           if (!std::isfinite(reader->normals_storage_[2])) {
-            return std::unexpected(
-                "Input contained an non-finite value for nz");
+            return std::unexpected("Input contained a non-finite value for nz");
           }
         }
         return std::expected<void, std::string_view>();
@@ -152,7 +149,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[0] = static_cast<UVType>(value);
           if (!std::isfinite(reader->uv_storage_[0])) {
-            return std::unexpected("Input contained an non-finite value for u");
+            return std::unexpected("Input contained a non-finite value for u");
           }
         }
         return std::expected<void, std::string_view>();
@@ -168,7 +165,7 @@ class TriangleMeshReader : public PlyReader {
         if constexpr (std::is_floating_point<T>::value) {
           reader->uv_storage_[1] = static_cast<UVType>(value);
           if (!std::isfinite(reader->uv_storage_[1])) {
-            return std::unexpected("Input contained an non-finite value for v");
+            return std::unexpected("Input contained a non-finite value for v");
           }
         }
         return std::expected<void, std::string_view>();
@@ -221,15 +218,14 @@ class TriangleMeshReader : public PlyReader {
 
             FaceIndexType faces[3];
             faces[0] = static_cast<FaceIndexType>(value[0]);
-            for (size_t i = 0; i < value.size() - 2; i++) {
-              auto vn_valid =
-                  Validate<FaceIndexType>(value[i + 1], num_vertices);
+            for (size_t i = 2u; i < value.size(); i++) {
+              auto vn_valid = Validate<FaceIndexType>(value[i], num_vertices);
               if (!vn_valid) {
                 return vn_valid;
               }
 
-              faces[1] = static_cast<FaceIndexType>(value[i]);
-              faces[2] = static_cast<FaceIndexType>(value[i + 1]);
+              faces[1] = static_cast<FaceIndexType>(value[i - 1u]);
+              faces[2] = static_cast<FaceIndexType>(value[i]);
               reader->Handle(faces);
             }
           }
@@ -239,37 +235,50 @@ class TriangleMeshReader : public PlyReader {
     }
   };
 
-  void Resize(size_t size) {
-    parse_int8_property_.resize(size, nullptr);
-    parse_int8_property_list_.resize(size, nullptr);
-    parse_uint8_property_.resize(size, nullptr);
-    parse_uint8_property_list_.resize(size, nullptr);
-    parse_int16_property_.resize(size, nullptr);
-    parse_int16_property_list_.resize(size, nullptr);
-    parse_uint16_property_.resize(size, nullptr);
-    parse_uint16_property_list_.resize(size, nullptr);
-    parse_int32_property_.resize(size, nullptr);
-    parse_int32_property_list_.resize(size, nullptr);
-    parse_uint32_property_.resize(size, nullptr);
-    parse_uint32_property_list_.resize(size, nullptr);
-    parse_float_property_.resize(size, nullptr);
-    parse_float_property_list_.resize(size, nullptr);
-    parse_double_property_.resize(size, nullptr);
-    parse_double_property_list_.resize(size, nullptr);
+  void Clear() {
+    parse_int8_property_.clear();
+    parse_int8_property_list_.clear();
+    parse_uint8_property_.clear();
+    parse_uint8_property_list_.clear();
+    parse_int16_property_.clear();
+    parse_int16_property_list_.clear();
+    parse_uint16_property_.clear();
+    parse_uint16_property_list_.clear();
+    parse_int32_property_.clear();
+    parse_int32_property_list_.clear();
+    parse_uint32_property_.clear();
+    parse_uint32_property_list_.clear();
+    parse_float_property_.clear();
+    parse_float_property_list_.clear();
+    parse_double_property_.clear();
+    parse_double_property_list_.clear();
   }
 
-  void Clear() { Resize(0u); }
-
-  void Grow(size_t new_size) {
-    if (new_size < parse_int8_property_.size()) {
-      Resize(new_size);
+  void EnsureContainsIndex(size_t new_size) {
+    while (parse_int8_property_.size() <= new_size) {
+      parse_int8_property_.emplace_back(nullptr);
+      parse_int8_property_list_.emplace_back(nullptr);
+      parse_uint8_property_.emplace_back(nullptr);
+      parse_uint8_property_list_.emplace_back(nullptr);
+      parse_int16_property_.emplace_back(nullptr);
+      parse_int16_property_list_.emplace_back(nullptr);
+      parse_uint16_property_.emplace_back(nullptr);
+      parse_uint16_property_list_.emplace_back(nullptr);
+      parse_int32_property_.emplace_back(nullptr);
+      parse_int32_property_list_.emplace_back(nullptr);
+      parse_uint32_property_.emplace_back(nullptr);
+      parse_uint32_property_list_.emplace_back(nullptr);
+      parse_float_property_.emplace_back(nullptr);
+      parse_float_property_list_.emplace_back(nullptr);
+      parse_double_property_.emplace_back(nullptr);
+      parse_double_property_list_.emplace_back(nullptr);
     }
   }
 
   template <typename T>
   void FillCallback(const std::pair<size_t, Property::Type> &entry,
-                    uint64_t num_vertices) {
-    Grow(entry.first);
+                    uint64_t num_vertices, bool is_vertex) {
+    EnsureContainsIndex(entry.first);
 
     T object;
     switch (entry.second) {
@@ -338,6 +347,10 @@ class TriangleMeshReader : public PlyReader {
             object.template GetCallback<DoublePropertyList>(this, num_vertices);
         break;
     }
+
+    if (is_vertex) {
+      handle_vertex_index_ = entry.first;
+    }
   }
 
   static const std::pair<size_t, Property::Type> *LookupProperty(
@@ -375,7 +388,7 @@ class TriangleMeshReader : public PlyReader {
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
-    if (property && (property->second != Property::FLOAT ||
+    if (property && (property->second != Property::FLOAT &&
                      property->second != Property::DOUBLE)) {
       return std::unexpected(
           "The type of properties x, y, and z, on vertex elements must be "
@@ -398,7 +411,7 @@ class TriangleMeshReader : public PlyReader {
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
-    if (property && (property->second != Property::FLOAT ||
+    if (property && (property->second != Property::FLOAT &&
                      property->second != Property::DOUBLE)) {
       return std::unexpected(
           "The type of properties nx, ny, and nz, on vertex elements must be "
@@ -421,7 +434,7 @@ class TriangleMeshReader : public PlyReader {
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
-    if (property && (property->second != Property::FLOAT ||
+    if (property && (property->second != Property::FLOAT &&
                      property->second != Property::DOUBLE)) {
       return std::unexpected(
           "The type of properties texture_s, texture_t, texture_u, texture_v, "
@@ -466,11 +479,11 @@ class TriangleMeshReader : public PlyReader {
       const std::string_view &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
-    if (property && (property->second != Property::INT8_LIST ||
-                     property->second != Property::UINT8_LIST ||
-                     property->second != Property::INT16_LIST ||
-                     property->second != Property::UINT16_LIST ||
-                     property->second != Property::INT32_LIST ||
+    if (property && (property->second != Property::INT8_LIST &&
+                     property->second != Property::UINT8_LIST &&
+                     property->second != Property::INT16_LIST &&
+                     property->second != Property::UINT16_LIST &&
+                     property->second != Property::INT32_LIST &&
                      property->second != Property::UINT32_LIST)) {
       return std::unexpected(
           "The type of property vertex_indices on face elements must be an "
@@ -548,23 +561,23 @@ class TriangleMeshReader : public PlyReader {
 
     uint64_t num_vertices = properties.at("vertex").first;
 
-    FillCallback<HandleX>(**x, num_vertices);
-    FillCallback<HandleY>(**y, num_vertices);
-    FillCallback<HandleZ>(**z, num_vertices);
+    FillCallback<HandleX>(**x, num_vertices, true);
+    FillCallback<HandleY>(**y, num_vertices, true);
+    FillCallback<HandleZ>(**z, num_vertices, true);
 
     if (*nx && *ny && *nz) {
       normals_ = normals_storage_;
-      FillCallback<HandleNX>(**nx, num_vertices);
-      FillCallback<HandleNY>(**ny, num_vertices);
-      FillCallback<HandleNZ>(**nz, num_vertices);
+      FillCallback<HandleNX>(**nx, num_vertices, true);
+      FillCallback<HandleNY>(**ny, num_vertices, true);
+      FillCallback<HandleNZ>(**nz, num_vertices, true);
     } else {
       normals_ = nullptr;
     }
 
     if (*u && *v) {
       uvs_ = uv_storage_;
-      FillCallback<HandleU>(**u, num_vertices);
-      FillCallback<HandleV>(**v, num_vertices);
+      FillCallback<HandleU>(**u, num_vertices, true);
+      FillCallback<HandleV>(**v, num_vertices, true);
     } else {
       uvs_ = nullptr;
     }
@@ -573,7 +586,7 @@ class TriangleMeshReader : public PlyReader {
       return std::unexpected("Element face must have property vertex_indices");
     }
 
-    FillCallback<HandleVertexIndices>(**vertex_indices, num_vertices);
+    FillCallback<HandleVertexIndices>(**vertex_indices, num_vertices, false);
 
     return std::expected<void, std::string_view>();
   }
@@ -736,6 +749,7 @@ class TriangleMeshReader : public PlyReader {
   std::vector<
       std::function<std::expected<void, std::string_view>(DoublePropertyList)>>
       parse_double_property_list_;
+  size_t handle_vertex_index_;
 
   NormalType *normals_ = nullptr;
   UVType *uvs_ = nullptr;
