@@ -295,13 +295,17 @@ std::expected<void, std::string_view> ReadNextAsciiToken(std::istream& input,
                                                          std::string& token) {
   token.clear();
 
-  char c;
+  char c = 0;
   while (input.get(c)) {
     if (c == ' ') {
       break;
     }
 
     token.push_back(c);
+  }
+
+  if (!c) {
+    return std::unexpected(UnexpectedEOF());
   }
 
   if (token.empty()) {
