@@ -1362,6 +1362,92 @@ TEST(ASCII, WithData) {
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
+TEST(ASCII, HandleFails) {
+  auto impl = [](size_t index) {
+    auto make_result =
+        [](size_t case_index,
+           size_t index) -> std::expected<void, std::string_view> {
+      if (case_index == index) {
+        return std::unexpected("Failed");
+      }
+
+      return std::expected<void, std::string_view>();
+    };
+
+    MockPlyReader reader;
+    EXPECT_CALL(reader, Start(testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(0u, index)));
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(1u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(2u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(3u, index)));
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(4u, index)));
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(5u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(6u, index)));
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(7u, index)));
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(8u, index)));
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(9u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(10u, index)));
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(11u, index)));
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(12u, index)));
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(13u, index)));
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(14u, index)));
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(15u, index)));
+
+    std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
+    EXPECT_EQ(reader.ReadFrom(stream).error(), "Failed");
+  };
+
+  impl(0u);
+  impl(1u);
+  impl(2u);
+  impl(3u);
+  impl(4u);
+  impl(5u);
+  impl(6u);
+  impl(7u);
+  impl(8u);
+  impl(9u);
+  impl(10u);
+  impl(11u);
+  impl(12u);
+  impl(13u);
+  impl(14u);
+  impl(15u);
+}
+
 TEST(ASCII, WithUIntListSizes) {
   std::unordered_map<
       std::string_view,
@@ -1784,6 +1870,92 @@ TEST(BigEndian, WithUIntListSizesError) {
   RunReadErrorTest("plyodine/test_data/ply_big_list_sizes.ply", 1000u);
 }
 
+TEST(BigEndian, HandleFails) {
+  auto impl = [](size_t index) {
+    auto make_result =
+        [](size_t case_index,
+           size_t index) -> std::expected<void, std::string_view> {
+      if (case_index == index) {
+        return std::unexpected("Failed");
+      }
+
+      return std::expected<void, std::string_view>();
+    };
+
+    MockPlyReader reader;
+    EXPECT_CALL(reader, Start(testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(0u, index)));
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(1u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(2u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(3u, index)));
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(4u, index)));
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(5u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(6u, index)));
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(7u, index)));
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(8u, index)));
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(9u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(10u, index)));
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(11u, index)));
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(12u, index)));
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(13u, index)));
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(14u, index)));
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(15u, index)));
+
+    std::ifstream stream("plyodine/test_data/ply_big_data.ply");
+    EXPECT_EQ(reader.ReadFrom(stream).error(), "Failed");
+  };
+
+  impl(0u);
+  impl(1u);
+  impl(2u);
+  impl(3u);
+  impl(4u);
+  impl(5u);
+  impl(6u);
+  impl(7u);
+  impl(8u);
+  impl(9u);
+  impl(10u);
+  impl(11u);
+  impl(12u);
+  impl(13u);
+  impl(14u);
+  impl(15u);
+}
+
 TEST(BigEndian, WithIntListSizes) {
   std::unordered_map<
       std::string_view,
@@ -2120,6 +2292,92 @@ TEST(LittleEndian, WithData) {
 
 TEST(LittleEndian, WithDataError) {
   RunReadErrorTest("plyodine/test_data/ply_little_data.ply");
+}
+
+TEST(LittleEndian, HandleFails) {
+  auto impl = [](size_t index) {
+    auto make_result =
+        [](size_t case_index,
+           size_t index) -> std::expected<void, std::string_view> {
+      if (case_index == index) {
+        return std::unexpected("Failed");
+      }
+
+      return std::expected<void, std::string_view>();
+    };
+
+    MockPlyReader reader;
+    EXPECT_CALL(reader, Start(testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(0u, index)));
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(1u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(2u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(3u, index)));
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(4u, index)));
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(5u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(6u, index)));
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(7u, index)));
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(8u, index)));
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(9u, index)));
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(10u, index)));
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(11u, index)));
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(12u, index)));
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(13u, index)));
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::Return(make_result(14u, index)));
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .WillRepeatedly(testing::Return(make_result(15u, index)));
+
+    std::ifstream stream("plyodine/test_data/ply_little_data.ply");
+    EXPECT_EQ(reader.ReadFrom(stream).error(), "Failed");
+  };
+
+  impl(0u);
+  impl(1u);
+  impl(2u);
+  impl(3u);
+  impl(4u);
+  impl(5u);
+  impl(6u);
+  impl(7u);
+  impl(8u);
+  impl(9u);
+  impl(10u);
+  impl(11u);
+  impl(12u);
+  impl(13u);
+  impl(14u);
+  impl(15u);
 }
 
 TEST(LittleEndian, WithUIntListSizes) {
