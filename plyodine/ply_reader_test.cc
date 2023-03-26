@@ -602,6 +602,83 @@ TEST(ASCII, EmptyToken) {
             "The input contained an empty token");
 }
 
+TEST(ASCII, ListSizeTooLarge) {
+  auto impl = [](const std::string& name) {
+    std::unordered_map<
+        std::string_view,
+        std::unordered_map<std::string_view,
+                           std::pair<size_t, plyodine::Property::Type>>>
+        properties = {
+            {"vertex",
+             {{"l", std::make_pair(0, plyodine::Property::UINT8_LIST)}}}};
+
+    MockPlyReader reader;
+    EXPECT_CALL(reader, Start(PropertiesAre(properties), testing::IsEmpty(),
+                              testing::IsEmpty()))
+        .Times(1)
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
+        .Times(0);
+
+    std::ifstream stream(name);
+    EXPECT_EQ(reader.ReadFrom(stream).error(),
+              "The input contained a property list size that was out of range");
+  };
+
+  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_int8.ply");
+  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_int16.ply");
+  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_int32.ply");
+  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_uint8.ply");
+  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_uint16.ply");
+  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_uint32.ply");
+}
+
 TEST(ASCII, UnusedTokens) {
   std::unordered_map<
       std::string_view,
