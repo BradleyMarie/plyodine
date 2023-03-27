@@ -1,7 +1,7 @@
 # PLYodine
 
-![Release is Rolling](https://img.shields.io/github/last-commit/BradleyMarie/plyodine)
-![License is BSDF 3-Clause](https://img.shields.io/github/license/BradleyMarie/plyodine)
+[![Test Status](https://github.com/BradleyMarie/plyodine/actions/workflows/c-cpp.yml/badge.svg?branch=main)](https://github.com/BradleyMarie/plyodine/actions/workflows/c-cpp.yml)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)]
 
 A zero-dependency library with high test coverage for C++23 for reading from and
 writing to PLY mesh files. An overview and definition of the file format is
@@ -17,7 +17,7 @@ binary little-endian, and ASCII modes. PLYodine uses a stream-based reader
 meaning that it can support PLY files greater than 4GB in size. Writing
 currently requires all properties to be in memory.
 
-While PLYdoine does not aim to deliver the highest performance possible, it does
+While PLYodine does not aim to deliver the highest performance possible, it does
 attempt to be "high performance" by using a zero-copy based approach to reading
 and writing and by doing all of its work in a single pass. The PLY readers can
 also be reused across multiple models to avoid needing to reallocate their
