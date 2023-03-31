@@ -7,6 +7,8 @@
 
 class MockPlyReader final : public plyodine::PlyReader {
  public:
+  bool initialize_callbacks = true;
+
   MOCK_METHOD(
       (std::expected<void, std::string_view>), StartImpl,
       ((const std::unordered_map<
@@ -84,6 +86,10 @@ class MockPlyReader final : public plyodine::PlyReader {
         std::string_view,
         std::unordered_map<std::string_view, plyodine::PlyReader::Callback>>
         result;
+    if (!initialize_callbacks) {
+      return result;
+    }
+
     for (const auto& element : properties) {
       for (const auto& property : element.second.second) {
         switch (property.second) {
@@ -1082,6 +1088,72 @@ TEST(ASCII, WithData) {
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
+TEST(ASCII, WithDataSkipAll) {
+  std::unordered_map<
+      std::string_view,
+      std::pair<uint64_t,
+                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      properties = {{"vertex",
+                     {3u,
+                      {{"a", plyodine::Property::INT8},
+                       {"b", plyodine::Property::UINT8},
+                       {"c", plyodine::Property::INT16},
+                       {"d", plyodine::Property::UINT16},
+                       {"e", plyodine::Property::INT32},
+                       {"f", plyodine::Property::UINT32},
+                       {"g", plyodine::Property::FLOAT},
+                       {"h", plyodine::Property::DOUBLE}}}},
+                    {"vertex_lists",
+                     {1u,
+                      {{"a", plyodine::Property::INT8_LIST},
+                       {"b", plyodine::Property::UINT8_LIST},
+                       {"c", plyodine::Property::INT16_LIST},
+                       {"d", plyodine::Property::UINT16_LIST},
+                       {"e", plyodine::Property::INT32_LIST},
+                       {"f", plyodine::Property::UINT32_LIST},
+                       {"g", plyodine::Property::FLOAT_LIST},
+                       {"h", plyodine::Property::DOUBLE_LIST}}}}};
+  std::vector<std::string> comments = {"comment 1", "comment 2"};
+  std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
+
+  MockPlyReader reader;
+  reader.initialize_callbacks = false;
+
+  EXPECT_CALL(reader, StartImpl(PropertiesAre(properties), ValuesAre(comments),
+                                ValuesAre(object_info)))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+      .Times(0);
+
+  std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
 TEST(ASCII, HandleFails) {
   auto impl = [](size_t index) {
     auto make_result =
@@ -1483,6 +1555,72 @@ TEST(BigEndian, WithData) {
   EXPECT_CALL(reader,
               HandleDoubleList("vertex_lists", "h", ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_big_data.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(BigEndian, WithDataSkipAll) {
+  std::unordered_map<
+      std::string_view,
+      std::pair<uint64_t,
+                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      properties = {{"vertex",
+                     {3u,
+                      {{"a", plyodine::Property::INT8},
+                       {"b", plyodine::Property::UINT8},
+                       {"c", plyodine::Property::INT16},
+                       {"d", plyodine::Property::UINT16},
+                       {"e", plyodine::Property::INT32},
+                       {"f", plyodine::Property::UINT32},
+                       {"g", plyodine::Property::FLOAT},
+                       {"h", plyodine::Property::DOUBLE}}}},
+                    {"vertex_lists",
+                     {1u,
+                      {{"a", plyodine::Property::INT8_LIST},
+                       {"b", plyodine::Property::UINT8_LIST},
+                       {"c", plyodine::Property::INT16_LIST},
+                       {"d", plyodine::Property::UINT16_LIST},
+                       {"e", plyodine::Property::INT32_LIST},
+                       {"f", plyodine::Property::UINT32_LIST},
+                       {"g", plyodine::Property::FLOAT_LIST},
+                       {"h", plyodine::Property::DOUBLE_LIST}}}}};
+  std::vector<std::string> comments = {"comment 1", "comment 2"};
+  std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
+
+  MockPlyReader reader;
+  reader.initialize_callbacks = false;
+
+  EXPECT_CALL(reader, StartImpl(PropertiesAre(properties), ValuesAre(comments),
+                                ValuesAre(object_info)))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+      .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_big_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
@@ -1901,6 +2039,72 @@ TEST(LittleEndian, WithData) {
   EXPECT_CALL(reader,
               HandleDoubleList("vertex_lists", "h", ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+
+  std::ifstream stream("plyodine/test_data/ply_little_data.ply");
+  EXPECT_TRUE(reader.ReadFrom(stream));
+}
+
+TEST(LittleEndian, WithDataSkipAll) {
+  std::unordered_map<
+      std::string_view,
+      std::pair<uint64_t,
+                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      properties = {{"vertex",
+                     {3u,
+                      {{"a", plyodine::Property::INT8},
+                       {"b", plyodine::Property::UINT8},
+                       {"c", plyodine::Property::INT16},
+                       {"d", plyodine::Property::UINT16},
+                       {"e", plyodine::Property::INT32},
+                       {"f", plyodine::Property::UINT32},
+                       {"g", plyodine::Property::FLOAT},
+                       {"h", plyodine::Property::DOUBLE}}}},
+                    {"vertex_lists",
+                     {1u,
+                      {{"a", plyodine::Property::INT8_LIST},
+                       {"b", plyodine::Property::UINT8_LIST},
+                       {"c", plyodine::Property::INT16_LIST},
+                       {"d", plyodine::Property::UINT16_LIST},
+                       {"e", plyodine::Property::INT32_LIST},
+                       {"f", plyodine::Property::UINT32_LIST},
+                       {"g", plyodine::Property::FLOAT_LIST},
+                       {"h", plyodine::Property::DOUBLE_LIST}}}}};
+  std::vector<std::string> comments = {"comment 1", "comment 2"};
+  std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
+
+  MockPlyReader reader;
+  reader.initialize_callbacks = false;
+
+  EXPECT_CALL(reader, StartImpl(PropertiesAre(properties), ValuesAre(comments),
+                                ValuesAre(object_info)))
+      .Times(1)
+      .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
+  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+      .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_little_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
