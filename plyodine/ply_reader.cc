@@ -643,14 +643,12 @@ std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
 }
 
 std::tuple<std::string_view, PlyReader::Callback> MakeCallback(
-    const std::unordered_map<
+    const std::map<
         std::string_view,
-        std::pair<uint64_t,
-                  std::unordered_map<std::string_view, Property::Type>>>&
+        std::pair<uint64_t, std::map<std::string_view, Property::Type>>>&
         all_properties,
-    const std::unordered_map<
-        std::string_view,
-        std::unordered_map<std::string_view, PlyReader::Callback>>& callbacks,
+    const std::map<std::string_view,
+                   std::map<std::string_view, PlyReader::Callback>>& callbacks,
     std::string_view element_name, std::string_view property_name) {
   Property::Type type =
       all_properties.at(element_name).second.at(property_name);
@@ -728,12 +726,11 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
     return std::unexpected(header.error());
   }
 
-  std::unordered_map<
-      std::string_view,
-      std::pair<uint64_t, std::unordered_map<std::string_view, Property::Type>>>
+  std::map<std::string_view,
+           std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
       all_properties;
   for (const auto& element : header->elements) {
-    std::unordered_map<std::string_view, Property::Type> properties;
+    std::map<std::string_view, Property::Type> properties;
     for (const auto& property : element.properties) {
       if (property.list_type) {
         switch (property.data_type) {

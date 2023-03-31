@@ -150,10 +150,9 @@ class TriangleMeshReader : public PlyReader {
   }
 
   static const Property::Type *LookupProperty(
-      const std::unordered_map<
+      const std::map<
           std::string_view,
-          std::pair<uint64_t,
-                    std::unordered_map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -173,10 +172,9 @@ class TriangleMeshReader : public PlyReader {
   template <size_t index>
   std::expected<std::optional<PlyReader::Callback>, std::string_view>
   LocationPropertyIndex(
-      const std::unordered_map<
+      const std::map<
           std::string_view,
-          std::pair<uint64_t,
-                    std::unordered_map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -203,10 +201,9 @@ class TriangleMeshReader : public PlyReader {
   template <size_t index>
   std::expected<std::optional<PlyReader::Callback>, std::string_view>
   NormalPropertyIndex(
-      const std::unordered_map<
+      const std::map<
           std::string_view,
-          std::pair<uint64_t,
-                    std::unordered_map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -234,10 +231,9 @@ class TriangleMeshReader : public PlyReader {
   std::expected<std::optional<std::pair<std::string_view, PlyReader::Callback>>,
                 std::string_view>
   UVPropertyIndex(
-      const std::unordered_map<
+      const std::map<
           std::string_view,
-          std::pair<uint64_t,
-                    std::unordered_map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -270,10 +266,9 @@ class TriangleMeshReader : public PlyReader {
   std::expected<std::optional<std::pair<std::string_view, PlyReader::Callback>>,
                 std::string_view>
   UVPropertyIndex(
-      const std::unordered_map<
+      const std::map<
           std::string_view,
-          std::pair<uint64_t,
-                    std::unordered_map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
           &properties,
       const std::string_view &element_name,
       std::span<const std::string_view> property_names) {
@@ -290,10 +285,9 @@ class TriangleMeshReader : public PlyReader {
 
   std::expected<std::optional<PlyReader::Callback>, std::string_view>
   FacePropertyIndex(
-      const std::unordered_map<
+      const std::map<
           std::string_view,
-          std::pair<uint64_t,
-                    std::unordered_map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -331,13 +325,11 @@ class TriangleMeshReader : public PlyReader {
 
  public:
   std::expected<
-      std::unordered_map<std::string_view,
-                         std::unordered_map<std::string_view, Callback>>,
+      std::map<std::string_view, std::map<std::string_view, Callback>>,
       std::string_view>
-  Start(const std::unordered_map<
+  Start(const std::map<
             std::string_view,
-            std::pair<uint64_t,
-                      std::unordered_map<std::string_view, Property::Type>>>
+            std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
             &properties,
         std::span<const std::string> comments,
         std::span<const std::string> obj_infos) final {
@@ -397,9 +389,7 @@ class TriangleMeshReader : public PlyReader {
 
     num_vertices_ = properties.at("vertex").first;
 
-    std::unordered_map<std::string_view,
-                       std::unordered_map<std::string_view, Callback>>
-        result;
+    std::map<std::string_view, std::map<std::string_view, Callback>> result;
     result["vertex"]["x"] = **x;
     result["vertex"]["y"] = **y;
     result["vertex"]["z"] = **z;
@@ -431,8 +421,7 @@ class TriangleMeshReader : public PlyReader {
     result["face"]["vertex_indices"] = **vertex_indices;
 
     return std::expected<
-        std::unordered_map<std::string_view,
-                           std::unordered_map<std::string_view, Callback>>,
+        std::map<std::string_view, std::map<std::string_view, Callback>>,
         std::string_view>(result);
   }
 

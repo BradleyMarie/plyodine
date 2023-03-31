@@ -3,10 +3,10 @@
 
 #include <expected>
 #include <istream>
+#include <map>
 #include <span>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <variant>
 
 #include "plyodine/ply_property.h"
@@ -80,13 +80,11 @@ class PlyReader {
       Callback;
 
   virtual std::expected<
-      std::unordered_map<std::string_view,
-                         std::unordered_map<std::string_view, Callback>>,
+      std::map<std::string_view, std::map<std::string_view, Callback>>,
       std::string_view>
-  Start(const std::unordered_map<
+  Start(const std::map<
             std::string_view,
-            std::pair<uint64_t,
-                      std::unordered_map<std::string_view, Property::Type>>>&
+            std::pair<uint64_t, std::map<std::string_view, Property::Type>>>&
             properties,
         std::span<const std::string> comments,
         std::span<const std::string> object_info) = 0;

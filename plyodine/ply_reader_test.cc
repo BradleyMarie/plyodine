@@ -11,10 +11,10 @@ class MockPlyReader final : public plyodine::PlyReader {
 
   MOCK_METHOD(
       (std::expected<void, std::string_view>), StartImpl,
-      ((const std::unordered_map<
+      ((const std::map<
            std::string_view,
-           std::pair<uint64_t, std::unordered_map<std::string_view,
-                                                  plyodine::Property::Type>>>&),
+           std::pair<uint64_t,
+                     std::map<std::string_view, plyodine::Property::Type>>>&),
        std::span<const std::string>, std::span<const std::string>),
       ());
 
@@ -66,14 +66,12 @@ class MockPlyReader final : public plyodine::PlyReader {
                plyodine::DoublePropertyList));
 
   std::expected<
-      std::unordered_map<
-          std::string_view,
-          std::unordered_map<std::string_view, plyodine::PlyReader::Callback>>,
+      std::map<std::string_view,
+               std::map<std::string_view, plyodine::PlyReader::Callback>>,
       std::string_view>
-  Start(const std::unordered_map<
-            std::string_view,
-            std::pair<uint64_t, std::unordered_map<std::string_view,
-                                                   plyodine::Property::Type>>>&
+  Start(const std::map<std::string_view,
+                       std::pair<uint64_t, std::map<std::string_view,
+                                                    plyodine::Property::Type>>>&
             properties,
         std::span<const std::string> comments,
         std::span<const std::string> object_info) override {
@@ -82,9 +80,8 @@ class MockPlyReader final : public plyodine::PlyReader {
       return std::unexpected(error.error());
     }
 
-    std::unordered_map<
-        std::string_view,
-        std::unordered_map<std::string_view, plyodine::PlyReader::Callback>>
+    std::map<std::string_view,
+             std::map<std::string_view, plyodine::PlyReader::Callback>>
         result;
     if (!initialize_callbacks) {
       return result;
@@ -397,10 +394,9 @@ TEST(ASCII, Empty) {
 }
 
 TEST(ASCII, MismatchedLineEndings) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {2u, {{"a", plyodine::Property::INT8}}}}};
 
   MockPlyReader reader;
@@ -443,10 +439,9 @@ TEST(ASCII, MismatchedLineEndings) {
 }
 
 TEST(ASCII, InvalidCharacter) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {2u, {{"a", plyodine::Property::INT8}}}}};
 
   MockPlyReader reader;
@@ -488,10 +483,9 @@ TEST(ASCII, InvalidCharacter) {
 }
 
 TEST(ASCII, ListMissingEntries) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -533,10 +527,9 @@ TEST(ASCII, ListMissingEntries) {
 }
 
 TEST(ASCII, MissingElement) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {2u, {{"l", plyodine::Property::INT8}}}}};
 
   MockPlyReader reader;
@@ -578,10 +571,9 @@ TEST(ASCII, MissingElement) {
 }
 
 TEST(ASCII, EmptyToken) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {2u,
                       {{"a", plyodine::Property::INT8},
@@ -628,10 +620,9 @@ TEST(ASCII, EmptyToken) {
 
 TEST(ASCII, ListSizeTooLarge) {
   auto impl = [](const std::string& name) {
-    std::unordered_map<
-        std::string_view,
-        std::pair<uint64_t, std::unordered_map<std::string_view,
-                                               plyodine::Property::Type>>>
+    std::map<std::string_view,
+             std::pair<uint64_t,
+                       std::map<std::string_view, plyodine::Property::Type>>>
         properties = {
             {"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
@@ -688,10 +679,9 @@ TEST(ASCII, ListSizeTooLarge) {
 
 TEST(ASCII, ListSizeBad) {
   auto impl = [](const std::string& name) {
-    std::unordered_map<
-        std::string_view,
-        std::pair<uint64_t, std::unordered_map<std::string_view,
-                                               plyodine::Property::Type>>>
+    std::map<std::string_view,
+             std::pair<uint64_t,
+                       std::map<std::string_view, plyodine::Property::Type>>>
         properties = {
             {"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
@@ -748,10 +738,9 @@ TEST(ASCII, ListSizeBad) {
 
 TEST(ASCII, EntryBad) {
   auto impl = [](const std::string& name, plyodine::Property::Type type) {
-    std::unordered_map<
-        std::string_view,
-        std::pair<uint64_t, std::unordered_map<std::string_view,
-                                               plyodine::Property::Type>>>
+    std::map<std::string_view,
+             std::pair<uint64_t,
+                       std::map<std::string_view, plyodine::Property::Type>>>
         properties = {{"vertex", {1u, {{"l", type}}}}};
 
     MockPlyReader reader;
@@ -817,10 +806,9 @@ TEST(ASCII, EntryBad) {
 
 TEST(ASCII, EntryTooBig) {
   auto impl = [](const std::string& name, plyodine::Property::Type type) {
-    std::unordered_map<
-        std::string_view,
-        std::pair<uint64_t, std::unordered_map<std::string_view,
-                                               plyodine::Property::Type>>>
+    std::map<std::string_view,
+             std::pair<uint64_t,
+                       std::map<std::string_view, plyodine::Property::Type>>>
         properties = {{"vertex", {1u, {{"l", type}}}}};
 
     MockPlyReader reader;
@@ -885,10 +873,9 @@ TEST(ASCII, EntryTooBig) {
 }
 
 TEST(ASCII, UnusedTokens) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {2u, {{"a", plyodine::Property::INT8}}}}};
 
   MockPlyReader reader;
@@ -931,10 +918,9 @@ TEST(ASCII, UnusedTokens) {
 }
 
 TEST(ASCII, WithData) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", plyodine::Property::INT8},
@@ -1089,10 +1075,9 @@ TEST(ASCII, WithData) {
 }
 
 TEST(ASCII, WithDataSkipAll) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", plyodine::Property::INT8},
@@ -1225,10 +1210,9 @@ TEST(ASCII, HandleFails) {
 }
 
 TEST(ASCII, WithUIntListSizes) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", plyodine::Property::UINT8_LIST},
@@ -1265,10 +1249,9 @@ TEST(ASCII, WithUIntListSizes) {
 }
 
 TEST(ASCII, WithIntListSizes) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", plyodine::Property::UINT8_LIST},
@@ -1305,10 +1288,9 @@ TEST(ASCII, WithIntListSizes) {
 }
 
 TEST(ASCII, WithNegativeInt8ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1325,10 +1307,9 @@ TEST(ASCII, WithNegativeInt8ListSize) {
 }
 
 TEST(ASCII, WithNegativeInt16ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1345,10 +1326,9 @@ TEST(ASCII, WithNegativeInt16ListSize) {
 }
 
 TEST(ASCII, WithNegativeInt32ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1403,10 +1383,9 @@ TEST(BigEndian, Empty) {
 }
 
 TEST(BigEndian, WithData) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", plyodine::Property::INT8},
@@ -1561,10 +1540,9 @@ TEST(BigEndian, WithData) {
 }
 
 TEST(BigEndian, WithDataSkipAll) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", plyodine::Property::INT8},
@@ -1631,10 +1609,9 @@ TEST(BigEndian, WithDataError) {
 }
 
 TEST(BigEndian, WithUIntListSizes) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", plyodine::Property::UINT8_LIST},
@@ -1745,10 +1722,9 @@ TEST(BigEndian, HandleFails) {
 }
 
 TEST(BigEndian, WithIntListSizes) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", plyodine::Property::UINT8_LIST},
@@ -1789,10 +1765,9 @@ TEST(BigEndian, WithIntListSizesError) {
 }
 
 TEST(BigEndian, WithNegativeInt8ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1809,10 +1784,9 @@ TEST(BigEndian, WithNegativeInt8ListSize) {
 }
 
 TEST(BigEndian, WithNegativeInt16ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1829,10 +1803,9 @@ TEST(BigEndian, WithNegativeInt16ListSize) {
 }
 
 TEST(BigEndian, WithNegativeInt32ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1887,10 +1860,9 @@ TEST(LittleEndian, Empty) {
 }
 
 TEST(LittleEndian, WithData) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", plyodine::Property::INT8},
@@ -2045,10 +2017,9 @@ TEST(LittleEndian, WithData) {
 }
 
 TEST(LittleEndian, WithDataSkipAll) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", plyodine::Property::INT8},
@@ -2185,10 +2156,9 @@ TEST(LittleEndian, HandleFails) {
 }
 
 TEST(LittleEndian, WithUIntListSizes) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", plyodine::Property::UINT8_LIST},
@@ -2229,10 +2199,9 @@ TEST(LittleEndian, WithUIntListSizesError) {
 }
 
 TEST(LittleEndian, WithIntListSizes) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", plyodine::Property::UINT8_LIST},
@@ -2274,10 +2243,9 @@ TEST(LittleEndian, WithIntListSizesError) {
 }
 
 TEST(LittleEndian, WithNegativeInt8ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -2294,10 +2262,9 @@ TEST(LittleEndian, WithNegativeInt8ListSize) {
 }
 
 TEST(LittleEndian, WithNegativeInt16ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -2314,10 +2281,9 @@ TEST(LittleEndian, WithNegativeInt16ListSize) {
 }
 
 TEST(LittleEndian, WithNegativeInt32ListSize) {
-  std::unordered_map<
+  std::map<
       std::string_view,
-      std::pair<uint64_t,
-                std::unordered_map<std::string_view, plyodine::Property::Type>>>
+      std::pair<uint64_t, std::map<std::string_view, plyodine::Property::Type>>>
       properties = {{"vertex", {1u, {{"l", plyodine::Property::UINT8_LIST}}}}};
 
   MockPlyReader reader;
