@@ -14,10 +14,11 @@ class TestWriter final : public plyodine::PlyWriter {
                             std::map<std::string_view, plyodine::Property>>&
                  properties,
              std::span<const std::string> comments,
-             std::span<const std::string> object_info)
+             std::span<const std::string> object_info, bool start_fails = false)
       : properties_(properties),
         comments_(comments),
-        object_info_(object_info) {}
+        object_info_(object_info),
+        start_fails_(start_fails) {}
 
   std::expected<void, std::string_view> Start(
       std::map<std::string_view,
@@ -25,6 +26,10 @@ class TestWriter final : public plyodine::PlyWriter {
           property_callbacks,
       std::span<const std::string>& comments,
       std::span<const std::string>& object_info) override {
+    if (start_fails_) {
+      return std::unexpected("start");
+    }
+
     for (const auto& element : properties_) {
       uint64_t num_properties = 0u;
       std::map<std::string_view, PlyWriter::Callback> callbacks;
@@ -148,6 +153,7 @@ class TestWriter final : public plyodine::PlyWriter {
                  std::map<std::string_view, plyodine::Property>>& properties_;
   std::span<const std::string> comments_;
   std::span<const std::string> object_info_;
+  bool start_fails_;
 
   std::map<std::string_view, std::map<std::string_view, size_t>> index_;
 };
@@ -253,6 +259,15 @@ BuildListSizeTestData() {
   result["vertex"]["l2"] = l2;
   result["vertex"]["l3"] = l3;
   return result;
+}
+
+TEST(Validate, StartFails) {
+  TestWriter writer({}, {}, {}, true);
+  std::stringstream output;
+  EXPECT_EQ(writer.WriteTo(output).error(), "start");
+  EXPECT_EQ(writer.WriteToASCII(output).error(), "start");
+  EXPECT_EQ(writer.WriteToBigEndian(output).error(), "start");
+  EXPECT_EQ(writer.WriteToLittleEndian(output).error(), "start");
 }
 
 TEST(Validate, BadElementNames) {
