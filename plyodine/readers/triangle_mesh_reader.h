@@ -149,10 +149,10 @@ class TriangleMeshReader : public PlyReader {
     return std::expected<void, std::string_view>();
   }
 
-  static const Property::Type *LookupProperty(
+  static const PropertyType *LookupProperty(
       const std::map<
           std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -174,7 +174,7 @@ class TriangleMeshReader : public PlyReader {
   LocationPropertyIndex(
       const std::map<
           std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -182,10 +182,10 @@ class TriangleMeshReader : public PlyReader {
 
     if (property) {
       switch (*property) {
-        case Property::FLOAT:
+        case PropertyType::FLOAT:
           return FloatPropertyCallback(
               &TriangleMeshReader::HandlePosition<index, FloatProperty>);
-        case Property::DOUBLE:
+        case PropertyType::DOUBLE:
           return DoublePropertyCallback(
               &TriangleMeshReader::HandlePosition<index, DoubleProperty>);
         default:
@@ -203,7 +203,7 @@ class TriangleMeshReader : public PlyReader {
   NormalPropertyIndex(
       const std::map<
           std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -211,10 +211,10 @@ class TriangleMeshReader : public PlyReader {
 
     if (property) {
       switch (*property) {
-        case Property::FLOAT:
+        case PropertyType::FLOAT:
           return FloatPropertyCallback(
               &TriangleMeshReader::HandleNormal<index, FloatProperty>);
-        case Property::DOUBLE:
+        case PropertyType::DOUBLE:
           return DoublePropertyCallback(
               &TriangleMeshReader::HandleNormal<index, DoubleProperty>);
         default:
@@ -233,7 +233,7 @@ class TriangleMeshReader : public PlyReader {
   UVPropertyIndex(
       const std::map<
           std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -241,12 +241,12 @@ class TriangleMeshReader : public PlyReader {
 
     if (property) {
       switch (*property) {
-        case Property::FLOAT:
+        case PropertyType::FLOAT:
           return std::make_pair(
               property_name,
               FloatPropertyCallback(
                   &TriangleMeshReader::HandleUV<index, FloatProperty>));
-        case Property::DOUBLE:
+        case PropertyType::DOUBLE:
           return std::make_pair(
               property_name,
               DoublePropertyCallback(
@@ -268,7 +268,7 @@ class TriangleMeshReader : public PlyReader {
   UVPropertyIndex(
       const std::map<
           std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
           &properties,
       const std::string_view &element_name,
       std::span<const std::string_view> property_names) {
@@ -287,7 +287,7 @@ class TriangleMeshReader : public PlyReader {
   FacePropertyIndex(
       const std::map<
           std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
+          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
           &properties,
       const std::string_view &element_name,
       const std::string_view &property_name) {
@@ -295,22 +295,22 @@ class TriangleMeshReader : public PlyReader {
 
     if (property) {
       switch (*property) {
-        case Property::INT8_LIST:
+        case PropertyType::INT8_LIST:
           return Int8PropertyListCallback(
               &TriangleMeshReader::HandleVertexIndices<int8_t>);
-        case Property::UINT8_LIST:
+        case PropertyType::UINT8_LIST:
           return UInt8PropertyListCallback(
               &TriangleMeshReader::HandleVertexIndices<uint8_t>);
-        case Property::INT16_LIST:
+        case PropertyType::INT16_LIST:
           return Int16PropertyListCallback(
               &TriangleMeshReader::HandleVertexIndices<int16_t>);
-        case Property::UINT16_LIST:
+        case PropertyType::UINT16_LIST:
           return UInt16PropertyListCallback(
               &TriangleMeshReader::HandleVertexIndices<uint16_t>);
-        case Property::INT32_LIST:
+        case PropertyType::INT32_LIST:
           return Int32PropertyListCallback(
               &TriangleMeshReader::HandleVertexIndices<int32_t>);
-        case Property::UINT32_LIST:
+        case PropertyType::UINT32_LIST:
           return UInt32PropertyListCallback(
               &TriangleMeshReader::HandleVertexIndices<uint32_t>);
         default:
@@ -329,7 +329,7 @@ class TriangleMeshReader : public PlyReader {
       std::string_view>
   Start(const std::map<
             std::string_view,
-            std::pair<uint64_t, std::map<std::string_view, Property::Type>>>
+            std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
             &properties,
         std::span<const std::string> comments,
         std::span<const std::string> obj_infos) final {

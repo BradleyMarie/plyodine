@@ -566,39 +566,39 @@ static_assert(std::endian::native == std::endian::little ||
 
 // Static assertions to ensure variants of Callback are properly ordered
 static_assert(PlyWriter::Callback(PlyWriter::Int8PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::INT8));
+                  .index() == static_cast<size_t>(PropertyType::INT8));
 static_assert(PlyWriter::Callback(PlyWriter::Int8PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::INT8_LIST));
+                  .index() == static_cast<size_t>(PropertyType::INT8_LIST));
 static_assert(PlyWriter::Callback(PlyWriter::UInt8PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::UINT8));
+                  .index() == static_cast<size_t>(PropertyType::UINT8));
 static_assert(PlyWriter::Callback(PlyWriter::UInt8PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::UINT8_LIST));
+                  .index() == static_cast<size_t>(PropertyType::UINT8_LIST));
 static_assert(PlyWriter::Callback(PlyWriter::Int16PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::INT16));
+                  .index() == static_cast<size_t>(PropertyType::INT16));
 static_assert(PlyWriter::Callback(PlyWriter::Int16PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::INT16_LIST));
+                  .index() == static_cast<size_t>(PropertyType::INT16_LIST));
 static_assert(PlyWriter::Callback(PlyWriter::UInt16PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::UINT16));
+                  .index() == static_cast<size_t>(PropertyType::UINT16));
 static_assert(
     PlyWriter::Callback(PlyWriter::UInt16PropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(Property::Type::UINT16_LIST));
+        .index() == static_cast<size_t>(PropertyType::UINT16_LIST));
 static_assert(PlyWriter::Callback(PlyWriter::Int32PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::INT32));
+                  .index() == static_cast<size_t>(PropertyType::INT32));
 static_assert(PlyWriter::Callback(PlyWriter::Int32PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::INT32_LIST));
+                  .index() == static_cast<size_t>(PropertyType::INT32_LIST));
 static_assert(PlyWriter::Callback(PlyWriter::UInt32PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::UINT32));
+                  .index() == static_cast<size_t>(PropertyType::UINT32));
 static_assert(
     PlyWriter::Callback(PlyWriter::UInt32PropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(Property::Type::UINT32_LIST));
+        .index() == static_cast<size_t>(PropertyType::UINT32_LIST));
 static_assert(PlyWriter::Callback(PlyWriter::FloatPropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::FLOAT));
+                  .index() == static_cast<size_t>(PropertyType::FLOAT));
 static_assert(PlyWriter::Callback(PlyWriter::FloatPropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::FLOAT_LIST));
+                  .index() == static_cast<size_t>(PropertyType::FLOAT_LIST));
 static_assert(PlyWriter::Callback(PlyWriter::DoublePropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(Property::Type::DOUBLE));
+                  .index() == static_cast<size_t>(PropertyType::DOUBLE));
 static_assert(
     PlyWriter::Callback(PlyWriter::DoublePropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(Property::Type::DOUBLE_LIST));
+        .index() == static_cast<size_t>(PropertyType::DOUBLE_LIST));
 
 }  // namespace plyodine

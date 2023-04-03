@@ -82,9 +82,9 @@ class PlyWriter {
       std::span<const std::string>& object_info) = 0;
 
   enum SizeType {
-    UINT8 = Property::Type::UINT8,
-    UINT16 = Property::Type::UINT16,
-    UINT32 = Property::Type::UINT32,
+    UINT8 = static_cast<int>(PropertyType::UINT8),
+    UINT16 = static_cast<int>(PropertyType::UINT16),
+    UINT32 = static_cast<int>(PropertyType::UINT32),
   };
 
   virtual std::expected<SizeType, std::string_view> GetPropertyListSizeType(

@@ -8,11 +8,53 @@
 
 #include "googletest/include/gtest/gtest.h"
 
+struct Property final
+    : public std::variant<std::span<const plyodine::Int8Property>,
+                          std::span<const plyodine::Int8PropertyList>,
+                          std::span<const plyodine::UInt8Property>,
+                          std::span<const plyodine::UInt8PropertyList>,
+                          std::span<const plyodine::Int16Property>,
+                          std::span<const plyodine::Int16PropertyList>,
+                          std::span<const plyodine::UInt16Property>,
+                          std::span<const plyodine::UInt16PropertyList>,
+                          std::span<const plyodine::Int32Property>,
+                          std::span<const plyodine::Int32PropertyList>,
+                          std::span<const plyodine::UInt32Property>,
+                          std::span<const plyodine::UInt32PropertyList>,
+                          std::span<const plyodine::FloatProperty>,
+                          std::span<const plyodine::FloatPropertyList>,
+                          std::span<const plyodine::DoubleProperty>,
+                          std::span<const plyodine::DoublePropertyList>> {
+  using std::variant<std::span<const plyodine::Int8Property>,
+                     std::span<const plyodine::Int8PropertyList>,
+                     std::span<const plyodine::UInt8Property>,
+                     std::span<const plyodine::UInt8PropertyList>,
+                     std::span<const plyodine::Int16Property>,
+                     std::span<const plyodine::Int16PropertyList>,
+                     std::span<const plyodine::UInt16Property>,
+                     std::span<const plyodine::UInt16PropertyList>,
+                     std::span<const plyodine::Int32Property>,
+                     std::span<const plyodine::Int32PropertyList>,
+                     std::span<const plyodine::UInt32Property>,
+                     std::span<const plyodine::UInt32PropertyList>,
+                     std::span<const plyodine::FloatProperty>,
+                     std::span<const plyodine::FloatPropertyList>,
+                     std::span<const plyodine::DoubleProperty>,
+                     std::span<const plyodine::DoublePropertyList>>::variant;
+
+  constexpr plyodine::PropertyType type() const {
+    return static_cast<plyodine::PropertyType>(index());
+  }
+
+  size_t size() const {
+    return std::visit([](const auto& entry) { return entry.size(); }, *this);
+  }
+};
+
 class TestWriter final : public plyodine::PlyWriter {
  public:
   TestWriter(const std::map<std::string_view,
-                            std::map<std::string_view, plyodine::Property>>&
-                 properties,
+                            std::map<std::string_view, Property>>& properties,
              std::span<const std::string> comments,
              std::span<const std::string> object_info, bool start_fails = false)
       : properties_(properties),
@@ -35,68 +77,68 @@ class TestWriter final : public plyodine::PlyWriter {
       std::map<std::string_view, PlyWriter::Callback> callbacks;
       for (const auto& property : element.second) {
         num_properties = property.second.size();
-        switch (property.second.index()) {
-          case plyodine::Property::INT8:
+        switch (property.second.type()) {
+          case plyodine::PropertyType::INT8:
             callbacks[property.first] = Int8PropertyCallback(
                 &TestWriter::Callback<plyodine::Int8Property>);
             break;
-          case plyodine::Property::INT8_LIST:
+          case plyodine::PropertyType::INT8_LIST:
             callbacks[property.first] = Int8PropertyListCallback(
                 &TestWriter::Callback<plyodine::Int8PropertyList>);
             break;
-          case plyodine::Property::UINT8:
+          case plyodine::PropertyType::UINT8:
             callbacks[property.first] = UInt8PropertyCallback(
                 &TestWriter::Callback<plyodine::UInt8Property>);
             break;
-          case plyodine::Property::UINT8_LIST:
+          case plyodine::PropertyType::UINT8_LIST:
             callbacks[property.first] = UInt8PropertyListCallback(
                 &TestWriter::Callback<plyodine::UInt8PropertyList>);
             break;
-          case plyodine::Property::INT16:
+          case plyodine::PropertyType::INT16:
             callbacks[property.first] = Int16PropertyCallback(
                 &TestWriter::Callback<plyodine::Int16Property>);
             break;
-          case plyodine::Property::INT16_LIST:
+          case plyodine::PropertyType::INT16_LIST:
             callbacks[property.first] = Int16PropertyListCallback(
                 &TestWriter::Callback<plyodine::Int16PropertyList>);
             break;
-          case plyodine::Property::UINT16:
+          case plyodine::PropertyType::UINT16:
             callbacks[property.first] = UInt16PropertyCallback(
                 &TestWriter::Callback<plyodine::UInt16Property>);
             break;
-          case plyodine::Property::UINT16_LIST:
+          case plyodine::PropertyType::UINT16_LIST:
             callbacks[property.first] = UInt16PropertyListCallback(
                 &TestWriter::Callback<plyodine::UInt16PropertyList>);
             break;
-          case plyodine::Property::INT32:
+          case plyodine::PropertyType::INT32:
             callbacks[property.first] = Int32PropertyCallback(
                 &TestWriter::Callback<plyodine::Int32Property>);
             break;
-          case plyodine::Property::INT32_LIST:
+          case plyodine::PropertyType::INT32_LIST:
             callbacks[property.first] = Int32PropertyListCallback(
                 &TestWriter::Callback<plyodine::Int32PropertyList>);
             break;
-          case plyodine::Property::UINT32:
+          case plyodine::PropertyType::UINT32:
             callbacks[property.first] = UInt32PropertyCallback(
                 &TestWriter::Callback<plyodine::UInt32Property>);
             break;
-          case plyodine::Property::UINT32_LIST:
+          case plyodine::PropertyType::UINT32_LIST:
             callbacks[property.first] = UInt32PropertyListCallback(
                 &TestWriter::Callback<plyodine::UInt32PropertyList>);
             break;
-          case plyodine::Property::FLOAT:
+          case plyodine::PropertyType::FLOAT:
             callbacks[property.first] = FloatPropertyCallback(
                 &TestWriter::Callback<plyodine::FloatProperty>);
             break;
-          case plyodine::Property::FLOAT_LIST:
+          case plyodine::PropertyType::FLOAT_LIST:
             callbacks[property.first] = FloatPropertyListCallback(
                 &TestWriter::Callback<plyodine::FloatPropertyList>);
             break;
-          case plyodine::Property::DOUBLE:
+          case plyodine::PropertyType::DOUBLE:
             callbacks[property.first] = DoublePropertyCallback(
                 &TestWriter::Callback<plyodine::DoubleProperty>);
             break;
-          case plyodine::Property::DOUBLE_LIST:
+          case plyodine::PropertyType::DOUBLE_LIST:
             callbacks[property.first] = DoublePropertyListCallback(
                 &TestWriter::Callback<plyodine::DoublePropertyList>);
             break;
@@ -149,8 +191,8 @@ class TestWriter final : public plyodine::PlyWriter {
             .at(property_name))[index_[element_name][property_name]++];
   }
 
-  const std::map<std::string_view,
-                 std::map<std::string_view, plyodine::Property>>& properties_;
+  const std::map<std::string_view, std::map<std::string_view, Property>>&
+      properties_;
   std::span<const std::string> comments_;
   std::span<const std::string> object_info_;
   bool start_fails_;
@@ -160,8 +202,8 @@ class TestWriter final : public plyodine::PlyWriter {
 
 std::expected<void, std::string_view> WriteTo(
     std::ostream& stream,
-    const std::map<std::string_view,
-                   std::map<std::string_view, plyodine::Property>>& properties,
+    const std::map<std::string_view, std::map<std::string_view, Property>>&
+        properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {}) {
   TestWriter writer(properties, comments, object_info);
@@ -170,8 +212,8 @@ std::expected<void, std::string_view> WriteTo(
 
 std::expected<void, std::string_view> WriteToASCII(
     std::ostream& stream,
-    const std::map<std::string_view,
-                   std::map<std::string_view, plyodine::Property>>& properties,
+    const std::map<std::string_view, std::map<std::string_view, Property>>&
+        properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {}) {
   TestWriter writer(properties, comments, object_info);
@@ -180,8 +222,8 @@ std::expected<void, std::string_view> WriteToASCII(
 
 std::expected<void, std::string_view> WriteToBigEndian(
     std::ostream& stream,
-    const std::map<std::string_view,
-                   std::map<std::string_view, plyodine::Property>>& properties,
+    const std::map<std::string_view, std::map<std::string_view, Property>>&
+        properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {}) {
   TestWriter writer(properties, comments, object_info);
@@ -190,15 +232,15 @@ std::expected<void, std::string_view> WriteToBigEndian(
 
 std::expected<void, std::string_view> WriteToLittleEndian(
     std::ostream& stream,
-    const std::map<std::string_view,
-                   std::map<std::string_view, plyodine::Property>>& properties,
+    const std::map<std::string_view, std::map<std::string_view, Property>>&
+        properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {}) {
   TestWriter writer(properties, comments, object_info);
   return writer.WriteToLittleEndian(stream);
 }
 
-std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+std::map<std::string_view, std::map<std::string_view, Property>>
 BuildTestData() {
   static const std::vector<int8_t> a = {-1, 2, 0};
   static const std::vector<uint8_t> b = {1u, 2u, 0u};
@@ -217,8 +259,7 @@ BuildTestData() {
   static const std::vector<std::span<const float>> gl = {{g}};
   static const std::vector<std::span<const double>> hl = {{h}};
 
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      result;
+  std::map<std::string_view, std::map<std::string_view, Property>> result;
   result["vertex"]["a"] = a;
   result["vertex"]["b"] = b;
   result["vertex"]["c"] = c;
@@ -238,7 +279,7 @@ BuildTestData() {
   return result;
 }
 
-std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
+std::map<std::string_view, std::map<std::string_view, Property>>
 BuildListSizeTestData() {
   static const std::vector<uint8_t> values(
       std::numeric_limits<uint16_t>::max() + 1u, 0x88);
@@ -252,8 +293,7 @@ BuildListSizeTestData() {
   static const std::vector<std::span<const uint8_t>> l3 = {
       {values.begin(), values.end()}};
 
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      result;
+  std::map<std::string_view, std::map<std::string_view, Property>> result;
   result["vertex"]["l0"] = l0;
   result["vertex"]["l1"] = l1;
   result["vertex"]["l2"] = l2;
@@ -331,8 +371,7 @@ TEST(ASCII, Empty) {
 
 TEST(ASCII, NonFinite) {
   std::vector<float> a = {std::numeric_limits<float>::infinity()};
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      data;
+  std::map<std::string_view, std::map<std::string_view, Property>> data;
   data["vertex"]["a"] = a;
 
   std::stringstream output;
@@ -344,8 +383,7 @@ TEST(ASCII, NonFinite) {
 TEST(ASCII, NonFiniteList) {
   std::vector<float> a = {std::numeric_limits<float>::infinity()};
   std::vector<std::span<const float>> al = {{a}};
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      data;
+  std::map<std::string_view, std::map<std::string_view, Property>> data;
   data["vertex"]["a"] = al;
 
   std::stringstream output;
@@ -377,8 +415,7 @@ TEST(ASCII, ListSizes) {
 TEST(ASCII, LargeFP) {
   std::vector<double> a = {18446744073709551616.0};
   std::vector<std::span<const double>> al = {{a}};
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      data;
+  std::map<std::string_view, std::map<std::string_view, Property>> data;
   data["vertex"]["a"] = al;
 
   std::stringstream output;
@@ -392,8 +429,7 @@ TEST(ASCII, LargeFP) {
 TEST(ASCII, SmallFP) {
   std::vector<double> a = {0.000000000000000000000025};
   std::vector<std::span<const double>> al = {{a}};
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      data;
+  std::map<std::string_view, std::map<std::string_view, Property>> data;
   data["vertex"]["a"] = al;
 
   std::stringstream output;
