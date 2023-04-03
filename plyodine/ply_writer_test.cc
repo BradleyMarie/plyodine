@@ -185,10 +185,10 @@ class TestWriter final : public plyodine::PlyWriter {
  private:
   template <typename T>
   std::expected<T, std::string_view> Callback(std::string_view element_name,
-                                              std::string_view property_name) {
+                                              std::string_view property_name,
+                                              uint64_t element_index) {
     return std::get<std::span<const T>>(
-        properties_.at(element_name)
-            .at(property_name))[index_[element_name][property_name]++];
+        properties_.at(element_name).at(property_name))[element_index];
   }
 
   const std::map<std::string_view, std::map<std::string_view, Property>>&
@@ -196,8 +196,6 @@ class TestWriter final : public plyodine::PlyWriter {
   std::span<const std::string> comments_;
   std::span<const std::string> object_info_;
   bool start_fails_;
-
-  std::map<std::string_view, std::map<std::string_view, size_t>> index_;
 };
 
 std::expected<void, std::string_view> WriteTo(

@@ -18,50 +18,59 @@ class MockPlyReader final : public plyodine::PlyReader {
       ());
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt8,
-              (std::string_view, std::string_view, plyodine::Int8Property));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::Int8Property));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt8List,
-              (std::string_view, std::string_view, plyodine::Int8PropertyList));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::Int8PropertyList));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleUInt8,
-              (std::string_view, std::string_view, plyodine::UInt8Property));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::UInt8Property));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleUInt8List,
-              (std::string_view, std::string_view,
+              (std::string_view, std::string_view, uint64_t,
                plyodine::UInt8PropertyList));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt16,
-              (std::string_view, std::string_view, plyodine::Int16Property));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::Int16Property));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt16List,
-              (std::string_view, std::string_view,
+              (std::string_view, std::string_view, uint64_t,
                plyodine::Int16PropertyList));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleUInt16,
-              (std::string_view, std::string_view, plyodine::UInt16Property));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::UInt16Property));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleUInt16List,
-              (std::string_view, std::string_view,
+              (std::string_view, std::string_view, uint64_t,
                plyodine::UInt16PropertyList));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt32,
-              (std::string_view, std::string_view, plyodine::Int32Property));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::Int32Property));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt32List,
-              (std::string_view, std::string_view,
+              (std::string_view, std::string_view, uint64_t,
                plyodine::Int32PropertyList));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleUInt32,
-              (std::string_view, std::string_view, plyodine::UInt32Property));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::UInt32Property));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleUInt32List,
-              (std::string_view, std::string_view,
+              (std::string_view, std::string_view, uint64_t,
                plyodine::UInt32PropertyList));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleFloat,
-              (std::string_view, std::string_view, plyodine::FloatProperty));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::FloatProperty));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleFloatList,
-              (std::string_view, std::string_view,
+              (std::string_view, std::string_view, uint64_t,
                plyodine::FloatPropertyList));
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleDouble,
-              (std::string_view, std::string_view, plyodine::DoubleProperty));
+              (std::string_view, std::string_view, uint64_t,
+               plyodine::DoubleProperty));
   MOCK_METHOD((std::expected<void, std::string_view>), HandleDoubleList,
-              (std::string_view, std::string_view,
+              (std::string_view, std::string_view, uint64_t,
                plyodine::DoublePropertyList));
 
   std::expected<
@@ -220,37 +229,53 @@ void ExpectError(std::istream& stream) {
   MockPlyReader reader;
   EXPECT_CALL(reader, StartImpl(testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .WillRepeatedly(testing::Return(std::expected<void, std::string_view>()));
 
   EXPECT_FALSE(reader.ReadFrom(stream));
@@ -281,32 +306,53 @@ void RunReadErrorTest(const std::string& file_name,
 TEST(Error, BadHeader) {
   MockPlyReader reader;
   EXPECT_CALL(reader, StartImpl(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/header_format_bad.ply");
@@ -322,32 +368,53 @@ TEST(Header, StartFails) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::unexpected("Failed")));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_empty.ply");
@@ -360,32 +427,53 @@ TEST(ASCII, Empty) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_empty.ply");
@@ -403,32 +491,53 @@ TEST(ASCII, MismatchedLineEndings) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream(
@@ -448,32 +557,53 @@ TEST(ASCII, InvalidCharacter) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_invalid_character.ply");
@@ -493,32 +623,53 @@ TEST(ASCII, ListMissingEntries) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_list_missing_entries.ply");
@@ -537,33 +688,52 @@ TEST(ASCII, MissingElement) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8("vertex", "l", 1))
+  EXPECT_CALL(reader, HandleInt8("vertex", "l", 0, 1))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_missing_element.ply");
@@ -584,33 +754,52 @@ TEST(ASCII, EmptyToken) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8("vertex", "a", 1))
+  EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, 1))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_empty_token.ply");
@@ -631,37 +820,53 @@ TEST(ASCII, ListSizeTooLarge) {
                                   testing::IsEmpty()))
         .Times(1)
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
 
     std::ifstream stream(name);
@@ -690,37 +895,53 @@ TEST(ASCII, ListSizeBad) {
                                   testing::IsEmpty()))
         .Times(1)
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
 
     std::ifstream stream(name);
@@ -748,37 +969,53 @@ TEST(ASCII, EntryBad) {
                                   testing::IsEmpty()))
         .Times(1)
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
 
     std::ifstream stream(name);
@@ -816,37 +1053,53 @@ TEST(ASCII, EntryTooBig) {
                                   testing::IsEmpty()))
         .Times(1)
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
         .Times(0);
-    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
         .Times(0);
 
     std::ifstream stream(name);
@@ -883,33 +1136,52 @@ TEST(ASCII, UnusedTokens) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8("vertex", "a", 1))
+  EXPECT_CALL(reader, HandleInt8("vertex", "a", 0u, 1))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_unused_tokens.ply");
@@ -952,122 +1224,122 @@ TEST(ASCII, WithData) {
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", -1))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", 2))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 0))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", -1))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 0, 1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 0))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", -1))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", 2))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 0))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 1.5f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 0, 1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 2.5f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 3.14159274f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 1.5))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 2.5))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 3.1415926535897931))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 0, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 1, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 0, 1.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 1, 2.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 2, 3.14159274f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 0, 1.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 1, 2.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 2, 3.1415926535897931))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   std::vector<int8_t> values_int8 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt8List("vertex_lists", "a", ValuesAre(values_int8)))
+              HandleInt8List("vertex_lists", "a", 0, ValuesAre(values_int8)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint8_t> values_uint8 = {1, 2, 0};
   EXPECT_CALL(reader,
-              HandleUInt8List("vertex_lists", "b", ValuesAre(values_uint8)))
+              HandleUInt8List("vertex_lists", "b", 0, ValuesAre(values_uint8)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<int16_t> values_int16 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt16List("vertex_lists", "c", ValuesAre(values_int16)))
+              HandleInt16List("vertex_lists", "c", 0, ValuesAre(values_int16)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint16_t> values_uint16 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUInt16List("vertex_lists", "d", ValuesAre(values_uint16)))
+  EXPECT_CALL(reader, HandleUInt16List("vertex_lists", "d", 0,
+                                       ValuesAre(values_uint16)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<int32_t> values_int32 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt32List("vertex_lists", "e", ValuesAre(values_int32)))
+              HandleInt32List("vertex_lists", "e", 0, ValuesAre(values_int32)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint32_t> values_uint32 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUInt32List("vertex_lists", "f", ValuesAre(values_uint32)))
+  EXPECT_CALL(reader, HandleUInt32List("vertex_lists", "f", 0,
+                                       ValuesAre(values_uint32)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<float> values_float = {1.5f, 2.5f, 3.14159274f};
   EXPECT_CALL(reader,
-              HandleFloatList("vertex_lists", "g", ValuesAre(values_float)))
+              HandleFloatList("vertex_lists", "g", 0, ValuesAre(values_float)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<double> values_double = {1.5, 2.5, 3.1415926535897931};
-  EXPECT_CALL(reader,
-              HandleDoubleList("vertex_lists", "h", ValuesAre(values_double)))
+  EXPECT_CALL(reader, HandleDoubleList("vertex_lists", "h", 0,
+                                       ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
@@ -1108,31 +1380,50 @@ TEST(ASCII, WithDataSkipAll) {
                                 ValuesAre(object_info)))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
@@ -1154,37 +1445,53 @@ TEST(ASCII, HandleFails) {
     MockPlyReader reader;
     EXPECT_CALL(reader, StartImpl(testing::_, testing::_, testing::_))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(0u, index)));
-    EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(1u, index)));
-    EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(2u, index)));
-    EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(3u, index)));
-    EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(4u, index)));
-    EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(5u, index)));
-    EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(6u, index)));
-    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(7u, index)));
-    EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(8u, index)));
-    EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(9u, index)));
-    EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(10u, index)));
-    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(11u, index)));
-    EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(12u, index)));
-    EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(13u, index)));
-    EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(14u, index)));
-    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(15u, index)));
 
     std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
@@ -1229,19 +1536,19 @@ TEST(ASCII, WithUIntListSizes) {
   std::vector<uint8_t> values;
 
   values.resize(std::numeric_limits<uint8_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint8_t>::max() + 1u, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint16_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint16_t>::max() + 1u, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_ascii_list_sizes.ply");
@@ -1268,19 +1575,19 @@ TEST(ASCII, WithIntListSizes) {
   std::vector<uint8_t> values;
 
   values.resize(std::numeric_limits<int8_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int8_t>::max() + 1, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int16_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int16_t>::max() + 1, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_ascii_list_sizes_signed.ply");
@@ -1353,32 +1660,53 @@ TEST(BigEndian, Empty) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_big_empty.ply");
@@ -1420,122 +1748,122 @@ TEST(BigEndian, WithData) {
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", -1))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", 2))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 0))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", -1))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 0, 1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 0))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", -1))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", 2))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 0))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 1.5f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 0, 1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 2.5f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 3.14159274f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 1.5))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 2.5))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 3.1415926535897931))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 0, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 1, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 0, 1.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 1, 2.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 2, 3.14159274f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 0, 1.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 1, 2.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 2, 3.1415926535897931))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   std::vector<int8_t> values_int8 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt8List("vertex_lists", "a", ValuesAre(values_int8)))
+              HandleInt8List("vertex_lists", "a", 0, ValuesAre(values_int8)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint8_t> values_uint8 = {1, 2, 0};
   EXPECT_CALL(reader,
-              HandleUInt8List("vertex_lists", "b", ValuesAre(values_uint8)))
+              HandleUInt8List("vertex_lists", "b", 0, ValuesAre(values_uint8)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<int16_t> values_int16 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt16List("vertex_lists", "c", ValuesAre(values_int16)))
+              HandleInt16List("vertex_lists", "c", 0, ValuesAre(values_int16)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint16_t> values_uint16 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUInt16List("vertex_lists", "d", ValuesAre(values_uint16)))
+  EXPECT_CALL(reader, HandleUInt16List("vertex_lists", "d", 0,
+                                       ValuesAre(values_uint16)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<int32_t> values_int32 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt32List("vertex_lists", "e", ValuesAre(values_int32)))
+              HandleInt32List("vertex_lists", "e", 0, ValuesAre(values_int32)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint32_t> values_uint32 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUInt32List("vertex_lists", "f", ValuesAre(values_uint32)))
+  EXPECT_CALL(reader, HandleUInt32List("vertex_lists", "f", 0,
+                                       ValuesAre(values_uint32)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<float> values_float = {1.5f, 2.5f, 3.14159274f};
   EXPECT_CALL(reader,
-              HandleFloatList("vertex_lists", "g", ValuesAre(values_float)))
+              HandleFloatList("vertex_lists", "g", 0, ValuesAre(values_float)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<double> values_double = {1.5, 2.5, 3.1415926535897931};
-  EXPECT_CALL(reader,
-              HandleDoubleList("vertex_lists", "h", ValuesAre(values_double)))
+  EXPECT_CALL(reader, HandleDoubleList("vertex_lists", "h", 0,
+                                       ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_big_data.ply");
@@ -1576,31 +1904,50 @@ TEST(BigEndian, WithDataSkipAll) {
                                 ValuesAre(object_info)))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_big_data.ply");
@@ -1631,19 +1978,19 @@ TEST(BigEndian, WithUIntListSizes) {
   std::vector<uint8_t> values;
 
   values.resize(std::numeric_limits<uint8_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint8_t>::max() + 1u, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint16_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint16_t>::max() + 1u, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_big_list_sizes.ply");
@@ -1669,37 +2016,53 @@ TEST(BigEndian, HandleFails) {
     MockPlyReader reader;
     EXPECT_CALL(reader, StartImpl(testing::_, testing::_, testing::_))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(0u, index)));
-    EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(1u, index)));
-    EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(2u, index)));
-    EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(3u, index)));
-    EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(4u, index)));
-    EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(5u, index)));
-    EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(6u, index)));
-    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(7u, index)));
-    EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(8u, index)));
-    EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(9u, index)));
-    EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(10u, index)));
-    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(11u, index)));
-    EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(12u, index)));
-    EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(13u, index)));
-    EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(14u, index)));
-    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(15u, index)));
 
     std::ifstream stream("plyodine/test_data/ply_big_data.ply");
@@ -1744,19 +2107,19 @@ TEST(BigEndian, WithIntListSizes) {
   std::vector<uint8_t> values;
 
   values.resize(std::numeric_limits<int8_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int8_t>::max() + 1, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int16_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int16_t>::max() + 1, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_big_list_sizes_signed.ply");
@@ -1833,32 +2196,53 @@ TEST(LittleEndian, Empty) {
                                 testing::IsEmpty()))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_little_empty.ply");
@@ -1900,122 +2284,122 @@ TEST(LittleEndian, WithData) {
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", -1))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", 2))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8("vertex", "a", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 0))
+    EXPECT_CALL(reader, HandleInt8("vertex", "a", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", -1))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 0, 1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt16("vertex", "c", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 0))
+    EXPECT_CALL(reader, HandleUInt8("vertex", "b", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", -1))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", 2))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt32("vertex", "e", 0))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  }
-
-  {
-    testing::InSequence s;
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 1))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 2))
-        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 0))
+    EXPECT_CALL(reader, HandleInt16("vertex", "c", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 1.5f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 0, 1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 2.5f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 3.14159274f))
+    EXPECT_CALL(reader, HandleUInt16("vertex", "d", 2, 0))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   {
     testing::InSequence s;
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 1.5))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 0, -1))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 2.5))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 1, 2))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 3.1415926535897931))
+    EXPECT_CALL(reader, HandleInt32("vertex", "e", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 0, 1))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 1, 2))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleUInt32("vertex", "f", 2, 0))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 0, 1.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 1, 2.5f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleFloat("vertex", "g", 2, 3.14159274f))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+  }
+
+  {
+    testing::InSequence s;
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 0, 1.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 1, 2.5))
+        .WillOnce(testing::Return(std::expected<void, std::string_view>()));
+    EXPECT_CALL(reader, HandleDouble("vertex", "h", 2, 3.1415926535897931))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
   }
 
   std::vector<int8_t> values_int8 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt8List("vertex_lists", "a", ValuesAre(values_int8)))
+              HandleInt8List("vertex_lists", "a", 0, ValuesAre(values_int8)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint8_t> values_uint8 = {1, 2, 0};
   EXPECT_CALL(reader,
-              HandleUInt8List("vertex_lists", "b", ValuesAre(values_uint8)))
+              HandleUInt8List("vertex_lists", "b", 0, ValuesAre(values_uint8)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<int16_t> values_int16 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt16List("vertex_lists", "c", ValuesAre(values_int16)))
+              HandleInt16List("vertex_lists", "c", 0, ValuesAre(values_int16)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint16_t> values_uint16 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUInt16List("vertex_lists", "d", ValuesAre(values_uint16)))
+  EXPECT_CALL(reader, HandleUInt16List("vertex_lists", "d", 0,
+                                       ValuesAre(values_uint16)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<int32_t> values_int32 = {-1, 2, 0};
   EXPECT_CALL(reader,
-              HandleInt32List("vertex_lists", "e", ValuesAre(values_int32)))
+              HandleInt32List("vertex_lists", "e", 0, ValuesAre(values_int32)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<uint32_t> values_uint32 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUInt32List("vertex_lists", "f", ValuesAre(values_uint32)))
+  EXPECT_CALL(reader, HandleUInt32List("vertex_lists", "f", 0,
+                                       ValuesAre(values_uint32)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<float> values_float = {1.5f, 2.5f, 3.14159274f};
   EXPECT_CALL(reader,
-              HandleFloatList("vertex_lists", "g", ValuesAre(values_float)))
+              HandleFloatList("vertex_lists", "g", 0, ValuesAre(values_float)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::vector<double> values_double = {1.5, 2.5, 3.1415926535897931};
-  EXPECT_CALL(reader,
-              HandleDoubleList("vertex_lists", "h", ValuesAre(values_double)))
+  EXPECT_CALL(reader, HandleDoubleList("vertex_lists", "h", 0,
+                                       ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_little_data.ply");
@@ -2056,31 +2440,50 @@ TEST(LittleEndian, WithDataSkipAll) {
                                 ValuesAre(object_info)))
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-  EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt16List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleInt32List(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+  EXPECT_CALL(reader,
+              HandleUInt32List(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloat(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleFloatList(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDouble(testing::_, testing::_, testing::_, testing::_))
+      .Times(0);
+  EXPECT_CALL(reader,
+              HandleDoubleList(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   std::ifstream stream("plyodine/test_data/ply_little_data.ply");
@@ -2106,37 +2509,53 @@ TEST(LittleEndian, HandleFails) {
     MockPlyReader reader;
     EXPECT_CALL(reader, StartImpl(testing::_, testing::_, testing::_))
         .WillOnce(testing::Return(std::expected<void, std::string_view>()));
-    EXPECT_CALL(reader, HandleInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(0u, index)));
-    EXPECT_CALL(reader, HandleInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt8List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(1u, index)));
-    EXPECT_CALL(reader, HandleUInt8(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(2u, index)));
-    EXPECT_CALL(reader, HandleUInt8List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt8List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(3u, index)));
-    EXPECT_CALL(reader, HandleInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(4u, index)));
-    EXPECT_CALL(reader, HandleInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt16List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(5u, index)));
-    EXPECT_CALL(reader, HandleUInt16(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt16(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(6u, index)));
-    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt16List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(7u, index)));
-    EXPECT_CALL(reader, HandleInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(8u, index)));
-    EXPECT_CALL(reader, HandleInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleInt32List(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(9u, index)));
-    EXPECT_CALL(reader, HandleUInt32(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleUInt32(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(10u, index)));
-    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleUInt32List(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(11u, index)));
-    EXPECT_CALL(reader, HandleFloat(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloat(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(12u, index)));
-    EXPECT_CALL(reader, HandleFloatList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleFloatList(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(13u, index)));
-    EXPECT_CALL(reader, HandleDouble(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader,
+                HandleDouble(testing::_, testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(14u, index)));
-    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_))
+    EXPECT_CALL(reader, HandleDoubleList(testing::_, testing::_, testing::_,
+                                         testing::_))
         .WillRepeatedly(testing::Return(make_result(15u, index)));
 
     std::ifstream stream("plyodine/test_data/ply_little_data.ply");
@@ -2181,19 +2600,19 @@ TEST(LittleEndian, WithUIntListSizes) {
   std::vector<uint8_t> values;
 
   values.resize(std::numeric_limits<uint8_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint8_t>::max() + 1u, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint16_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<uint16_t>::max() + 1u, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_little_list_sizes.ply");
@@ -2224,19 +2643,19 @@ TEST(LittleEndian, WithIntListSizes) {
   std::vector<uint8_t> values;
 
   values.resize(std::numeric_limits<int8_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l0", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int8_t>::max() + 1, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l1", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int16_t>::max(), 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l2", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   values.resize(std::numeric_limits<int16_t>::max() + 1, 136u);
-  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", ValuesAre(values)))
+  EXPECT_CALL(reader, HandleUInt8List("vertex", "l3", 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string_view>()));
 
   std::ifstream stream("plyodine/test_data/ply_little_list_sizes_signed.ply");

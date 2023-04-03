@@ -35,7 +35,8 @@ class InMemoryWriter final : public PlyWriter {
  private:
   template <typename T>
   std::expected<T, std::string_view> Callback(std::string_view element_name,
-                                              std::string_view property_name);
+                                              std::string_view property_name,
+                                              uint64_t instance);
 
   const std::map<std::string_view, std::map<std::string_view, Property>>&
       properties_;
@@ -44,26 +45,23 @@ class InMemoryWriter final : public PlyWriter {
 
   std::vector<std::pair<uint64_t, std::vector<const Property*>>>
       indexed_properties_;
-  uint64_t element_count = 0u;
-  size_t element_index = 0u;
-  size_t property_index = 0u;
+  size_t element_ = 0u;
+  size_t property_ = 0u;
 };
 
 template <typename T>
 std::expected<T, std::string_view> InMemoryWriter::Callback(
-    std::string_view element_name, std::string_view property_name) {
-  const auto& properties = indexed_properties_.at(element_index).second;
-  const auto& property = properties.at(property_index++);
+    std::string_view element_name, std::string_view property_name,
+    uint64_t instance) {
+  const auto& properties = indexed_properties_.at(element_).second;
+  const auto& property = properties.at(property_++);
 
-  auto value = std::get<std::span<const T>>(*property)[element_count];
+  auto value = std::get<std::span<const T>>(*property)[instance];
 
-  if (property_index == properties.size()) {
-    element_count += 1u;
-    property_index = 0u;
-
-    if (element_count == indexed_properties_[element_index].first) {
-      element_index += 1u;
-      element_count = 0u;
+  if (property_ == properties.size()) {
+    property_ = 0u;
+    if (instance + 1u == indexed_properties_[element_].first) {
+      element_ += 1u;
     }
   }
 

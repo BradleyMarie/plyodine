@@ -1,6 +1,7 @@
 #ifndef _PLYODINE_READERS_TRIANGLE_MESH_READER_
 #define _PLYODINE_READERS_TRIANGLE_MESH_READER_
 
+#include <array>
 #include <cmath>
 #include <concepts>
 #include <functional>
@@ -17,22 +18,23 @@ class TriangleMeshReader : public PlyReader {
  public:
   virtual void Start() = 0;
 
-  virtual void Handle(LocationType position[3], NormalType maybe_normals[3],
-                      UVType maybe_uv[2]) = 0;
+  virtual void AddVertex(const std::array<LocationType, 3> &position,
+                         const std::array<NormalType, 3> *maybe_normal,
+                         const std::array<UVType, 2> *maybe_uv) = 0;
 
-  virtual void Handle(FaceIndexType face[3]) = 0;
+  virtual void AddFace(const std::array<FaceIndexType, 3> &face) = 0;
 
  private:
-  std::expected<void, std::string_view> MaybeHandleVertex() {
+  std::expected<void, std::string_view> MaybeAddVertex() {
     current_vertex_index_ += 1u;
 
     if (current_vertex_index_ == handle_vertex_index_) {
-      if (normals_ && normals_[0] == 0.0 && normals_[1] == 0.0 &&
-          normals_[2] == 0.0) {
+      if (normals_ && normals_storage_[0] == 0.0 &&
+          normals_storage_[1] == 0.0 && normals_storage_[2] == 0.0) {
         return std::unexpected("Input contained a zero length surface normal");
       }
 
-      Handle(xyz_, normals_, uvs_);
+      AddVertex(xyz_, normals_, uvs_);
 
       current_vertex_index_ = 0u;
     }
@@ -41,8 +43,9 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index, typename T>
-  std::expected<void, std::string_view> HandlePosition(
-      std::string_view element_name, std::string_view property_name, T value) {
+  std::expected<void, std::string_view> AddPosition(
+      std::string_view element_name, std::string_view property_name,
+      uint64_t instance, T value) {
     xyz_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(xyz_[index])) {
@@ -55,12 +58,13 @@ class TriangleMeshReader : public PlyReader {
       }
     }
 
-    return MaybeHandleVertex();
+    return MaybeAddVertex();
   }
 
   template <size_t index, typename T>
-  std::expected<void, std::string_view> HandleNormal(
-      std::string_view element_name, std::string_view property_name, T value) {
+  std::expected<void, std::string_view> AddNormal(
+      std::string_view element_name, std::string_view property_name,
+      uint64_t instance, T value) {
     normals_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(normals_storage_[index])) {
@@ -73,13 +77,13 @@ class TriangleMeshReader : public PlyReader {
       }
     }
 
-    return MaybeHandleVertex();
+    return MaybeAddVertex();
   }
 
   template <size_t index, typename T>
-  std::expected<void, std::string_view> HandleUV(std::string_view element_name,
-                                                 std::string_view property_name,
-                                                 T value) {
+  std::expected<void, std::string_view> AddUV(std::string_view element_name,
+                                              std::string_view property_name,
+                                              uint64_t instance, T value) {
     uv_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(uv_storage_[index])) {
@@ -90,7 +94,7 @@ class TriangleMeshReader : public PlyReader {
       }
     }
 
-    return MaybeHandleVertex();
+    return MaybeAddVertex();
   }
 
   template <typename T>
@@ -118,9 +122,9 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <typename T>
-  std::expected<void, std::string_view> HandleVertexIndices(
+  std::expected<void, std::string_view> AddVertexIndices(
       std::string_view element_name, std::string_view property_name,
-      std::span<const T> value) {
+      uint64_t instance, std::span<const T> value) {
     if (value.size() >= 3) {
       auto v0_valid = ValidateVertexIndex(value[0]);
       if (!v0_valid) {
@@ -132,7 +136,7 @@ class TriangleMeshReader : public PlyReader {
         return v1_valid;
       }
 
-      FaceIndexType faces[3];
+      std::array<FaceIndexType, 3> faces;
       faces[0] = static_cast<FaceIndexType>(value[0]);
       for (size_t i = 2u; i < value.size(); i++) {
         auto vn_valid = ValidateVertexIndex(value[i]);
@@ -142,7 +146,7 @@ class TriangleMeshReader : public PlyReader {
 
         faces[1] = static_cast<FaceIndexType>(value[i - 1u]);
         faces[2] = static_cast<FaceIndexType>(value[i]);
-        Handle(faces);
+        AddFace(faces);
       }
     }
 
@@ -184,10 +188,10 @@ class TriangleMeshReader : public PlyReader {
       switch (*property) {
         case PropertyType::FLOAT:
           return FloatPropertyCallback(
-              &TriangleMeshReader::HandlePosition<index, FloatProperty>);
+              &TriangleMeshReader::AddPosition<index, FloatProperty>);
         case PropertyType::DOUBLE:
           return DoublePropertyCallback(
-              &TriangleMeshReader::HandlePosition<index, DoubleProperty>);
+              &TriangleMeshReader::AddPosition<index, DoubleProperty>);
         default:
           return std::unexpected(
               "The type of properties x, y, and z, on vertex elements must be "
@@ -213,10 +217,10 @@ class TriangleMeshReader : public PlyReader {
       switch (*property) {
         case PropertyType::FLOAT:
           return FloatPropertyCallback(
-              &TriangleMeshReader::HandleNormal<index, FloatProperty>);
+              &TriangleMeshReader::AddNormal<index, FloatProperty>);
         case PropertyType::DOUBLE:
           return DoublePropertyCallback(
-              &TriangleMeshReader::HandleNormal<index, DoubleProperty>);
+              &TriangleMeshReader::AddNormal<index, DoubleProperty>);
         default:
           return std::unexpected(
               "The type of properties nx, ny, and nz, on vertex elements must "
@@ -245,12 +249,12 @@ class TriangleMeshReader : public PlyReader {
           return std::make_pair(
               property_name,
               FloatPropertyCallback(
-                  &TriangleMeshReader::HandleUV<index, FloatProperty>));
+                  &TriangleMeshReader::AddUV<index, FloatProperty>));
         case PropertyType::DOUBLE:
           return std::make_pair(
               property_name,
               DoublePropertyCallback(
-                  &TriangleMeshReader::HandleUV<index, DoubleProperty>));
+                  &TriangleMeshReader::AddUV<index, DoubleProperty>));
         default:
           return std::unexpected(
               "The type of properties texture_s, texture_t, texture_u, "
@@ -297,22 +301,22 @@ class TriangleMeshReader : public PlyReader {
       switch (*property) {
         case PropertyType::INT8_LIST:
           return Int8PropertyListCallback(
-              &TriangleMeshReader::HandleVertexIndices<int8_t>);
+              &TriangleMeshReader::AddVertexIndices<int8_t>);
         case PropertyType::UINT8_LIST:
           return UInt8PropertyListCallback(
-              &TriangleMeshReader::HandleVertexIndices<uint8_t>);
+              &TriangleMeshReader::AddVertexIndices<uint8_t>);
         case PropertyType::INT16_LIST:
           return Int16PropertyListCallback(
-              &TriangleMeshReader::HandleVertexIndices<int16_t>);
+              &TriangleMeshReader::AddVertexIndices<int16_t>);
         case PropertyType::UINT16_LIST:
           return UInt16PropertyListCallback(
-              &TriangleMeshReader::HandleVertexIndices<uint16_t>);
+              &TriangleMeshReader::AddVertexIndices<uint16_t>);
         case PropertyType::INT32_LIST:
           return Int32PropertyListCallback(
-              &TriangleMeshReader::HandleVertexIndices<int32_t>);
+              &TriangleMeshReader::AddVertexIndices<int32_t>);
         case PropertyType::UINT32_LIST:
           return UInt32PropertyListCallback(
-              &TriangleMeshReader::HandleVertexIndices<uint32_t>);
+              &TriangleMeshReader::AddVertexIndices<uint32_t>);
         default:
           return std::unexpected(
               "The type of property vertex_indices on face elements must be an "
@@ -395,7 +399,7 @@ class TriangleMeshReader : public PlyReader {
     result["vertex"]["z"] = **z;
 
     if (*nx && *ny && *nz) {
-      normals_ = normals_storage_;
+      normals_ = &normals_storage_;
       result["vertex"]["nx"] = **nx;
       result["vertex"]["ny"] = **ny;
       result["vertex"]["nz"] = **nz;
@@ -404,7 +408,7 @@ class TriangleMeshReader : public PlyReader {
     }
 
     if (*u && *v) {
-      uvs_ = uv_storage_;
+      uvs_ = &uv_storage_;
       result["vertex"][(*u)->first] = (*u)->second;
       result["vertex"][(*v)->first] = (*v)->second;
     } else {
@@ -430,12 +434,12 @@ class TriangleMeshReader : public PlyReader {
   size_t handle_vertex_index_;
   size_t current_vertex_index_;
 
-  NormalType *normals_ = nullptr;
-  UVType *uvs_ = nullptr;
+  std::array<NormalType, 3> *normals_ = nullptr;
+  std::array<UVType, 2> *uvs_ = nullptr;
 
-  LocationType xyz_[3] = {0.0, 0.0, 0.0};
-  NormalType normals_storage_[3] = {0.0, 0.0, 0.0};
-  UVType uv_storage_[2] = {0.0, 0.0};
+  std::array<LocationType, 3> xyz_ = {0.0, 0.0, 0.0};
+  std::array<NormalType, 3> normals_storage_ = {0.0, 0.0, 0.0};
+  std::array<UVType, 2> uv_storage_ = {0.0, 0.0};
 };
 
 }  // namespace plyodine

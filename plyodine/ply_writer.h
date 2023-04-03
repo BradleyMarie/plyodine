@@ -25,44 +25,53 @@ class PlyWriter {
       std::ostream& stream);
 
   typedef std::expected<Int8Property, std::string_view> (
-      PlyWriter::*Int8PropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*Int8PropertyCallback)(std::string_view, std::string_view,
+                                        uint64_t);
   typedef std::expected<Int8PropertyList, std::string_view> (
-      PlyWriter::*Int8PropertyListCallback)(std::string_view, std::string_view);
+      PlyWriter::*Int8PropertyListCallback)(std::string_view, std::string_view,
+                                            uint64_t);
   typedef std::expected<UInt8Property, std::string_view> (
-      PlyWriter::*UInt8PropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*UInt8PropertyCallback)(std::string_view, std::string_view,
+                                         uint64_t);
   typedef std::expected<UInt8PropertyList, std::string_view> (
-      PlyWriter::*UInt8PropertyListCallback)(std::string_view,
-                                             std::string_view);
+      PlyWriter::*UInt8PropertyListCallback)(std::string_view, std::string_view,
+                                             uint64_t);
   typedef std::expected<Int16Property, std::string_view> (
-      PlyWriter::*Int16PropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*Int16PropertyCallback)(std::string_view, std::string_view,
+                                         uint64_t);
   typedef std::expected<Int16PropertyList, std::string_view> (
-      PlyWriter::*Int16PropertyListCallback)(std::string_view,
-                                             std::string_view);
+      PlyWriter::*Int16PropertyListCallback)(std::string_view, std::string_view,
+                                             uint64_t);
   typedef std::expected<UInt16Property, std::string_view> (
-      PlyWriter::*UInt16PropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*UInt16PropertyCallback)(std::string_view, std::string_view,
+                                          uint64_t);
   typedef std::expected<UInt16PropertyList, std::string_view> (
       PlyWriter::*UInt16PropertyListCallback)(std::string_view,
-                                              std::string_view);
+                                              std::string_view, uint64_t);
   typedef std::expected<Int32Property, std::string_view> (
-      PlyWriter::*Int32PropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*Int32PropertyCallback)(std::string_view, std::string_view,
+                                         uint64_t);
   typedef std::expected<Int32PropertyList, std::string_view> (
-      PlyWriter::*Int32PropertyListCallback)(std::string_view,
-                                             std::string_view);
+      PlyWriter::*Int32PropertyListCallback)(std::string_view, std::string_view,
+                                             uint64_t);
   typedef std::expected<UInt32Property, std::string_view> (
-      PlyWriter::*UInt32PropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*UInt32PropertyCallback)(std::string_view, std::string_view,
+                                          uint64_t);
   typedef std::expected<UInt32PropertyList, std::string_view> (
       PlyWriter::*UInt32PropertyListCallback)(std::string_view,
-                                              std::string_view);
+                                              std::string_view, uint64_t);
   typedef std::expected<FloatProperty, std::string_view> (
-      PlyWriter::*FloatPropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*FloatPropertyCallback)(std::string_view, std::string_view,
+                                         uint64_t);
   typedef std::expected<FloatPropertyList, std::string_view> (
-      PlyWriter::*FloatPropertyListCallback)(std::string_view,
-                                             std::string_view);
+      PlyWriter::*FloatPropertyListCallback)(std::string_view, std::string_view,
+                                             uint64_t);
   typedef std::expected<DoubleProperty, std::string_view> (
-      PlyWriter::*DoublePropertyCallback)(std::string_view, std::string_view);
+      PlyWriter::*DoublePropertyCallback)(std::string_view, std::string_view,
+                                          uint64_t);
   typedef std::expected<DoublePropertyList, std::string_view> (
       PlyWriter::*DoublePropertyListCallback)(std::string_view,
-                                              std::string_view);
+                                              std::string_view, uint64_t);
 
   typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
                        UInt8PropertyCallback, UInt8PropertyListCallback,

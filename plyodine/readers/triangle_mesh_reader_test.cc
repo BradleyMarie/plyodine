@@ -20,21 +20,22 @@ class TestTriangleMeshReader final
     faces.clear();
   }
 
-  void Handle(LocationType position[3], NormalType maybe_normals[3],
-              UVType maybe_uv[2]) override {
-    positions.push_back({position[0], position[1], position[2]});
+  void AddVertex(const std::array<LocationType, 3>& position,
+                 const std::array<NormalType, 3>* maybe_normal,
+                 const std::array<UVType, 2>* maybe_uv) override {
+    positions.push_back(position);
 
-    if (maybe_normals) {
-      normals.push_back({maybe_normals[0], maybe_normals[1], maybe_normals[2]});
+    if (maybe_normal) {
+      normals.push_back(*maybe_normal);
     }
 
     if (maybe_uv) {
-      uvs.push_back({maybe_uv[0], maybe_uv[1]});
+      uvs.push_back(*maybe_uv);
     }
   }
 
-  void Handle(FaceIndexType face[3]) override {
-    faces.push_back({face[0], face[1], face[2]});
+  void AddFace(const std::array<FaceIndexType, 3>& face) override {
+    faces.push_back(face);
   }
 
   std::vector<std::array<LocationType, 3u>> positions;

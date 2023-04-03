@@ -284,12 +284,12 @@ std::expected<void, std::string_view> WriteToBinaryImpl(PlyWriter& ply_writer,
   }
 
   for (const auto& element : *callbacks) {
-    for (uint64_t e = 0u; e < std::get<1>(element); e++) {
+    for (uint64_t instance = 0u; instance < std::get<1>(element); instance++) {
       for (const auto& property : std::get<2>(element)) {
         auto result = std::visit(
             [&](const auto& callback) -> std::expected<void, std::string_view> {
-              auto result = (ply_writer.*callback)(std::get<0>(element),
-                                                   std::get<0>(property));
+              auto result = (ply_writer.*callback)(
+                  std::get<0>(element), std::get<0>(property), instance);
               if (!result) {
                 return std::unexpected(result.error());
               }
@@ -459,7 +459,7 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
 
   std::stringstream fp_stream_storage;
   for (const auto& element : *callbacks) {
-    for (size_t i = 0; i < std::get<1>(element); i++) {
+    for (size_t instance = 0; instance < std::get<1>(element); instance++) {
       bool first = true;
       for (const auto& property : std::get<2>(element)) {
         if (!first) {
@@ -474,7 +474,7 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
         auto result = std::visit(
             [&](const auto& callback) -> std::expected<void, std::string_view> {
               auto result = (this->*callback)(std::get<0>(element),
-                                              std::get<0>(property));
+                                              std::get<0>(property), instance);
               if (!result) {
                 return std::unexpected(result.error());
               }
