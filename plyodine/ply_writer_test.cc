@@ -8,6 +8,190 @@
 
 #include "googletest/include/gtest/gtest.h"
 
+class TestWriter final : public plyodine::PlyWriter {
+ public:
+  TestWriter(const std::map<std::string_view,
+                            std::map<std::string_view, plyodine::Property>>&
+                 properties,
+             std::span<const std::string> comments,
+             std::span<const std::string> object_info)
+      : properties_(properties),
+        comments_(comments),
+        object_info_(object_info) {}
+
+  std::expected<void, std::string_view> Start(
+      std::map<std::string_view,
+               std::pair<uint64_t, std::map<std::string_view, Callback>>>&
+          property_callbacks,
+      std::span<const std::string>& comments,
+      std::span<const std::string>& object_info) override {
+    for (const auto& element : properties_) {
+      uint64_t num_properties = 0u;
+      std::map<std::string_view, PlyWriter::Callback> callbacks;
+      for (const auto& property : element.second) {
+        num_properties = property.second.size();
+        switch (property.second.index()) {
+          case plyodine::Property::INT8:
+            callbacks[property.first] = Int8PropertyCallback(
+                &TestWriter::Callback<plyodine::Int8Property>);
+            break;
+          case plyodine::Property::INT8_LIST:
+            callbacks[property.first] = Int8PropertyListCallback(
+                &TestWriter::Callback<plyodine::Int8PropertyList>);
+            break;
+          case plyodine::Property::UINT8:
+            callbacks[property.first] = UInt8PropertyCallback(
+                &TestWriter::Callback<plyodine::UInt8Property>);
+            break;
+          case plyodine::Property::UINT8_LIST:
+            callbacks[property.first] = UInt8PropertyListCallback(
+                &TestWriter::Callback<plyodine::UInt8PropertyList>);
+            break;
+          case plyodine::Property::INT16:
+            callbacks[property.first] = Int16PropertyCallback(
+                &TestWriter::Callback<plyodine::Int16Property>);
+            break;
+          case plyodine::Property::INT16_LIST:
+            callbacks[property.first] = Int16PropertyListCallback(
+                &TestWriter::Callback<plyodine::Int16PropertyList>);
+            break;
+          case plyodine::Property::UINT16:
+            callbacks[property.first] = UInt16PropertyCallback(
+                &TestWriter::Callback<plyodine::UInt16Property>);
+            break;
+          case plyodine::Property::UINT16_LIST:
+            callbacks[property.first] = UInt16PropertyListCallback(
+                &TestWriter::Callback<plyodine::UInt16PropertyList>);
+            break;
+          case plyodine::Property::INT32:
+            callbacks[property.first] = Int32PropertyCallback(
+                &TestWriter::Callback<plyodine::Int32Property>);
+            break;
+          case plyodine::Property::INT32_LIST:
+            callbacks[property.first] = Int32PropertyListCallback(
+                &TestWriter::Callback<plyodine::Int32PropertyList>);
+            break;
+          case plyodine::Property::UINT32:
+            callbacks[property.first] = UInt32PropertyCallback(
+                &TestWriter::Callback<plyodine::UInt32Property>);
+            break;
+          case plyodine::Property::UINT32_LIST:
+            callbacks[property.first] = UInt32PropertyListCallback(
+                &TestWriter::Callback<plyodine::UInt32PropertyList>);
+            break;
+          case plyodine::Property::FLOAT:
+            callbacks[property.first] = FloatPropertyCallback(
+                &TestWriter::Callback<plyodine::FloatProperty>);
+            break;
+          case plyodine::Property::FLOAT_LIST:
+            callbacks[property.first] = FloatPropertyListCallback(
+                &TestWriter::Callback<plyodine::FloatPropertyList>);
+            break;
+          case plyodine::Property::DOUBLE:
+            callbacks[property.first] = DoublePropertyCallback(
+                &TestWriter::Callback<plyodine::DoubleProperty>);
+            break;
+          case plyodine::Property::DOUBLE_LIST:
+            callbacks[property.first] = DoublePropertyListCallback(
+                &TestWriter::Callback<plyodine::DoublePropertyList>);
+            break;
+        };
+      }
+
+      property_callbacks[element.first] =
+          std::make_pair(num_properties, std::move(callbacks));
+    }
+
+    comments = comments_;
+    object_info = object_info_;
+
+    return std::expected<void, std::string_view>();
+  }
+
+  std::expected<SizeType, std::string_view> GetPropertyListSizeType(
+      std::string_view element_name,
+      std::string_view property_name) const override {
+    size_t max_size = std::visit(
+        [&](const auto& entry) -> size_t {
+          size_t value = 0u;
+          if constexpr (std::is_class<
+                            std::decay_t<decltype(entry[0])>>::value) {
+            for (const auto& list : entry) {
+              value = std::max(value, list.size());
+            }
+          }
+          return value;
+        },
+        properties_.at(element_name).at(property_name));
+
+    if (max_size <= std::numeric_limits<uint8_t>::max()) {
+      return PlyWriter::UINT8;
+    }
+
+    if (max_size <= std::numeric_limits<uint16_t>::max()) {
+      return PlyWriter::UINT16;
+    }
+
+    return PlyWriter::UINT32;
+  }
+
+ private:
+  template <typename T>
+  std::expected<T, std::string_view> Callback(std::string_view element_name,
+                                              std::string_view property_name) {
+    return std::get<std::span<const T>>(
+        properties_.at(element_name)
+            .at(property_name))[index_[element_name][property_name]++];
+  }
+
+  const std::map<std::string_view,
+                 std::map<std::string_view, plyodine::Property>>& properties_;
+  std::span<const std::string> comments_;
+  std::span<const std::string> object_info_;
+
+  std::map<std::string_view, std::map<std::string_view, size_t>> index_;
+};
+
+std::expected<void, std::string_view> WriteTo(
+    std::ostream& stream,
+    const std::map<std::string_view,
+                   std::map<std::string_view, plyodine::Property>>& properties,
+    std::span<const std::string> comments = {},
+    std::span<const std::string> object_info = {}) {
+  TestWriter writer(properties, comments, object_info);
+  return writer.WriteTo(stream);
+}
+
+std::expected<void, std::string_view> WriteToASCII(
+    std::ostream& stream,
+    const std::map<std::string_view,
+                   std::map<std::string_view, plyodine::Property>>& properties,
+    std::span<const std::string> comments = {},
+    std::span<const std::string> object_info = {}) {
+  TestWriter writer(properties, comments, object_info);
+  return writer.WriteToASCII(stream);
+}
+
+std::expected<void, std::string_view> WriteToBigEndian(
+    std::ostream& stream,
+    const std::map<std::string_view,
+                   std::map<std::string_view, plyodine::Property>>& properties,
+    std::span<const std::string> comments = {},
+    std::span<const std::string> object_info = {}) {
+  TestWriter writer(properties, comments, object_info);
+  return writer.WriteToBigEndian(stream);
+}
+
+std::expected<void, std::string_view> WriteToLittleEndian(
+    std::ostream& stream,
+    const std::map<std::string_view,
+                   std::map<std::string_view, plyodine::Property>>& properties,
+    std::span<const std::string> comments = {},
+    std::span<const std::string> object_info = {}) {
+  TestWriter writer(properties, comments, object_info);
+  return writer.WriteToLittleEndian(stream);
+}
+
 std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
 BuildTestData() {
   static const std::vector<int8_t> a = {-1, 2, 0};
@@ -73,46 +257,35 @@ BuildListSizeTestData() {
 
 TEST(Validate, BadElementNames) {
   std::stringstream output;
-  EXPECT_EQ(plyodine::WriteToASCII(output, {{"", {}}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {{"", {}}}).error(),
             "Names of properties and elements may not be empty");
   EXPECT_EQ(
-      plyodine::WriteToASCII(output, {{" ", {}}}).error(),
+      WriteToASCII(output, {{" ", {}}}).error(),
       "Names of properties and elements may only contain graphic characters");
 }
 
 TEST(Validate, BadPropertyNames) {
   std::stringstream output;
-  EXPECT_EQ(plyodine::WriteToASCII(output, {{"element", {{"", {}}}}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {{"element", {{"", {}}}}}).error(),
             "Names of properties and elements may not be empty");
   EXPECT_EQ(
-      plyodine::WriteToASCII(output, {{"element", {{" ", {}}}}}).error(),
+      WriteToASCII(output, {{"element", {{" ", {}}}}}).error(),
       "Names of properties and elements may only contain graphic characters");
-}
-
-TEST(Validate, MismatchedProperties) {
-  std::vector<float> elements0;
-  std::vector<float> elements1 = {1.0};
-  std::stringstream output;
-  EXPECT_EQ(plyodine::WriteToASCII(
-                output,
-                {{"element", {{"node0", {elements0}}, {"node1", {elements1}}}}})
-                .error(),
-            "All properties of an element must have the same size");
 }
 
 TEST(Validate, BadComment) {
   std::stringstream output;
-  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {{"\r"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).error(),
             "A comment may not contain line feed or carriage return");
-  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {{"\n"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).error(),
             "A comment may not contain line feed or carriage return");
 }
 
 TEST(Validate, BadObjInfo) {
   std::stringstream output;
-  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {}, {{"\r"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).error(),
             "A obj_info may not contain line feed or carriage return");
-  EXPECT_EQ(plyodine::WriteToASCII(output, {}, {}, {{"\n"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).error(),
             "A obj_info may not contain line feed or carriage return");
 }
 
@@ -126,15 +299,15 @@ TEST(Validate, ListTooBig) {
     std::vector<std::span<const float>> list({entries});
 
     std::stringstream output;
-    EXPECT_EQ(plyodine::WriteToASCII(output, {{"element", {{"node0", {list}}}}})
-                  .error(),
-              "A property list contained too many values");
+    EXPECT_EQ(
+        WriteToASCII(output, {{"element", {{"node0", {list}}}}}).error(),
+        "The list was too big to be represented with the selected index type");
   }
 }
 
 TEST(ASCII, Empty) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToASCII(output, {}));
+  ASSERT_TRUE(WriteToASCII(output, {}));
 
   std::ifstream input("plyodine/test_data/ply_ascii_empty.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -149,7 +322,7 @@ TEST(ASCII, NonFinite) {
 
   std::stringstream output;
   EXPECT_EQ(
-      plyodine::WriteToASCII(output, data).error(),
+      WriteToASCII(output, data).error(),
       "Only finite floating point values may be serialized to an ASCII output");
 }
 
@@ -162,16 +335,15 @@ TEST(ASCII, NonFiniteList) {
 
   std::stringstream output;
   EXPECT_EQ(
-      plyodine::WriteToASCII(output, data).error(),
+      WriteToASCII(output, data).error(),
       "Only finite floating point values may be serialized to an ASCII output");
 }
 
 TEST(ASCII, TestData) {
-  std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
-  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
+  std::string comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output;
-  ASSERT_TRUE(
-      plyodine::WriteToASCII(output, BuildTestData(), comments, object_info));
+  ASSERT_TRUE(WriteToASCII(output, BuildTestData(), comments, object_info));
 
   std::ifstream input("plyodine/test_data/ply_ascii_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -180,7 +352,7 @@ TEST(ASCII, TestData) {
 
 TEST(ASCII, ListSizes) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToASCII(output, BuildListSizeTestData()));
+  ASSERT_TRUE(WriteToASCII(output, BuildListSizeTestData()));
 
   std::ifstream input("plyodine/test_data/ply_ascii_list_sizes.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -195,7 +367,7 @@ TEST(ASCII, LargeFP) {
   data["vertex"]["a"] = al;
 
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToASCII(output, data));
+  ASSERT_TRUE(WriteToASCII(output, data));
 
   std::ifstream input("plyodine/test_data/ply_ascii_large_fp.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -210,7 +382,7 @@ TEST(ASCII, SmallFP) {
   data["vertex"]["a"] = al;
 
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToASCII(output, data));
+  ASSERT_TRUE(WriteToASCII(output, data));
 
   std::ifstream input("plyodine/test_data/ply_ascii_small_fp.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -219,7 +391,7 @@ TEST(ASCII, SmallFP) {
 
 TEST(BigEndian, Empty) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToBigEndian(output, {}));
+  ASSERT_TRUE(WriteToBigEndian(output, {}));
 
   std::ifstream input("plyodine/test_data/ply_big_empty.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -227,11 +399,10 @@ TEST(BigEndian, Empty) {
 }
 
 TEST(BigEndian, TestData) {
-  std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
-  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
+  std::string comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToBigEndian(output, BuildTestData(), comments,
-                                         object_info));
+  ASSERT_TRUE(WriteToBigEndian(output, BuildTestData(), comments, object_info));
 
   std::ifstream input("plyodine/test_data/ply_big_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -240,7 +411,7 @@ TEST(BigEndian, TestData) {
 
 TEST(BigEndian, ListSizes) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToBigEndian(output, BuildListSizeTestData()));
+  ASSERT_TRUE(WriteToBigEndian(output, BuildListSizeTestData()));
 
   std::ifstream input("plyodine/test_data/ply_big_list_sizes.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -249,7 +420,7 @@ TEST(BigEndian, ListSizes) {
 
 TEST(LittleEndian, Empty) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToLittleEndian(output, {}));
+  ASSERT_TRUE(WriteToLittleEndian(output, {}));
 
   std::ifstream input("plyodine/test_data/ply_little_empty.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -257,11 +428,11 @@ TEST(LittleEndian, Empty) {
 }
 
 TEST(LittleEndian, TestData) {
-  std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
-  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
+  std::string comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToLittleEndian(output, BuildTestData(), comments,
-                                            object_info));
+  ASSERT_TRUE(
+      WriteToLittleEndian(output, BuildTestData(), comments, object_info));
 
   std::ifstream input("plyodine/test_data/ply_little_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -270,7 +441,7 @@ TEST(LittleEndian, TestData) {
 
 TEST(LittleEndian, ListSizes) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToLittleEndian(output, BuildListSizeTestData()));
+  ASSERT_TRUE(WriteToLittleEndian(output, BuildListSizeTestData()));
 
   std::ifstream input("plyodine/test_data/ply_little_list_sizes.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
@@ -279,7 +450,7 @@ TEST(LittleEndian, ListSizes) {
 
 TEST(Native, Empty) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToBinary(output, {}));
+  ASSERT_TRUE(WriteTo(output, {}));
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input("plyodine/test_data/ply_big_empty.ply");
@@ -294,10 +465,9 @@ TEST(Native, Empty) {
 
 TEST(Native, TestData) {
   std::stringstream output;
-  std::string_view comments[] = {{"comment 1"}, {"comment 2"}};
-  std::string_view object_info[] = {{"obj info 1"}, {"obj info 2"}};
-  ASSERT_TRUE(
-      plyodine::WriteToBinary(output, BuildTestData(), comments, object_info));
+  std::string comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
+  ASSERT_TRUE(WriteTo(output, BuildTestData(), comments, object_info));
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input("plyodine/test_data/ply_big_data.ply");
@@ -312,7 +482,7 @@ TEST(Native, TestData) {
 
 TEST(Native, ListSizes) {
   std::stringstream output;
-  ASSERT_TRUE(plyodine::WriteToBinary(output, BuildListSizeTestData()));
+  ASSERT_TRUE(WriteTo(output, BuildListSizeTestData()));
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input("plyodine/test_data/ply_big_list_sizes.ply");
