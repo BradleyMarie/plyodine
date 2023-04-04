@@ -5,6 +5,7 @@
 #include <bit>
 #include <cctype>
 #include <cmath>
+#include <functional>
 #include <iomanip>
 #include <limits>
 #include <optional>
@@ -14,6 +15,80 @@
 
 namespace plyodine {
 namespace {
+
+typedef std::expected<Int8Property, std::string_view> (
+    PlyWriter::*Int8PropertyCallback)(std::string_view, size_t,
+                                      std::string_view, size_t, uint64_t) const;
+typedef std::expected<Int8PropertyList, std::string_view> (
+    PlyWriter::*Int8PropertyListCallback)(std::string_view, size_t,
+                                          std::string_view, size_t, uint64_t,
+                                          std::vector<Int8Property>&) const;
+typedef std::expected<UInt8Property, std::string_view> (
+    PlyWriter::*UInt8PropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t,
+                                       uint64_t) const;
+typedef std::expected<UInt8PropertyList, std::string_view> (
+    PlyWriter::*UInt8PropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           std::vector<UInt8Property>&) const;
+typedef std::expected<Int16Property, std::string_view> (
+    PlyWriter::*Int16PropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t,
+                                       uint64_t) const;
+typedef std::expected<Int16PropertyList, std::string_view> (
+    PlyWriter::*Int16PropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           std::vector<Int16Property>&) const;
+typedef std::expected<UInt16Property, std::string_view> (
+    PlyWriter::*UInt16PropertyCallback)(std::string_view, size_t,
+                                        std::string_view, size_t,
+                                        uint64_t) const;
+typedef std::expected<UInt16PropertyList, std::string_view> (
+    PlyWriter::*UInt16PropertyListCallback)(std::string_view, size_t,
+                                            std::string_view, size_t, uint64_t,
+                                            std::vector<UInt16Property>&) const;
+typedef std::expected<Int32Property, std::string_view> (
+    PlyWriter::*Int32PropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t,
+                                       uint64_t) const;
+typedef std::expected<Int32PropertyList, std::string_view> (
+    PlyWriter::*Int32PropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           std::vector<Int32Property>&) const;
+typedef std::expected<UInt32Property, std::string_view> (
+    PlyWriter::*UInt32PropertyCallback)(std::string_view, size_t,
+                                        std::string_view, size_t,
+                                        uint64_t) const;
+typedef std::expected<UInt32PropertyList, std::string_view> (
+    PlyWriter::*UInt32PropertyListCallback)(std::string_view, size_t,
+                                            std::string_view, size_t, uint64_t,
+                                            std::vector<UInt32Property>&) const;
+typedef std::expected<FloatProperty, std::string_view> (
+    PlyWriter::*FloatPropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t,
+                                       uint64_t) const;
+typedef std::expected<FloatPropertyList, std::string_view> (
+    PlyWriter::*FloatPropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           std::vector<FloatProperty>&) const;
+typedef std::expected<DoubleProperty, std::string_view> (
+    PlyWriter::*DoublePropertyCallback)(std::string_view, size_t,
+                                        std::string_view, size_t,
+                                        uint64_t) const;
+typedef std::expected<DoublePropertyList, std::string_view> (
+    PlyWriter::*DoublePropertyListCallback)(std::string_view, size_t,
+                                            std::string_view, size_t, uint64_t,
+                                            std::vector<DoubleProperty>&) const;
+
+typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
+                     UInt8PropertyCallback, UInt8PropertyListCallback,
+                     Int16PropertyCallback, Int16PropertyListCallback,
+                     UInt16PropertyCallback, UInt16PropertyListCallback,
+                     Int32PropertyCallback, Int32PropertyListCallback,
+                     UInt32PropertyCallback, UInt32PropertyListCallback,
+                     FloatPropertyCallback, FloatPropertyListCallback,
+                     DoublePropertyCallback, DoublePropertyListCallback>
+    Callback;
 
 typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<int16_t>, std::vector<uint16_t>,
@@ -71,9 +146,8 @@ std::expected<void, std::string_view> ValidateName(std::string_view name) {
 }
 
 std::expected<void, std::string_view> ValidateProperties(
-    const std::map<
-        std::string_view,
-        std::pair<uint64_t, std::map<std::string_view, PlyWriter::Callback>>>&
+    const std::map<std::string_view,
+                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
         properties) {
   for (const auto& [element_name, element_properties] : properties) {
     auto element_name_valid = ValidateName(element_name);
@@ -109,33 +183,32 @@ std::expected<void, std::string_view> ValidateComments(
 
 std::expected<std::vector<std::tuple<
                   std::string_view, uint64_t,
-                  std::vector<std::tuple<std::string_view, PlyWriter::Callback,
-                                         std::optional<PlyWriter::SizeType>>>>>,
+                  std::vector<std::tuple<std::string_view, Callback,
+                                         std::optional<PropertyType>>>>>,
               std::string_view>
 GetListSizes(
-    const PlyWriter& ply_writer,
-    const std::map<
-        std::string_view,
-        std::pair<uint64_t, std::map<std::string_view, PlyWriter::Callback>>>&
+    const std::function<std::expected<PropertyType, std::string_view>(
+        std::string_view, std::string_view)>
+        get_property_list_size,
+    const std::map<std::string_view,
+                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
         properties) {
-  std::vector<
-      std::tuple<std::string_view, uint64_t,
-                 std::vector<std::tuple<std::string_view, PlyWriter::Callback,
-                                        std::optional<PlyWriter::SizeType>>>>>
+  std::vector<std::tuple<std::string_view, uint64_t,
+                         std::vector<std::tuple<std::string_view, Callback,
+                                                std::optional<PropertyType>>>>>
       callbacks;
   for (const auto& element : properties) {
-    std::vector<std::tuple<std::string_view, PlyWriter::Callback,
-                           std::optional<PlyWriter::SizeType>>>
+    std::vector<
+        std::tuple<std::string_view, Callback, std::optional<PropertyType>>>
         entries;
     for (const auto& property : element.second.second) {
       if (std::visit([](auto ptr) { return !ptr; }, property.second)) {
         continue;
       }
 
-      std::optional<PlyWriter::SizeType> size_type;
+      std::optional<PropertyType> size_type;
       if (property.second.index() & 0x1u) {
-        auto result =
-            ply_writer.GetPropertyListSizeType(element.first, property.first);
+        auto result = get_property_list_size(element.first, property.first);
         if (!result) {
           return std::unexpected(result.error());
         }
@@ -153,14 +226,17 @@ GetListSizes(
 
 std::expected<std::vector<std::tuple<
                   std::string_view, uint64_t,
-                  std::vector<std::tuple<std::string_view, PlyWriter::Callback,
-                                         std::optional<PlyWriter::SizeType>>>>>,
+                  std::vector<std::tuple<std::string_view, Callback,
+                                         std::optional<PropertyType>>>>>,
               std::string_view>
 WriteHeader(
-    const PlyWriter& ply_writer, std::ostream& stream,
-    const std::map<
-        std::string_view,
-        std::pair<uint64_t, std::map<std::string_view, PlyWriter::Callback>>>&
+    const PlyWriter& ply_writer,
+    const std::function<std::expected<PropertyType, std::string_view>(
+        std::string_view, std::string_view)>
+        get_property_list_size,
+    std::ostream& stream,
+    const std::map<std::string_view,
+                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
         properties,
     std::span<const std::string> comments,
     std::span<const std::string> object_info, std::string_view format) {
@@ -184,7 +260,7 @@ WriteHeader(
         "A obj_info may not contain line feed or carriage return");
   }
 
-  auto callbacks = GetListSizes(ply_writer, properties);
+  auto callbacks = GetListSizes(get_property_list_size, properties);
   if (!callbacks) {
     return std::unexpected(callbacks.error());
   }
@@ -217,7 +293,8 @@ WriteHeader(
 
     for (const auto& property : std::get<2>(element)) {
       if (std::get<2>(property).has_value()) {
-        stream << "property list " << type_names.at(*std::get<2>(property))
+        stream << "property list "
+               << type_names.at(static_cast<size_t>(*std::get<2>(property)))
                << " " << type_names.at(std::get<1>(property).index()) << " "
                << std::get<0>(property) << "\r";
       } else {
@@ -262,7 +339,7 @@ std::string_view SerializeFP(std::stringstream& stream, T value) {
   return result;
 }
 
-std::expected<void, std::string_view> ValidateListSize(PlyWriter::SizeType type,
+std::expected<void, std::string_view> ValidateListSize(PropertyType type,
                                                        size_t size) {
   static const std::array<uint32_t, 16> kSizes = {
       std::numeric_limits<int8_t>::max(),
@@ -282,7 +359,7 @@ std::expected<void, std::string_view> ValidateListSize(PlyWriter::SizeType type,
       0u,
       0u};
 
-  if (kSizes.at(type) < size) {
+  if (kSizes.at(static_cast<size_t>(type)) < size) {
     return std::unexpected(
         "The list was too big to be represented with the selected index type");
   }
@@ -292,7 +369,16 @@ std::expected<void, std::string_view> ValidateListSize(PlyWriter::SizeType type,
 
 template <std::endian Endianness>
 std::expected<void, std::string_view> WriteToBinaryImpl(
-    const PlyWriter& ply_writer, std::ostream& stream) {
+    const PlyWriter& ply_writer,
+    const std::function<std::expected<void, std::string_view>(
+        std::map<std::string_view,
+                 std::pair<uint64_t, std::map<std::string_view, Callback>>>&,
+        std::span<const std::string>&, std::span<const std::string>&)>
+        start,
+    const std::function<std::expected<PropertyType, std::string_view>(
+        std::string_view, std::string_view)>
+        get_property_list_size,
+    std::ostream& stream) {
   std::string_view format;
   if constexpr (Endianness == std::endian::big) {
     format = "binary_big_endian";
@@ -300,17 +386,18 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
     format = "binary_little_endian";
   }
   std::map<std::string_view,
-           std::pair<uint64_t, std::map<std::string_view, PlyWriter::Callback>>>
+           std::pair<uint64_t, std::map<std::string_view, Callback>>>
       property_callbacks;
   std::span<const std::string> comments;
   std::span<const std::string> object_info;
-  auto result = ply_writer.Start(property_callbacks, comments, object_info);
+  auto result = start(property_callbacks, comments, object_info);
   if (!result) {
     return result;
   }
 
-  auto callbacks = WriteHeader(ply_writer, stream, property_callbacks, comments,
-                               object_info, format);
+  auto callbacks =
+      WriteHeader(ply_writer, get_property_list_size, stream,
+                  property_callbacks, comments, object_info, format);
   if (!callbacks) {
     return std::unexpected(callbacks.error());
   }
@@ -342,12 +429,12 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
                 uint16_t size16;
                 uint32_t size32;
                 switch (std::get<2>(property).value()) {
-                  case PlyWriter::UINT8:
+                  case PropertyType::UINT8:
                     size8 = static_cast<uint8_t>(result->size());
                     stream.write(reinterpret_cast<char*>(&size8),
                                  sizeof(size8));
                     break;
-                  case PlyWriter::UINT16:
+                  case PropertyType::UINT16:
                     size16 = static_cast<uint16_t>(result->size());
 
                     if (Endianness != std::endian::native) {
@@ -357,7 +444,7 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
                     stream.write(reinterpret_cast<char*>(&size16),
                                  sizeof(size16));
                     break;
-                  case PlyWriter::UINT32:
+                  case PropertyType::UINT32:
                     size32 = static_cast<uint32_t>(result->size());
 
                     if (Endianness != std::endian::native) {
@@ -366,6 +453,9 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
 
                     stream.write(reinterpret_cast<char*>(&size32),
                                  sizeof(size32));
+                    break;
+                  default:
+                    // Impossible
                     break;
                 }
 
@@ -469,6 +559,40 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
 
 std::expected<void, std::string_view> PlyWriter::WriteTo(
     std::ostream& stream) const {
+  // Static assertions to ensure variants of Callback are properly ordered
+  static_assert(Callback(Int8PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT8));
+  static_assert(Callback(Int8PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT8_LIST));
+  static_assert(Callback(UInt8PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT8));
+  static_assert(Callback(UInt8PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT8_LIST));
+  static_assert(Callback(Int16PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT16));
+  static_assert(Callback(Int16PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT16_LIST));
+  static_assert(Callback(UInt16PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT16));
+  static_assert(Callback(UInt16PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT16_LIST));
+  static_assert(Callback(Int32PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT32));
+  static_assert(Callback(Int32PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT32_LIST));
+  static_assert(Callback(UInt32PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT32));
+  static_assert(Callback(UInt32PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT32_LIST));
+  static_assert(Callback(FloatPropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::FLOAT));
+  static_assert(Callback(FloatPropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::FLOAT_LIST));
+  static_assert(Callback(DoublePropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::DOUBLE));
+  static_assert(Callback(DoublePropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::DOUBLE_LIST));
+
   if constexpr (std::endian::native == std::endian::big) {
     return WriteToBigEndian(stream);
   } else {
@@ -488,8 +612,18 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
     return result;
   }
 
-  auto callbacks = WriteHeader(*this, stream, property_callbacks, comments,
-                               object_info, "ascii");
+  auto callbacks = WriteHeader(
+      *this,
+      [&](std::string_view element_name, std::string_view property_name)
+          -> std::expected<PropertyType, std::string_view> {
+        auto result =
+            this->GetPropertyListSizeType(element_name, property_name);
+        if (!result) {
+          return std::unexpected(result.error());
+        }
+        return static_cast<PropertyType>(*result);
+      },
+      stream, property_callbacks, comments, object_info, "ascii");
   if (!callbacks) {
     return std::unexpected(callbacks.error());
   }
@@ -589,12 +723,48 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
 
 std::expected<void, std::string_view> PlyWriter::WriteToBigEndian(
     std::ostream& stream) const {
-  return WriteToBinaryImpl<std::endian::big>(*this, stream);
+  return WriteToBinaryImpl<std::endian::big>(
+      *this,
+      [&](std::map<std::string_view,
+                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
+              property_callbacks,
+          std::span<const std::string>& comments,
+          std::span<const std::string>& object_info) {
+        return this->Start(property_callbacks, comments, object_info);
+      },
+      [&](std::string_view element_name, std::string_view property_name)
+          -> std::expected<PropertyType, std::string_view> {
+        auto result =
+            this->GetPropertyListSizeType(element_name, property_name);
+        if (!result) {
+          return std::unexpected(result.error());
+        }
+        return static_cast<PropertyType>(*result);
+      },
+      stream);
 }
 
 std::expected<void, std::string_view> PlyWriter::WriteToLittleEndian(
     std::ostream& stream) const {
-  return WriteToBinaryImpl<std::endian::little>(*this, stream);
+  return WriteToBinaryImpl<std::endian::little>(
+      *this,
+      [&](std::map<std::string_view,
+                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
+              property_callbacks,
+          std::span<const std::string>& comments,
+          std::span<const std::string>& object_info) {
+        return this->Start(property_callbacks, comments, object_info);
+      },
+      [&](std::string_view element_name, std::string_view property_name)
+          -> std::expected<PropertyType, std::string_view> {
+        auto result =
+            this->GetPropertyListSizeType(element_name, property_name);
+        if (!result) {
+          return std::unexpected(result.error());
+        }
+        return static_cast<PropertyType>(*result);
+      },
+      stream);
 }
 
 // Static assertions to ensure float types are properly sized
@@ -604,42 +774,5 @@ static_assert(std::numeric_limits<float>::is_iec559);
 // Static assertions to ensure system does not use mixed endianness
 static_assert(std::endian::native == std::endian::little ||
               std::endian::native == std::endian::big);
-
-// Static assertions to ensure variants of Callback are properly ordered
-static_assert(PlyWriter::Callback(PlyWriter::Int8PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT8));
-static_assert(PlyWriter::Callback(PlyWriter::Int8PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT8_LIST));
-static_assert(PlyWriter::Callback(PlyWriter::UInt8PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT8));
-static_assert(PlyWriter::Callback(PlyWriter::UInt8PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT8_LIST));
-static_assert(PlyWriter::Callback(PlyWriter::Int16PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT16));
-static_assert(PlyWriter::Callback(PlyWriter::Int16PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT16_LIST));
-static_assert(PlyWriter::Callback(PlyWriter::UInt16PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT16));
-static_assert(
-    PlyWriter::Callback(PlyWriter::UInt16PropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(PropertyType::UINT16_LIST));
-static_assert(PlyWriter::Callback(PlyWriter::Int32PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT32));
-static_assert(PlyWriter::Callback(PlyWriter::Int32PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT32_LIST));
-static_assert(PlyWriter::Callback(PlyWriter::UInt32PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT32));
-static_assert(
-    PlyWriter::Callback(PlyWriter::UInt32PropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(PropertyType::UINT32_LIST));
-static_assert(PlyWriter::Callback(PlyWriter::FloatPropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::FLOAT));
-static_assert(PlyWriter::Callback(PlyWriter::FloatPropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::FLOAT_LIST));
-static_assert(PlyWriter::Callback(PlyWriter::DoublePropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::DOUBLE));
-static_assert(
-    PlyWriter::Callback(PlyWriter::DoublePropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(PropertyType::DOUBLE_LIST));
 
 }  // namespace plyodine

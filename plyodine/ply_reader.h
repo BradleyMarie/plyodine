@@ -17,6 +17,7 @@ class PlyReader {
  public:
   std::expected<void, std::string_view> ReadFrom(std::istream& stream);
 
+ protected:
   typedef std::expected<void, std::string_view> (
       PlyReader::*Int8PropertyCallback)(std::string_view, size_t,
                                         std::string_view, size_t, uint64_t,

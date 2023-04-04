@@ -13,11 +13,86 @@
 namespace plyodine {
 namespace {
 
+typedef std::expected<void, std::string_view> (
+    PlyReader::*Int8PropertyCallback)(std::string_view, size_t,
+                                      std::string_view, size_t, uint64_t,
+                                      Int8Property);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*Int8PropertyListCallback)(std::string_view, size_t,
+                                          std::string_view, size_t, uint64_t,
+                                          Int8PropertyList);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*UInt8PropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t, uint64_t,
+                                       UInt8Property);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*UInt8PropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           UInt8PropertyList);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*Int16PropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t, uint64_t,
+                                       Int16Property);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*Int16PropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           Int16PropertyList);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*UInt16PropertyCallback)(std::string_view, size_t,
+                                        std::string_view, size_t, uint64_t,
+                                        UInt16Property);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*UInt16PropertyListCallback)(std::string_view, size_t,
+                                            std::string_view, size_t, uint64_t,
+                                            UInt16PropertyList);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*Int32PropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t, uint64_t,
+                                       Int32Property);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*Int32PropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           Int32PropertyList);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*UInt32PropertyCallback)(std::string_view, size_t,
+                                        std::string_view, size_t, uint64_t,
+                                        UInt32Property);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*UInt32PropertyListCallback)(std::string_view, size_t,
+                                            std::string_view, size_t, uint64_t,
+                                            UInt32PropertyList);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*FloatPropertyCallback)(std::string_view, size_t,
+                                       std::string_view, size_t, uint64_t,
+                                       FloatProperty);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*FloatPropertyListCallback)(std::string_view, size_t,
+                                           std::string_view, size_t, uint64_t,
+                                           FloatPropertyList);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*DoublePropertyCallback)(std::string_view, size_t,
+                                        std::string_view, size_t, uint64_t,
+                                        DoubleProperty);
+typedef std::expected<void, std::string_view> (
+    PlyReader::*DoublePropertyListCallback)(std::string_view, size_t,
+                                            std::string_view, size_t, uint64_t,
+                                            DoublePropertyList);
+
+typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
+                     UInt8PropertyCallback, UInt8PropertyListCallback,
+                     Int16PropertyCallback, Int16PropertyListCallback,
+                     UInt16PropertyCallback, UInt16PropertyListCallback,
+                     Int32PropertyCallback, Int32PropertyListCallback,
+                     UInt32PropertyCallback, UInt32PropertyListCallback,
+                     FloatPropertyCallback, FloatPropertyListCallback,
+                     DoublePropertyCallback, DoublePropertyListCallback>
+    Callback;
+
 struct Context {
   PlyReader* reader_;
-  std::vector<std::tuple<
-      uint64_t, std::string_view,
-      std::vector<std::tuple<std::string_view, size_t, PlyReader::Callback>>>>
+  std::vector<
+      std::tuple<uint64_t, std::string_view,
+                 std::vector<std::tuple<std::string_view, size_t, Callback>>>>
       callbacks_;
   std::vector<int8_t> int8_;
   std::vector<uint8_t> uint8_;
@@ -93,7 +168,7 @@ template <std::endian Endianness, PropertyType Index, typename T,
 std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
     std::istream& input, std::string_view element_name, size_t element_index,
     std::string_view property_name, size_t property_index, uint64_t instance,
-    PlyReader::Callback callback, std::vector<T>& storage, PlyReader* reader) {
+    Callback callback, std::vector<T>& storage, PlyReader* reader) {
   storage.clear();
 
   auto result =
@@ -115,7 +190,7 @@ template <std::endian Endianness>
 std::expected<void, std::string_view> ReadBinaryPropertyScalar(
     std::istream& input, std::string_view element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
-    uint64_t instance, PlyReader::Callback callback, Context& context) {
+    uint64_t instance, Callback callback, Context& context) {
   std::expected<void, std::string_view> result;
 
   switch (header_property.data_type) {
@@ -202,7 +277,7 @@ template <std::endian Endianness, PropertyType Index, typename T,
 std::expected<void, std::string_view> ReadBinaryPropertyListData(
     std::istream& input, std::string_view element_name, size_t element_index,
     std::string_view property_name, size_t property_index, uint64_t instance,
-    PlyReader::Callback callback, std::vector<T>& storage, size_t num_to_read,
+    Callback callback, std::vector<T>& storage, size_t num_to_read,
     PlyReader* reader) {
   storage.clear();
 
@@ -227,7 +302,7 @@ template <std::endian Endianness>
 std::expected<void, std::string_view> ReadBinaryPropertyList(
     std::istream& input, std::string_view element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
-    uint64_t instance, PlyReader::Callback callback, Context& context) {
+    uint64_t instance, Callback callback, Context& context) {
   auto num_to_read =
       ReadBinaryListSize<Endianness>(input, *header_property.list_type);
   if (!num_to_read) {
@@ -413,7 +488,7 @@ template <PropertyType Index, typename T>
 std::expected<void, std::string_view> ReadAsciiPropertyScalarData(
     std::istream& input, std::string_view element_name, size_t element_index,
     std::string_view property_name, size_t property_index, uint64_t instance,
-    PlyReader::Callback callback, std::string& token, std::vector<T>& storage,
+    Callback callback, std::string& token, std::vector<T>& storage,
     PlyReader* reader, bool last_line) {
   storage.clear();
 
@@ -434,8 +509,7 @@ std::expected<void, std::string_view> ReadAsciiPropertyScalarData(
 std::expected<void, std::string_view> ReadAsciiPropertyScalar(
     std::istream& input, std::string_view element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
-    uint64_t instance, PlyReader::Callback callback, Context& context,
-    bool last_line) {
+    uint64_t instance, Callback callback, Context& context, bool last_line) {
   std::expected<void, std::string_view> result;
 
   switch (header_property.data_type) {
@@ -527,7 +601,7 @@ template <PropertyType Index, typename T>
 std::expected<void, std::string_view> ReadAsciiPropertyListData(
     std::istream& input, std::string_view element_name, size_t element_index,
     std::string_view property_name, size_t property_index, uint64_t instance,
-    PlyReader::Callback callback, std::string& token, std::vector<T>& storage,
+    Callback callback, std::string& token, std::vector<T>& storage,
     size_t num_to_read, PlyReader* reader, bool last_line) {
   storage.clear();
 
@@ -551,8 +625,7 @@ std::expected<void, std::string_view> ReadAsciiPropertyListData(
 std::expected<void, std::string_view> ReadAsciiPropertyList(
     std::istream& input, std::string_view element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
-    uint64_t instance, PlyReader::Callback callback, Context& context,
-    bool last_line) {
+    uint64_t instance, Callback callback, Context& context, bool last_line) {
   auto num_to_read = ReadAsciiListSize(input, context.token_,
                                        *header_property.list_type, last_line);
   if (!num_to_read) {
@@ -685,66 +758,66 @@ std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
   return std::expected<void, std::string_view>();
 }
 
-std::tuple<std::string_view, size_t, PlyReader::Callback> MakeCallback(
+std::tuple<std::string_view, size_t, Callback> MakeCallback(
     const std::map<
         std::string_view,
         std::pair<uint64_t, std::map<std::string_view, PropertyType>>>&
         all_properties,
-    const std::map<std::string_view,
-                   std::map<std::string_view, PlyReader::Callback>>& callbacks,
+    const std::map<std::string_view, std::map<std::string_view, Callback>>&
+        callbacks,
     std::string_view element_name, std::string_view property_name,
     size_t& property_index) {
   PropertyType type = all_properties.at(element_name).second.at(property_name);
 
-  PlyReader::Callback callback;
+  Callback callback;
   switch (type) {
     case PropertyType::INT8:
-      callback = PlyReader::Int8PropertyCallback(nullptr);
+      callback = Int8PropertyCallback(nullptr);
       break;
     case PropertyType::INT8_LIST:
-      callback = PlyReader::Int8PropertyListCallback(nullptr);
+      callback = Int8PropertyListCallback(nullptr);
       break;
     case PropertyType::UINT8:
-      callback = PlyReader::UInt8PropertyCallback(nullptr);
+      callback = UInt8PropertyCallback(nullptr);
       break;
     case PropertyType::UINT8_LIST:
-      callback = PlyReader::UInt8PropertyListCallback(nullptr);
+      callback = UInt8PropertyListCallback(nullptr);
       break;
     case PropertyType::INT16:
-      callback = PlyReader::Int16PropertyCallback(nullptr);
+      callback = Int16PropertyCallback(nullptr);
       break;
     case PropertyType::INT16_LIST:
-      callback = PlyReader::Int16PropertyListCallback(nullptr);
+      callback = Int16PropertyListCallback(nullptr);
       break;
     case PropertyType::UINT16:
-      callback = PlyReader::UInt16PropertyCallback(nullptr);
+      callback = UInt16PropertyCallback(nullptr);
       break;
     case PropertyType::UINT16_LIST:
-      callback = PlyReader::UInt16PropertyListCallback(nullptr);
+      callback = UInt16PropertyListCallback(nullptr);
       break;
     case PropertyType::INT32:
-      callback = PlyReader::Int32PropertyCallback(nullptr);
+      callback = Int32PropertyCallback(nullptr);
       break;
     case PropertyType::INT32_LIST:
-      callback = PlyReader::Int32PropertyListCallback(nullptr);
+      callback = Int32PropertyListCallback(nullptr);
       break;
     case PropertyType::UINT32:
-      callback = PlyReader::UInt32PropertyCallback(nullptr);
+      callback = UInt32PropertyCallback(nullptr);
       break;
     case PropertyType::UINT32_LIST:
-      callback = PlyReader::UInt32PropertyListCallback(nullptr);
+      callback = UInt32PropertyListCallback(nullptr);
       break;
     case PropertyType::FLOAT:
-      callback = PlyReader::FloatPropertyCallback(nullptr);
+      callback = FloatPropertyCallback(nullptr);
       break;
     case PropertyType::FLOAT_LIST:
-      callback = PlyReader::FloatPropertyListCallback(nullptr);
+      callback = FloatPropertyListCallback(nullptr);
       break;
     case PropertyType::DOUBLE:
-      callback = PlyReader::DoublePropertyCallback(nullptr);
+      callback = DoublePropertyCallback(nullptr);
       break;
     case PropertyType::DOUBLE_LIST:
-      callback = PlyReader::DoublePropertyListCallback(nullptr);
+      callback = DoublePropertyListCallback(nullptr);
       break;
   }
 
@@ -767,6 +840,40 @@ std::tuple<std::string_view, size_t, PlyReader::Callback> MakeCallback(
 }  // namespace
 
 std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
+  // Static assertions to ensure variants of Callback are properly ordered
+  static_assert(Callback(Int8PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT8));
+  static_assert(Callback(Int8PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT8_LIST));
+  static_assert(Callback(UInt8PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT8));
+  static_assert(Callback(UInt8PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT8_LIST));
+  static_assert(Callback(Int16PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT16));
+  static_assert(Callback(Int16PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT16_LIST));
+  static_assert(Callback(UInt16PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT16));
+  static_assert(Callback(UInt16PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT16_LIST));
+  static_assert(Callback(Int32PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT32));
+  static_assert(Callback(Int32PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT32_LIST));
+  static_assert(Callback(UInt32PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT32));
+  static_assert(Callback(UInt32PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT32_LIST));
+  static_assert(Callback(FloatPropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::FLOAT));
+  static_assert(Callback(FloatPropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::FLOAT_LIST));
+  static_assert(Callback(DoublePropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::DOUBLE));
+  static_assert(Callback(DoublePropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::DOUBLE_LIST));
+
   auto header = ReadPlyHeader(input);
   if (!header) {
     return std::unexpected(header.error());
@@ -845,8 +952,7 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
 
   Context context = {this};
   for (const auto& element : header->elements) {
-    std::vector<std::tuple<std::string_view, size_t, PlyReader::Callback>>
-        callbacks;
+    std::vector<std::tuple<std::string_view, size_t, Callback>> callbacks;
     size_t property_index = 0;
     for (const auto& property : element.properties) {
       callbacks.push_back(MakeCallback(all_properties, *started, element.name,
@@ -879,42 +985,5 @@ static_assert(std::numeric_limits<float>::is_iec559);
 // Static assertions to ensure system does not use mixed endianness
 static_assert(std::endian::native == std::endian::little ||
               std::endian::native == std::endian::big);
-
-// Static assertions to ensure variants of Callback are properly ordered
-static_assert(PlyReader::Callback(PlyReader::Int8PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT8));
-static_assert(PlyReader::Callback(PlyReader::Int8PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT8_LIST));
-static_assert(PlyReader::Callback(PlyReader::UInt8PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT8));
-static_assert(PlyReader::Callback(PlyReader::UInt8PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT8_LIST));
-static_assert(PlyReader::Callback(PlyReader::Int16PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT16));
-static_assert(PlyReader::Callback(PlyReader::Int16PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT16_LIST));
-static_assert(PlyReader::Callback(PlyReader::UInt16PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT16));
-static_assert(
-    PlyReader::Callback(PlyReader::UInt16PropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(PropertyType::UINT16_LIST));
-static_assert(PlyReader::Callback(PlyReader::Int32PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT32));
-static_assert(PlyReader::Callback(PlyReader::Int32PropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::INT32_LIST));
-static_assert(PlyReader::Callback(PlyReader::UInt32PropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::UINT32));
-static_assert(
-    PlyReader::Callback(PlyReader::UInt32PropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(PropertyType::UINT32_LIST));
-static_assert(PlyReader::Callback(PlyReader::FloatPropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::FLOAT));
-static_assert(PlyReader::Callback(PlyReader::FloatPropertyListCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::FLOAT_LIST));
-static_assert(PlyReader::Callback(PlyReader::DoublePropertyCallback(nullptr))
-                  .index() == static_cast<size_t>(PropertyType::DOUBLE));
-static_assert(
-    PlyReader::Callback(PlyReader::DoublePropertyListCallback(nullptr))
-        .index() == static_cast<size_t>(PropertyType::DOUBLE_LIST));
 
 }  // namespace plyodine

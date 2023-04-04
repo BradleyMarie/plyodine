@@ -27,6 +27,7 @@ class PlyWriter {
   std::expected<void, std::string_view> WriteToLittleEndian(
       std::ostream& stream) const;
 
+ protected:
   typedef std::expected<Int8Property, std::string_view> (
       PlyWriter::*Int8PropertyCallback)(std::string_view, size_t,
                                         std::string_view, size_t,
