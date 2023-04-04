@@ -15,12 +15,44 @@
 namespace plyodine {
 namespace {
 
+typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
+                   std::vector<int16_t>, std::vector<uint16_t>,
+                   std::vector<int32_t>, std::vector<uint32_t>,
+                   std::vector<float>, std::vector<double>>
+    Context;
+
 std::string_view FloatingPointError() {
   return "Only finite floating point values may be serialized to an ASCII "
          "output";
 }
 
 std::string_view WriteFailure() { return "Write failure"; }
+
+template <typename T>
+std::expected<T, std::string_view> CallCallback(
+    const PlyWriter& ply_writer,
+    std::expected<T, std::string_view> (PlyWriter::*callback)(
+        std::string_view, size_t, std::string_view, size_t, uint64_t) const,
+    std::string_view element_name, size_t element_index,
+    std::string_view property_name, size_t property_index, uint64_t instance,
+    Context& context) {
+  return (ply_writer.*callback)(element_name, element_index, property_name,
+                                property_index, instance);
+}
+
+template <typename T>
+std::expected<std::span<const T>, std::string_view> CallCallback(
+    const PlyWriter& ply_writer,
+    std::expected<std::span<const T>, std::string_view> (PlyWriter::*callback)(
+        std::string_view, size_t, std::string_view, size_t, uint64_t,
+        std::vector<T>&) const,
+    std::string_view element_name, size_t element_index,
+    std::string_view property_name, size_t property_index, uint64_t instance,
+    Context& context) {
+  return (ply_writer.*callback)(element_name, element_index, property_name,
+                                property_index, instance,
+                                std::get<std::vector<T>>(context));
+}
 
 std::expected<void, std::string_view> ValidateName(std::string_view name) {
   if (name.empty()) {
@@ -259,8 +291,8 @@ std::expected<void, std::string_view> ValidateListSize(PlyWriter::SizeType type,
 }
 
 template <std::endian Endianness>
-std::expected<void, std::string_view> WriteToBinaryImpl(PlyWriter& ply_writer,
-                                                        std::ostream& stream) {
+std::expected<void, std::string_view> WriteToBinaryImpl(
+    const PlyWriter& ply_writer, std::ostream& stream) {
   std::string_view format;
   if constexpr (Endianness == std::endian::big) {
     format = "binary_big_endian";
@@ -283,13 +315,17 @@ std::expected<void, std::string_view> WriteToBinaryImpl(PlyWriter& ply_writer,
     return std::unexpected(callbacks.error());
   }
 
-  for (const auto& element : *callbacks) {
-    for (uint64_t instance = 0u; instance < std::get<1>(element); instance++) {
-      for (const auto& property : std::get<2>(element)) {
+  Context context;
+  for (size_t e = 0; e < callbacks->size(); e++) {
+    const auto& element = callbacks->at(e);
+    for (size_t instance = 0; instance < std::get<1>(element); instance++) {
+      for (size_t p = 0; p < std::get<2>(element).size(); p++) {
+        const auto& property = std::get<2>(element)[p];
         auto result = std::visit(
             [&](const auto& callback) -> std::expected<void, std::string_view> {
-              auto result = (ply_writer.*callback)(
-                  std::get<0>(element), std::get<0>(property), instance);
+              auto result =
+                  CallCallback(ply_writer, callback, std::get<0>(element), e,
+                               std::get<0>(property), p, instance, context);
               if (!result) {
                 return std::unexpected(result.error());
               }
@@ -431,7 +467,8 @@ std::expected<void, std::string_view> WriteToBinaryImpl(PlyWriter& ply_writer,
 
 }  // namespace
 
-std::expected<void, std::string_view> PlyWriter::WriteTo(std::ostream& stream) {
+std::expected<void, std::string_view> PlyWriter::WriteTo(
+    std::ostream& stream) const {
   if constexpr (std::endian::native == std::endian::big) {
     return WriteToBigEndian(stream);
   } else {
@@ -440,7 +477,7 @@ std::expected<void, std::string_view> PlyWriter::WriteTo(std::ostream& stream) {
 }
 
 std::expected<void, std::string_view> PlyWriter::WriteToASCII(
-    std::ostream& stream) {
+    std::ostream& stream) const {
   std::map<std::string_view,
            std::pair<uint64_t, std::map<std::string_view, Callback>>>
       property_callbacks;
@@ -457,11 +494,14 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
     return std::unexpected(callbacks.error());
   }
 
+  Context context;
   std::stringstream fp_stream_storage;
-  for (const auto& element : *callbacks) {
+  for (size_t e = 0; e < callbacks->size(); e++) {
+    const auto& element = callbacks->at(e);
     for (size_t instance = 0; instance < std::get<1>(element); instance++) {
       bool first = true;
-      for (const auto& property : std::get<2>(element)) {
+      for (size_t p = 0; p < std::get<2>(element).size(); p++) {
+        const auto& property = std::get<2>(element)[p];
         if (!first) {
           stream << " ";
           if (!stream) {
@@ -473,8 +513,9 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
 
         auto result = std::visit(
             [&](const auto& callback) -> std::expected<void, std::string_view> {
-              auto result = (this->*callback)(std::get<0>(element),
-                                              std::get<0>(property), instance);
+              auto result =
+                  CallCallback(*this, callback, std::get<0>(element), e,
+                               std::get<0>(property), p, instance, context);
               if (!result) {
                 return std::unexpected(result.error());
               }
@@ -547,12 +588,12 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
 }
 
 std::expected<void, std::string_view> PlyWriter::WriteToBigEndian(
-    std::ostream& stream) {
+    std::ostream& stream) const {
   return WriteToBinaryImpl<std::endian::big>(*this, stream);
 }
 
 std::expected<void, std::string_view> PlyWriter::WriteToLittleEndian(
-    std::ostream& stream) {
+    std::ostream& stream) const {
   return WriteToBinaryImpl<std::endian::little>(*this, stream);
 }
 

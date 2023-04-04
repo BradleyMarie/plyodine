@@ -67,7 +67,7 @@ class TestWriter final : public plyodine::PlyWriter {
                std::pair<uint64_t, std::map<std::string_view, Callback>>>&
           property_callbacks,
       std::span<const std::string>& comments,
-      std::span<const std::string>& object_info) override {
+      std::span<const std::string>& object_info) const override {
     if (start_fails_) {
       return std::unexpected("start");
     }
@@ -84,7 +84,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::INT8_LIST:
             callbacks[property.first] = Int8PropertyListCallback(
-                &TestWriter::Callback<plyodine::Int8PropertyList>);
+                &TestWriter::ListCallback<plyodine::Int8Property>);
             break;
           case plyodine::PropertyType::UINT8:
             callbacks[property.first] = UInt8PropertyCallback(
@@ -92,7 +92,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::UINT8_LIST:
             callbacks[property.first] = UInt8PropertyListCallback(
-                &TestWriter::Callback<plyodine::UInt8PropertyList>);
+                &TestWriter::ListCallback<plyodine::UInt8Property>);
             break;
           case plyodine::PropertyType::INT16:
             callbacks[property.first] = Int16PropertyCallback(
@@ -100,7 +100,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::INT16_LIST:
             callbacks[property.first] = Int16PropertyListCallback(
-                &TestWriter::Callback<plyodine::Int16PropertyList>);
+                &TestWriter::ListCallback<plyodine::Int16Property>);
             break;
           case plyodine::PropertyType::UINT16:
             callbacks[property.first] = UInt16PropertyCallback(
@@ -108,7 +108,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::UINT16_LIST:
             callbacks[property.first] = UInt16PropertyListCallback(
-                &TestWriter::Callback<plyodine::UInt16PropertyList>);
+                &TestWriter::ListCallback<plyodine::UInt16Property>);
             break;
           case plyodine::PropertyType::INT32:
             callbacks[property.first] = Int32PropertyCallback(
@@ -116,7 +116,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::INT32_LIST:
             callbacks[property.first] = Int32PropertyListCallback(
-                &TestWriter::Callback<plyodine::Int32PropertyList>);
+                &TestWriter::ListCallback<plyodine::Int32Property>);
             break;
           case plyodine::PropertyType::UINT32:
             callbacks[property.first] = UInt32PropertyCallback(
@@ -124,7 +124,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::UINT32_LIST:
             callbacks[property.first] = UInt32PropertyListCallback(
-                &TestWriter::Callback<plyodine::UInt32PropertyList>);
+                &TestWriter::ListCallback<plyodine::UInt32Property>);
             break;
           case plyodine::PropertyType::FLOAT:
             callbacks[property.first] = FloatPropertyCallback(
@@ -132,7 +132,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::FLOAT_LIST:
             callbacks[property.first] = FloatPropertyListCallback(
-                &TestWriter::Callback<plyodine::FloatPropertyList>);
+                &TestWriter::ListCallback<plyodine::FloatProperty>);
             break;
           case plyodine::PropertyType::DOUBLE:
             callbacks[property.first] = DoublePropertyCallback(
@@ -140,7 +140,7 @@ class TestWriter final : public plyodine::PlyWriter {
             break;
           case plyodine::PropertyType::DOUBLE_LIST:
             callbacks[property.first] = DoublePropertyListCallback(
-                &TestWriter::Callback<plyodine::DoublePropertyList>);
+                &TestWriter::ListCallback<plyodine::DoubleProperty>);
             break;
         };
       }
@@ -185,10 +185,21 @@ class TestWriter final : public plyodine::PlyWriter {
  private:
   template <typename T>
   std::expected<T, std::string_view> Callback(std::string_view element_name,
+                                              size_t element_index,
                                               std::string_view property_name,
-                                              uint64_t element_index) {
+                                              size_t property_index,
+                                              uint64_t instance) const {
     return std::get<std::span<const T>>(
-        properties_.at(element_name).at(property_name))[element_index];
+        properties_.at(element_name).at(property_name))[instance];
+  }
+
+  template <typename T>
+  std::expected<std::span<const T>, std::string_view> ListCallback(
+      std::string_view element_name, size_t element_index,
+      std::string_view property_name, size_t property_index, uint64_t instance,
+      std::vector<T>& storage) const {
+    return std::get<std::span<const std::span<const T>>>(
+        properties_.at(element_name).at(property_name))[instance];
   }
 
   const std::map<std::string_view, std::map<std::string_view, Property>>&

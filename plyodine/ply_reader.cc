@@ -17,7 +17,7 @@ struct Context {
   PlyReader* reader_;
   std::vector<std::tuple<
       uint64_t, std::string_view,
-      std::vector<std::tuple<std::string_view, PlyReader::Callback>>>>
+      std::vector<std::tuple<std::string_view, size_t, PlyReader::Callback>>>>
       callbacks_;
   std::vector<int8_t> int8_;
   std::vector<uint8_t> uint8_;
@@ -91,8 +91,8 @@ std::expected<size_t, std::string_view> ReadBinaryListSizeImpl(
 template <std::endian Endianness, PropertyType Index, typename T,
           typename ReadType = T>
 std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
-    std::istream& input, std::string_view element_name,
-    std::string_view property_name, uint64_t instance,
+    std::istream& input, std::string_view element_name, size_t element_index,
+    std::string_view property_name, size_t property_index, uint64_t instance,
     PlyReader::Callback callback, std::vector<T>& storage, PlyReader* reader) {
   storage.clear();
 
@@ -107,59 +107,59 @@ std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
     return std::expected<void, std::string_view>();
   }
 
-  return (reader->*actual_callback)(element_name, property_name, instance,
-                                    storage[0]);
+  return (reader->*actual_callback)(element_name, element_index, property_name,
+                                    property_index, instance, storage[0]);
 }
 
 template <std::endian Endianness>
 std::expected<void, std::string_view> ReadBinaryPropertyScalar(
-    std::istream& input, std::string_view element_name,
-    const PlyHeader::Property& header_property, uint64_t instance,
-    PlyReader::Callback callback, Context& context) {
+    std::istream& input, std::string_view element_name, size_t element_index,
+    const PlyHeader::Property& header_property, size_t property_index,
+    uint64_t instance, PlyReader::Callback callback, Context& context) {
   std::expected<void, std::string_view> result;
 
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::INT8>(
-          input, element_name, header_property.name, instance, callback,
-          context.int8_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.int8_, context.reader_);
       break;
     case PlyHeader::Property::UINT8:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::UINT8>(
-          input, element_name, header_property.name, instance, callback,
-          context.uint8_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.uint8_, context.reader_);
       break;
     case PlyHeader::Property::INT16:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::INT16>(
-          input, element_name, header_property.name, instance, callback,
-          context.int16_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.int16_, context.reader_);
       break;
     case PlyHeader::Property::UINT16:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::UINT16>(
-          input, element_name, header_property.name, instance, callback,
-          context.uint16_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.uint16_, context.reader_);
       break;
     case PlyHeader::Property::INT32:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::INT32>(
-          input, element_name, header_property.name, instance, callback,
-          context.int32_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.int32_, context.reader_);
       break;
     case PlyHeader::Property::UINT32:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::UINT32>(
-          input, element_name, header_property.name, instance, callback,
-          context.uint32_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.uint32_, context.reader_);
       break;
     case PlyHeader::Property::FLOAT:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::FLOAT,
                                             float, uint32_t>(
-          input, element_name, header_property.name, instance, callback,
-          context.float_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.float_, context.reader_);
       break;
     case PlyHeader::Property::DOUBLE:
       result = ReadBinaryPropertyScalarData<Endianness, PropertyType::DOUBLE,
                                             double, uint64_t>(
-          input, element_name, header_property.name, instance, callback,
-          context.double_, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.double_, context.reader_);
       break;
   }
 
@@ -200,8 +200,8 @@ std::expected<size_t, std::string_view> ReadBinaryListSize(
 template <std::endian Endianness, PropertyType Index, typename T,
           typename ReadType = T>
 std::expected<void, std::string_view> ReadBinaryPropertyListData(
-    std::istream& input, std::string_view element_name,
-    std::string_view property_name, uint64_t instance,
+    std::istream& input, std::string_view element_name, size_t element_index,
+    std::string_view property_name, size_t property_index, uint64_t instance,
     PlyReader::Callback callback, std::vector<T>& storage, size_t num_to_read,
     PlyReader* reader) {
   storage.clear();
@@ -219,15 +219,15 @@ std::expected<void, std::string_view> ReadBinaryPropertyListData(
     return std::expected<void, std::string_view>();
   }
 
-  return (reader->*actual_callback)(element_name, property_name, instance,
-                                    storage);
+  return (reader->*actual_callback)(element_name, element_index, property_name,
+                                    property_index, instance, storage);
 }
 
 template <std::endian Endianness>
 std::expected<void, std::string_view> ReadBinaryPropertyList(
-    std::istream& input, std::string_view element_name,
-    const PlyHeader::Property& header_property, uint64_t instance,
-    PlyReader::Callback callback, Context& context) {
+    std::istream& input, std::string_view element_name, size_t element_index,
+    const PlyHeader::Property& header_property, size_t property_index,
+    uint64_t instance, PlyReader::Callback callback, Context& context) {
   auto num_to_read =
       ReadBinaryListSize<Endianness>(input, *header_property.list_type);
   if (!num_to_read) {
@@ -238,47 +238,55 @@ std::expected<void, std::string_view> ReadBinaryPropertyList(
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
       result = ReadBinaryPropertyListData<Endianness, PropertyType::INT8_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.int8_, *num_to_read, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.int8_, *num_to_read,
+          context.reader_);
       break;
     case PlyHeader::Property::UINT8:
       result = ReadBinaryPropertyListData<Endianness, PropertyType::UINT8_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.uint8_, *num_to_read, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.uint8_, *num_to_read,
+          context.reader_);
       break;
     case PlyHeader::Property::INT16:
       result = ReadBinaryPropertyListData<Endianness, PropertyType::INT16_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.int16_, *num_to_read, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.int16_, *num_to_read,
+          context.reader_);
       break;
     case PlyHeader::Property::UINT16:
       result =
           ReadBinaryPropertyListData<Endianness, PropertyType::UINT16_LIST>(
-              input, element_name, header_property.name, instance, callback,
-              context.uint16_, *num_to_read, context.reader_);
+              input, element_name, element_index, header_property.name,
+              property_index, instance, callback, context.uint16_, *num_to_read,
+              context.reader_);
       break;
     case PlyHeader::Property::INT32:
       result = ReadBinaryPropertyListData<Endianness, PropertyType::INT32_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.int32_, *num_to_read, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.int32_, *num_to_read,
+          context.reader_);
       break;
     case PlyHeader::Property::UINT32:
       result =
           ReadBinaryPropertyListData<Endianness, PropertyType::UINT32_LIST>(
-              input, element_name, header_property.name, instance, callback,
-              context.uint32_, *num_to_read, context.reader_);
+              input, element_name, element_index, header_property.name,
+              property_index, instance, callback, context.uint32_, *num_to_read,
+              context.reader_);
       break;
     case PlyHeader::Property::FLOAT:
       result = ReadBinaryPropertyListData<Endianness, PropertyType::FLOAT_LIST,
                                           float, uint32_t>(
-          input, element_name, header_property.name, instance, callback,
-          context.float_, *num_to_read, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.float_, *num_to_read,
+          context.reader_);
       break;
     case PlyHeader::Property::DOUBLE:
       result = ReadBinaryPropertyListData<Endianness, PropertyType::DOUBLE_LIST,
                                           double, uint64_t>(
-          input, element_name, header_property.name, instance, callback,
-          context.double_, *num_to_read, context.reader_);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.double_, *num_to_read,
+          context.reader_);
       break;
   }
 
@@ -295,17 +303,19 @@ std::expected<void, std::string_view> ReadBinaryData(std::istream& input,
       for (size_t p = 0; p < header.elements[e].properties.size(); p++) {
         if (header.elements[e].properties[p].list_type) {
           auto error = ReadBinaryPropertyList<Endianness>(
-              input, header.elements[e].name, header.elements[e].properties[p],
-              instance, std::get<1>(std::get<2>(context.callbacks_[e])[p]),
-              context);
+              input, header.elements[e].name, e,
+              header.elements[e].properties[p],
+              std::get<1>(std::get<2>(context.callbacks_[e])[p]), instance,
+              std::get<2>(std::get<2>(context.callbacks_[e])[p]), context);
           if (!error) {
             return error;
           }
         } else {
           auto error = ReadBinaryPropertyScalar<Endianness>(
-              input, header.elements[e].name, header.elements[e].properties[p],
-              instance, std::get<1>(std::get<2>(context.callbacks_[e])[p]),
-              context);
+              input, header.elements[e].name, e,
+              header.elements[e].properties[p],
+              std::get<1>(std::get<2>(context.callbacks_[e])[p]), instance,
+              std::get<2>(std::get<2>(context.callbacks_[e])[p]), context);
           if (!error) {
             return error;
           }
@@ -401,8 +411,8 @@ std::expected<size_t, std::string_view> ReadAsciiListSizeImpl(
 
 template <PropertyType Index, typename T>
 std::expected<void, std::string_view> ReadAsciiPropertyScalarData(
-    std::istream& input, std::string_view element_name,
-    std::string_view property_name, uint64_t instance,
+    std::istream& input, std::string_view element_name, size_t element_index,
+    std::string_view property_name, size_t property_index, uint64_t instance,
     PlyReader::Callback callback, std::string& token, std::vector<T>& storage,
     PlyReader* reader, bool last_line) {
   storage.clear();
@@ -417,56 +427,65 @@ std::expected<void, std::string_view> ReadAsciiPropertyScalarData(
     return std::expected<void, std::string_view>();
   }
 
-  return (reader->*actual_callback)(element_name, property_name, instance,
-                                    storage[0]);
+  return (reader->*actual_callback)(element_name, element_index, property_name,
+                                    property_index, instance, storage[0]);
 }
 
 std::expected<void, std::string_view> ReadAsciiPropertyScalar(
-    std::istream& input, std::string_view element_name,
-    const PlyHeader::Property& header_property, uint64_t instance,
-    PlyReader::Callback callback, Context& context, bool last_line) {
+    std::istream& input, std::string_view element_name, size_t element_index,
+    const PlyHeader::Property& header_property, size_t property_index,
+    uint64_t instance, PlyReader::Callback callback, Context& context,
+    bool last_line) {
   std::expected<void, std::string_view> result;
 
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
       result = ReadAsciiPropertyScalarData<PropertyType::INT8>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.int8_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.int8_,
+          context.reader_, last_line);
       break;
     case PlyHeader::Property::UINT8:
       result = ReadAsciiPropertyScalarData<PropertyType::UINT8>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.uint8_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.uint8_,
+          context.reader_, last_line);
       break;
     case PlyHeader::Property::INT16:
       result = ReadAsciiPropertyScalarData<PropertyType::INT16>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.int16_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.int16_,
+          context.reader_, last_line);
       break;
     case PlyHeader::Property::UINT16:
       result = ReadAsciiPropertyScalarData<PropertyType::UINT16>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.uint16_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.uint16_,
+          context.reader_, last_line);
       break;
     case PlyHeader::Property::INT32:
       result = ReadAsciiPropertyScalarData<PropertyType::INT32>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.int32_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.int32_,
+          context.reader_, last_line);
       break;
     case PlyHeader::Property::UINT32:
       result = ReadAsciiPropertyScalarData<PropertyType::UINT32>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.uint32_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.uint32_,
+          context.reader_, last_line);
       break;
     case PlyHeader::Property::FLOAT:
       result = ReadAsciiPropertyScalarData<PropertyType::FLOAT>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.float_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.float_,
+          context.reader_, last_line);
       break;
     case PlyHeader::Property::DOUBLE:
       result = ReadAsciiPropertyScalarData<PropertyType::DOUBLE>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.double_, context.reader_, last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.double_,
+          context.reader_, last_line);
       break;
   }
 
@@ -506,8 +525,8 @@ std::expected<size_t, std::string_view> ReadAsciiListSize(
 
 template <PropertyType Index, typename T>
 std::expected<void, std::string_view> ReadAsciiPropertyListData(
-    std::istream& input, std::string_view element_name,
-    std::string_view property_name, uint64_t instance,
+    std::istream& input, std::string_view element_name, size_t element_index,
+    std::string_view property_name, size_t property_index, uint64_t instance,
     PlyReader::Callback callback, std::string& token, std::vector<T>& storage,
     size_t num_to_read, PlyReader* reader, bool last_line) {
   storage.clear();
@@ -525,14 +544,15 @@ std::expected<void, std::string_view> ReadAsciiPropertyListData(
     return std::expected<void, std::string_view>();
   }
 
-  return (reader->*actual_callback)(element_name, property_name, instance,
-                                    storage);
+  return (reader->*actual_callback)(element_name, element_index, property_name,
+                                    property_index, instance, storage);
 }
 
 std::expected<void, std::string_view> ReadAsciiPropertyList(
-    std::istream& input, std::string_view element_name,
-    const PlyHeader::Property& header_property, uint64_t instance,
-    PlyReader::Callback callback, Context& context, bool last_line) {
+    std::istream& input, std::string_view element_name, size_t element_index,
+    const PlyHeader::Property& header_property, size_t property_index,
+    uint64_t instance, PlyReader::Callback callback, Context& context,
+    bool last_line) {
   auto num_to_read = ReadAsciiListSize(input, context.token_,
                                        *header_property.list_type, last_line);
   if (!num_to_read) {
@@ -543,51 +563,51 @@ std::expected<void, std::string_view> ReadAsciiPropertyList(
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
       result = ReadAsciiPropertyListData<PropertyType::INT8_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.int8_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.int8_,
+          *num_to_read, context.reader_, last_line);
       break;
     case PlyHeader::Property::UINT8:
       result = ReadAsciiPropertyListData<PropertyType::UINT8_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.uint8_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.uint8_,
+          *num_to_read, context.reader_, last_line);
       break;
     case PlyHeader::Property::INT16:
       result = ReadAsciiPropertyListData<PropertyType::INT16_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.int16_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.int16_,
+          *num_to_read, context.reader_, last_line);
       break;
     case PlyHeader::Property::UINT16:
       result = ReadAsciiPropertyListData<PropertyType::UINT16_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.uint16_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.uint16_,
+          *num_to_read, context.reader_, last_line);
       break;
     case PlyHeader::Property::INT32:
       result = ReadAsciiPropertyListData<PropertyType::INT32_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.int32_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.int32_,
+          *num_to_read, context.reader_, last_line);
       break;
     case PlyHeader::Property::UINT32:
       result = ReadAsciiPropertyListData<PropertyType::UINT32_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.uint32_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.uint32_,
+          *num_to_read, context.reader_, last_line);
       break;
     case PlyHeader::Property::FLOAT:
       result = ReadAsciiPropertyListData<PropertyType::FLOAT_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.float_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.float_,
+          *num_to_read, context.reader_, last_line);
       break;
     case PlyHeader::Property::DOUBLE:
       result = ReadAsciiPropertyListData<PropertyType::DOUBLE_LIST>(
-          input, element_name, header_property.name, instance, callback,
-          context.token_, context.double_, *num_to_read, context.reader_,
-          last_line);
+          input, element_name, element_index, header_property.name,
+          property_index, instance, callback, context.token_, context.double_,
+          *num_to_read, context.reader_, last_line);
       break;
   }
 
@@ -632,17 +652,21 @@ std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
       for (size_t p = 0; p < header.elements[e].properties.size(); p++) {
         if (header.elements[e].properties[p].list_type) {
           auto error = ReadAsciiPropertyList(
-              line, header.elements[e].name, header.elements[e].properties[p],
-              instance, std::get<1>(std::get<2>(context.callbacks_[e])[p]),
-              context, input.eof());
+              line, header.elements[e].name, e,
+              header.elements[e].properties[p],
+              std::get<1>(std::get<2>(context.callbacks_[e])[p]), instance,
+              std::get<2>(std::get<2>(context.callbacks_[e])[p]), context,
+              input.eof());
           if (!error) {
             return error;
           }
         } else {
           auto error = ReadAsciiPropertyScalar(
-              line, header.elements[e].name, header.elements[e].properties[p],
-              instance, std::get<1>(std::get<2>(context.callbacks_[e])[p]),
-              context, input.eof());
+              line, header.elements[e].name, e,
+              header.elements[e].properties[p],
+              std::get<1>(std::get<2>(context.callbacks_[e])[p]), instance,
+              std::get<2>(std::get<2>(context.callbacks_[e])[p]), context,
+              input.eof());
           if (!error) {
             return error;
           }
@@ -661,14 +685,15 @@ std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
   return std::expected<void, std::string_view>();
 }
 
-std::tuple<std::string_view, PlyReader::Callback> MakeCallback(
+std::tuple<std::string_view, size_t, PlyReader::Callback> MakeCallback(
     const std::map<
         std::string_view,
         std::pair<uint64_t, std::map<std::string_view, PropertyType>>>&
         all_properties,
     const std::map<std::string_view,
                    std::map<std::string_view, PlyReader::Callback>>& callbacks,
-    std::string_view element_name, std::string_view property_name) {
+    std::string_view element_name, std::string_view property_name,
+    size_t& property_index) {
   PropertyType type = all_properties.at(element_name).second.at(property_name);
 
   PlyReader::Callback callback;
@@ -723,17 +748,20 @@ std::tuple<std::string_view, PlyReader::Callback> MakeCallback(
       break;
   }
 
+  size_t index = property_index;
+
   auto elements_iter = callbacks.find(element_name);
   if (elements_iter != callbacks.end()) {
     auto property_iter = elements_iter->second.find(property_name);
     if (property_iter != elements_iter->second.end()) {
       if (static_cast<size_t>(type) == property_iter->second.index()) {
         callback = property_iter->second;
+        property_index++;
       }
     }
   }
 
-  return std::make_tuple(property_name, callback);
+  return std::make_tuple(property_name, index, callback);
 }
 
 }  // namespace
@@ -817,10 +845,12 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
 
   Context context = {this};
   for (const auto& element : header->elements) {
-    std::vector<std::tuple<std::string_view, PlyReader::Callback>> callbacks;
+    std::vector<std::tuple<std::string_view, size_t, PlyReader::Callback>>
+        callbacks;
+    size_t property_index = 0;
     for (const auto& property : element.properties) {
-      callbacks.push_back(
-          MakeCallback(all_properties, *started, element.name, property.name));
+      callbacks.push_back(MakeCallback(all_properties, *started, element.name,
+                                       property.name, property_index));
     }
     context.callbacks_.emplace_back(element.num_in_file, element.name,
                                     std::move(callbacks));

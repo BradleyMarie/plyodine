@@ -44,8 +44,9 @@ class TriangleMeshReader : public PlyReader {
 
   template <size_t index, typename T>
   std::expected<void, std::string_view> AddPosition(
-      std::string_view element_name, std::string_view property_name,
-      uint64_t instance, T value) {
+      std::string_view element_name, size_t element_index,
+      std::string_view property_name, size_t property_index, uint64_t instance,
+      T value) {
     xyz_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(xyz_[index])) {
@@ -63,8 +64,9 @@ class TriangleMeshReader : public PlyReader {
 
   template <size_t index, typename T>
   std::expected<void, std::string_view> AddNormal(
-      std::string_view element_name, std::string_view property_name,
-      uint64_t instance, T value) {
+      std::string_view element_name, size_t element_index,
+      std::string_view property_name, size_t property_index, uint64_t instance,
+      T value) {
     normals_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(normals_storage_[index])) {
@@ -82,7 +84,9 @@ class TriangleMeshReader : public PlyReader {
 
   template <size_t index, typename T>
   std::expected<void, std::string_view> AddUV(std::string_view element_name,
+                                              size_t element_index,
                                               std::string_view property_name,
+                                              size_t property_index,
                                               uint64_t instance, T value) {
     uv_storage_[index] = static_cast<LocationType>(value);
 
@@ -123,8 +127,9 @@ class TriangleMeshReader : public PlyReader {
 
   template <typename T>
   std::expected<void, std::string_view> AddVertexIndices(
-      std::string_view element_name, std::string_view property_name,
-      uint64_t instance, std::span<const T> value) {
+      std::string_view element_name, size_t element_index,
+      std::string_view property_name, size_t property_index, uint64_t instance,
+      std::span<const T> value) {
     if (value.size() >= 3) {
       auto v0_valid = ValidateVertexIndex(value[0]);
       if (!v0_valid) {

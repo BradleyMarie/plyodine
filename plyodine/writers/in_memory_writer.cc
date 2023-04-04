@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -16,17 +17,14 @@ class InMemoryWriter final : public PlyWriter {
       const std::map<std::string_view, std::map<std::string_view, Property>>&
           properties,
       std::span<const std::string> comments,
-      std::span<const std::string> object_info)
-      : properties_(properties),
-        comments_(comments),
-        object_info_(object_info) {}
+      std::span<const std::string> object_info);
 
   std::expected<void, std::string_view> Start(
       std::map<std::string_view,
                std::pair<uint64_t, std::map<std::string_view, Callback>>>&
           property_callbacks,
       std::span<const std::string>& comments,
-      std::span<const std::string>& object_info) override;
+      std::span<const std::string>& object_info) const override;
 
   std::expected<SizeType, std::string_view> GetPropertyListSizeType(
       std::string_view element_name,
@@ -35,8 +33,16 @@ class InMemoryWriter final : public PlyWriter {
  private:
   template <typename T>
   std::expected<T, std::string_view> Callback(std::string_view element_name,
+                                              size_t element_index,
                                               std::string_view property_name,
-                                              uint64_t instance);
+                                              size_t property_index,
+                                              uint64_t instance) const;
+
+  template <typename T>
+  std::expected<std::span<const T>, std::string_view> ListCallback(
+      std::string_view element_name, size_t element_index,
+      std::string_view property_name, size_t property_index, uint64_t instance,
+      std::vector<T>& storage) const;
 
   const std::map<std::string_view, std::map<std::string_view, Property>>&
       properties_;
@@ -45,27 +51,46 @@ class InMemoryWriter final : public PlyWriter {
 
   std::vector<std::pair<uint64_t, std::vector<const Property*>>>
       indexed_properties_;
-  size_t element_ = 0u;
-  size_t property_ = 0u;
 };
+
+InMemoryWriter::InMemoryWriter(
+    const std::map<std::string_view, std::map<std::string_view, Property>>&
+        properties,
+    std::span<const std::string> comments,
+    std::span<const std::string> object_info)
+    : properties_(properties), comments_(comments), object_info_(object_info) {
+  for (const auto& element : properties_) {
+    std::vector<const Property*> list;
+    size_t num_elements = 0u;
+    for (const auto& property : element.second) {
+      num_elements = property.second.size();
+      list.push_back(&property.second);
+    }
+
+    indexed_properties_.emplace_back(num_elements, std::move(list));
+  }
+}
 
 template <typename T>
 std::expected<T, std::string_view> InMemoryWriter::Callback(
-    std::string_view element_name, std::string_view property_name,
-    uint64_t instance) {
-  const auto& properties = indexed_properties_.at(element_).second;
-  const auto& property = properties.at(property_++);
+    std::string_view element_name, size_t element_index,
+    std::string_view property_name, size_t property_index,
+    uint64_t instance) const {
+  return std::get<std::span<const T>>(
+      *indexed_properties_.at(element_index)
+           .second.at(property_index))[instance];
+}
 
-  auto value = std::get<std::span<const T>>(*property)[instance];
-
-  if (property_ == properties.size()) {
-    property_ = 0u;
-    if (instance + 1u == indexed_properties_[element_].first) {
-      element_ += 1u;
-    }
-  }
-
-  return value;
+template <typename T>
+std::expected<std::span<const T>, std::string_view>
+InMemoryWriter::ListCallback(std::string_view element_name,
+                             size_t element_index,
+                             std::string_view property_name,
+                             size_t property_index, uint64_t instance,
+                             std::vector<T>& storage) const {
+  return std::get<std::span<const std::span<const T>>>(
+      *indexed_properties_.at(element_index)
+           .second.at(property_index))[instance];
 }
 
 std::expected<void, std::string_view> InMemoryWriter::Start(
@@ -74,16 +99,15 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         std::pair<uint64_t, std::map<std::string_view, PlyWriter::Callback>>>&
         property_callbacks,
     std::span<const std::string>& comments,
-    std::span<const std::string>& object_info) {
+    std::span<const std::string>& object_info) const {
   for (const auto& element : properties_) {
     std::map<std::string_view, PlyWriter::Callback> callbacks;
-    std::vector<const Property*> list;
-    size_t num_elements = 0u;
+    std::optional<size_t> num_elements;
     for (const auto& property : element.second) {
       size_t property_num_elements = property.second.size();
 
-      if (!list.empty()) {
-        if (num_elements != property_num_elements) {
+      if (num_elements.has_value()) {
+        if (*num_elements != property_num_elements) {
           return std::unexpected(
               "All properties of an element must have the same size");
         }
@@ -100,7 +124,7 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::INT8_LIST:
           callbacks.emplace(property.first,
                             Int8PropertyListCallback(
-                                &InMemoryWriter::Callback<Int8PropertyList>));
+                                &InMemoryWriter::ListCallback<Int8Property>));
           break;
         case PropertyType::UINT8:
           callbacks.emplace(
@@ -110,7 +134,7 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::UINT8_LIST:
           callbacks.emplace(property.first,
                             UInt8PropertyListCallback(
-                                &InMemoryWriter::Callback<UInt8PropertyList>));
+                                &InMemoryWriter::ListCallback<UInt8Property>));
           break;
         case PropertyType::INT16:
           callbacks.emplace(
@@ -120,7 +144,7 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::INT16_LIST:
           callbacks.emplace(property.first,
                             Int16PropertyListCallback(
-                                &InMemoryWriter::Callback<Int16PropertyList>));
+                                &InMemoryWriter::ListCallback<Int16Property>));
           break;
         case PropertyType::UINT16:
           callbacks.emplace(property.first,
@@ -130,7 +154,7 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::UINT16_LIST:
           callbacks.emplace(property.first,
                             UInt16PropertyListCallback(
-                                &InMemoryWriter::Callback<UInt16PropertyList>));
+                                &InMemoryWriter::ListCallback<UInt16Property>));
           break;
         case PropertyType::INT32:
           callbacks.emplace(
@@ -140,7 +164,7 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::INT32_LIST:
           callbacks.emplace(property.first,
                             Int32PropertyListCallback(
-                                &InMemoryWriter::Callback<Int32PropertyList>));
+                                &InMemoryWriter::ListCallback<Int32Property>));
           break;
         case PropertyType::UINT32:
           callbacks.emplace(property.first,
@@ -150,7 +174,7 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::UINT32_LIST:
           callbacks.emplace(property.first,
                             UInt32PropertyListCallback(
-                                &InMemoryWriter::Callback<UInt32PropertyList>));
+                                &InMemoryWriter::ListCallback<UInt32Property>));
           break;
         case PropertyType::FLOAT:
           callbacks.emplace(
@@ -160,7 +184,7 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::FLOAT_LIST:
           callbacks.emplace(property.first,
                             FloatPropertyListCallback(
-                                &InMemoryWriter::Callback<FloatPropertyList>));
+                                &InMemoryWriter::ListCallback<FloatProperty>));
           break;
         case PropertyType::DOUBLE:
           callbacks.emplace(property.first,
@@ -170,17 +194,15 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
         case PropertyType::DOUBLE_LIST:
           callbacks.emplace(property.first,
                             DoublePropertyListCallback(
-                                &InMemoryWriter::Callback<DoublePropertyList>));
+                                &InMemoryWriter::ListCallback<DoubleProperty>));
           break;
       };
-
-      list.push_back(&property.second);
     }
 
-    indexed_properties_.emplace_back(num_elements, std::move(list));
     property_callbacks[element.first] =
-        std::make_pair(num_elements, std::move(callbacks));
+        std::make_pair(num_elements.value_or(0), std::move(callbacks));
   }
+
   comments = comments_;
   object_info = object_info_;
 
