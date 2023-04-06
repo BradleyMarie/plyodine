@@ -16,84 +16,10 @@
 namespace plyodine {
 namespace {
 
-typedef std::expected<Int8Property, std::string_view> (
-    PlyWriter::*Int8PropertyCallback)(std::string_view, size_t,
-                                      std::string_view, size_t, uint64_t) const;
-typedef std::expected<Int8PropertyList, std::string_view> (
-    PlyWriter::*Int8PropertyListCallback)(std::string_view, size_t,
-                                          std::string_view, size_t, uint64_t,
-                                          std::vector<Int8Property>&) const;
-typedef std::expected<UInt8Property, std::string_view> (
-    PlyWriter::*UInt8PropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t,
-                                       uint64_t) const;
-typedef std::expected<UInt8PropertyList, std::string_view> (
-    PlyWriter::*UInt8PropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
-                                           std::vector<UInt8Property>&) const;
-typedef std::expected<Int16Property, std::string_view> (
-    PlyWriter::*Int16PropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t,
-                                       uint64_t) const;
-typedef std::expected<Int16PropertyList, std::string_view> (
-    PlyWriter::*Int16PropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
-                                           std::vector<Int16Property>&) const;
-typedef std::expected<UInt16Property, std::string_view> (
-    PlyWriter::*UInt16PropertyCallback)(std::string_view, size_t,
-                                        std::string_view, size_t,
-                                        uint64_t) const;
-typedef std::expected<UInt16PropertyList, std::string_view> (
-    PlyWriter::*UInt16PropertyListCallback)(std::string_view, size_t,
-                                            std::string_view, size_t, uint64_t,
-                                            std::vector<UInt16Property>&) const;
-typedef std::expected<Int32Property, std::string_view> (
-    PlyWriter::*Int32PropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t,
-                                       uint64_t) const;
-typedef std::expected<Int32PropertyList, std::string_view> (
-    PlyWriter::*Int32PropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
-                                           std::vector<Int32Property>&) const;
-typedef std::expected<UInt32Property, std::string_view> (
-    PlyWriter::*UInt32PropertyCallback)(std::string_view, size_t,
-                                        std::string_view, size_t,
-                                        uint64_t) const;
-typedef std::expected<UInt32PropertyList, std::string_view> (
-    PlyWriter::*UInt32PropertyListCallback)(std::string_view, size_t,
-                                            std::string_view, size_t, uint64_t,
-                                            std::vector<UInt32Property>&) const;
-typedef std::expected<FloatProperty, std::string_view> (
-    PlyWriter::*FloatPropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t,
-                                       uint64_t) const;
-typedef std::expected<FloatPropertyList, std::string_view> (
-    PlyWriter::*FloatPropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
-                                           std::vector<FloatProperty>&) const;
-typedef std::expected<DoubleProperty, std::string_view> (
-    PlyWriter::*DoublePropertyCallback)(std::string_view, size_t,
-                                        std::string_view, size_t,
-                                        uint64_t) const;
-typedef std::expected<DoublePropertyList, std::string_view> (
-    PlyWriter::*DoublePropertyListCallback)(std::string_view, size_t,
-                                            std::string_view, size_t, uint64_t,
-                                            std::vector<DoubleProperty>&) const;
-
-typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
-                     UInt8PropertyCallback, UInt8PropertyListCallback,
-                     Int16PropertyCallback, Int16PropertyListCallback,
-                     UInt16PropertyCallback, UInt16PropertyListCallback,
-                     Int32PropertyCallback, Int32PropertyListCallback,
-                     UInt32PropertyCallback, UInt32PropertyListCallback,
-                     FloatPropertyCallback, FloatPropertyListCallback,
-                     DoublePropertyCallback, DoublePropertyListCallback>
-    Callback;
-
 typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<int16_t>, std::vector<uint16_t>,
                    std::vector<int32_t>, std::vector<uint32_t>,
-                   std::vector<float>, std::vector<double>>
+                   std::vector<float>, std::vector<double>, std::stringstream>
     Context;
 
 std::string_view FloatingPointError() {
@@ -101,7 +27,224 @@ std::string_view FloatingPointError() {
          "output";
 }
 
+std::string_view ListSizeError() {
+  return "The list was too big to be represented with the selected size type";
+}
+
 std::string_view WriteFailure() { return "Write failure"; }
+
+std::expected<void, std::string_view> ValidateName(std::string_view name) {
+  if (name.empty()) {
+    return std::unexpected("Names of properties and elements may not be empty");
+  }
+
+  for (char c : name) {
+    if (!std::isgraph(c)) {
+      return std::unexpected(
+          "Names of properties and elements may only contain graphic "
+          "characters");
+    }
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+std::expected<void, std::string_view> ValidateComment(
+    const std::string_view comment) {
+  for (char c : comment) {
+    if (c == '\r' || c == '\n') {
+      return std::unexpected(
+          "A comment may not contain line feed or carriage return");
+    }
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+std::expected<void, std::string_view> ValidateObjectInfo(
+    const std::string_view comment) {
+  for (char c : comment) {
+    if (c == '\r' || c == '\n') {
+      return std::unexpected(
+          "An obj_info may not contain line feed or carriage return");
+    }
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+std::expected<void, std::string_view> StartHeader(
+    std::ostream& output, std::string_view format,
+    std::span<const std::string> comments,
+    std::span<const std::string> object_info) {
+  output << "ply\rformat " << format << " 1.0\r";
+  if (!output) {
+    return std::unexpected(WriteFailure());
+  }
+
+  for (const auto& comment : comments) {
+    auto result = ValidateComment(comment);
+    if (!result) {
+      return result;
+    }
+
+    output << "comment " << comment << "\r";
+    if (!output) {
+      return std::unexpected(WriteFailure());
+    }
+  }
+
+  for (const auto& info : object_info) {
+    auto result = ValidateObjectInfo(info);
+    if (!result) {
+      return result;
+    }
+
+    output << "obj_info " << info << "\r";
+    if (!output) {
+      return std::unexpected(WriteFailure());
+    }
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+std::expected<void, std::string_view> EndHeader(std::ostream& output) {
+  output << "end_header\r";
+  if (!output) {
+    return std::unexpected(WriteFailure());
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+template <std::integral SizeType, std::integral T>
+std::expected<void, std::string_view> SerializeASCII(std::ostream& output,
+                                                     Context& context,
+                                                     T value) {
+  output << +value;
+
+  return std::expected<void, std::string_view>();
+}
+
+template <std::integral SizeType, std::floating_point T>
+std::expected<void, std::string_view> SerializeASCII(std::ostream& output,
+                                                     Context& context,
+                                                     T value) {
+  if (!std::isfinite(value)) {
+    return std::unexpected(FloatingPointError());
+  }
+
+  std::stringstream& storage = std::get<std::stringstream>(context);
+
+  storage.str("");
+
+  int log = static_cast<int>(std::log10(std::abs(value))) + 1;
+  int num_digits = std::max(std::numeric_limits<T>::max_digits10 - log, 0);
+  storage << std::fixed << std::setprecision(num_digits) << value;
+
+  std::string_view result = storage.view();
+
+  size_t dot = result.find(".");
+  if (dot != std::string_view::npos) {
+    result = result.substr(0u, result.find_last_not_of("0") + 1u);
+    if (result.back() == '.') {
+      result.remove_suffix(1u);
+    }
+  }
+
+  output << result;
+
+  return std::expected<void, std::string_view>();
+}
+
+template <std::integral SizeType, typename T>
+std::expected<void, std::string_view> SerializeASCII(
+    std::ostream& output, Context& context, std::span<const T> values) {
+  if (std::numeric_limits<SizeType>::max() < values.size()) {
+    return std::unexpected(ListSizeError());
+  }
+
+  auto list_size_success = SerializeASCII<SizeType, SizeType>(
+      output, context, static_cast<SizeType>(values.size()));
+  if (!list_size_success) {
+    return list_size_success;
+  }
+
+  for (const auto& entry : values) {
+    output << ' ';
+
+    auto entry_success = SerializeASCII<SizeType>(output, context, entry);
+    if (!entry_success) {
+      return entry_success;
+    }
+  }
+
+  return std::expected<void, std::string_view>();
+}
+
+template <std::endian Endianness, std::integral SizeType, std::integral T>
+std::expected<void, std::string_view> SerializeBinary(std::ostream& output,
+                                                      T value) {
+  if (Endianness != std::endian::native) {
+    value = std::byteswap(value);
+  }
+
+  output.write(reinterpret_cast<char*>(&value), sizeof(value));
+
+  return std::expected<void, std::string_view>();
+}
+
+template <std::endian Endianness, std::integral SizeType>
+std::expected<void, std::string_view> SerializeBinary(std::ostream& output,
+                                                      float value) {
+  auto entry = std::bit_cast<uint32_t>(value);
+
+  if (Endianness != std::endian::native) {
+    entry = std::byteswap(entry);
+  }
+
+  output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+
+  return std::expected<void, std::string_view>();
+}
+
+template <std::endian Endianness, std::integral SizeType>
+std::expected<void, std::string_view> SerializeBinary(std::ostream& output,
+                                                      double value) {
+  auto entry = std::bit_cast<uint64_t>(value);
+
+  if (Endianness != std::endian::native) {
+    entry = std::byteswap(entry);
+  }
+
+  output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+
+  return std::expected<void, std::string_view>();
+}
+
+template <std::endian Endianness, std::integral SizeType, typename T>
+std::expected<void, std::string_view> SerializeBinary(
+    std::ostream& output, std::span<const T> values) {
+  if (std::numeric_limits<SizeType>::max() < values.size()) {
+    return std::unexpected(ListSizeError());
+  }
+
+  auto list_size_success = SerializeBinary<Endianness, SizeType, SizeType>(
+      output, static_cast<SizeType>(values.size()));
+  if (!list_size_success) {
+    return list_size_success;
+  }
+
+  for (const auto& entry : values) {
+    auto entry_success = SerializeBinary<Endianness, SizeType>(output, entry);
+    if (!entry_success) {
+      return entry_success;
+    }
+  }
+
+  return std::expected<void, std::string_view>();
+}
 
 template <typename T>
 std::expected<T, std::string_view> CallCallback(
@@ -129,430 +272,111 @@ std::expected<std::span<const T>, std::string_view> CallCallback(
                                 std::get<std::vector<T>>(context));
 }
 
-std::expected<void, std::string_view> ValidateName(std::string_view name) {
-  if (name.empty()) {
-    return std::unexpected("Names of properties and elements may not be empty");
-  }
-
-  for (char c : name) {
-    if (!std::isgraph(c)) {
-      return std::unexpected(
-          "Names of properties and elements may only contain graphic "
-          "characters");
-    }
-  }
-
-  return std::expected<void, std::string_view>();
-}
-
-std::expected<void, std::string_view> ValidateProperties(
-    const std::map<std::string_view,
-                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
-        properties) {
-  for (const auto& [element_name, element_properties] : properties) {
-    auto element_name_valid = ValidateName(element_name);
-    if (!element_name_valid) {
-      return element_name_valid;
-    }
-
-    std::optional<size_t> property_size;
-    for (const auto& [property_name, property] : element_properties.second) {
-      auto property_name_valid = ValidateName(property_name);
-      if (!property_name_valid) {
-        return property_name_valid;
-      }
-    }
-  }
-
-  return std::expected<void, std::string_view>();
-}
-
-std::expected<void, std::string_view> ValidateComments(
-    std::span<const std::string> comments) {
-  for (const auto& comment : comments) {
-    for (char c : comment) {
-      if (c == '\r' || c == '\n') {
-        return std::unexpected(
-            "A comment may not contain line feed or carriage return");
-      }
-    }
-  }
-
-  return std::expected<void, std::string_view>();
-}
-
-std::expected<std::vector<std::tuple<
-                  std::string_view, uint64_t,
-                  std::vector<std::tuple<std::string_view, Callback,
-                                         std::optional<PropertyType>>>>>,
+template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
+std::expected<std::function<std::expected<void, std::string_view>(uint64_t)>,
               std::string_view>
-GetListSizes(
-    const std::function<std::expected<PropertyType, std::string_view>(
-        std::string_view, std::string_view)>
-        get_property_list_size,
-    const std::map<std::string_view,
-                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
-        properties) {
-  std::vector<std::tuple<std::string_view, uint64_t,
-                         std::vector<std::tuple<std::string_view, Callback,
-                                                std::optional<PropertyType>>>>>
-      callbacks;
-  for (const auto& element : properties) {
-    std::vector<
-        std::tuple<std::string_view, Callback, std::optional<PropertyType>>>
-        entries;
-    for (const auto& property : element.second.second) {
-      if (std::visit([](auto ptr) { return !ptr; }, property.second)) {
-        continue;
-      }
-
-      std::optional<PropertyType> size_type;
-      if (property.second.index() & 0x1u) {
-        auto result = get_property_list_size(element.first, property.first);
-        if (!result) {
-          return std::unexpected(result.error());
-        }
-        size_type = *result;
-      }
-
-      entries.emplace_back(property.first, property.second, size_type);
-    }
-    callbacks.emplace_back(element.first, element.second.first,
-                           std::move(entries));
-  }
-
-  return callbacks;
-}
-
-std::expected<std::vector<std::tuple<
-                  std::string_view, uint64_t,
-                  std::vector<std::tuple<std::string_view, Callback,
-                                         std::optional<PropertyType>>>>>,
-              std::string_view>
-WriteHeader(
-    const PlyWriter& ply_writer,
-    const std::function<std::expected<PropertyType, std::string_view>(
-        std::string_view, std::string_view)>
-        get_property_list_size,
-    std::ostream& stream,
-    const std::map<std::string_view,
-                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
-        properties,
-    std::span<const std::string> comments,
-    std::span<const std::string> object_info, std::string_view format) {
+ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
+                std::string_view element_name, size_t element_index,
+                std::string_view property_name, size_t property_index,
+                Context& context, PropertyType value_type_index,
+                std::optional<PropertyType> list_size_type) {
   static const std::array<std::string_view, 16> type_names = {
       "char", "char", "uchar", "uchar", "short", "short", "ushort", "ushort",
       "int",  "int",  "uint",  "uint",  "float", "float", "double", "double"};
 
-  auto properties_valid = ValidateProperties(properties);
-  if (!properties_valid) {
-    return std::unexpected(properties_valid.error());
+  auto property_name_valid = ValidateName(property_name);
+  if (!property_name_valid) {
+    return std::unexpected(property_name_valid.error());
   }
 
-  auto comments_valid = ValidateComments(comments);
-  if (!comments_valid) {
-    return std::unexpected(comments_valid.error());
+  if (list_size_type.has_value()) {
+    output << "property list "
+           << type_names.at(static_cast<size_t>(*list_size_type)) << " "
+           << type_names.at(static_cast<size_t>(value_type_index)) << " "
+           << property_name << "\r";
+  } else {
+    output << "property "
+           << type_names.at(static_cast<size_t>(value_type_index)) << " "
+           << property_name << "\r";
   }
 
-  auto object_info_valid = ValidateComments(object_info);
-  if (!object_info_valid) {
-    return std::unexpected(
-        "A obj_info may not contain line feed or carriage return");
-  }
-
-  auto callbacks = GetListSizes(get_property_list_size, properties);
-  if (!callbacks) {
-    return std::unexpected(callbacks.error());
-  }
-
-  stream << "ply\rformat " << format << " 1.0\r";
-  if (!stream) {
+  if (!output) {
     return std::unexpected(WriteFailure());
   }
 
-  for (const auto& comment : comments) {
-    stream << "comment " << comment << "\r";
-    if (!stream) {
+  auto result = [&output, &ply_writer, callback, element_name, element_index,
+                 property_name, property_index, &context](
+                    int64_t instance) -> std::expected<void, std::string_view> {
+    auto result =
+        CallCallback(ply_writer, callback, element_name, element_index,
+                     property_name, property_index, instance, context);
+    if (!result) {
+      return std::unexpected(result.error());
+    }
+
+    std::expected<void, std::string_view> write_status;
+    if constexpr (Ascii) {
+      write_status = SerializeASCII<SizeType>(output, context, *result);
+    } else {
+      write_status = SerializeBinary<Endianness, SizeType>(output, *result);
+    }
+
+    if (!write_status) {
+      return write_status;
+    }
+
+    if (!output) {
       return std::unexpected(WriteFailure());
     }
-  }
 
-  for (const auto& info : object_info) {
-    stream << "obj_info " << info << "\r";
-    if (!stream) {
-      return std::unexpected(WriteFailure());
-    }
-  }
-
-  for (const auto& element : *callbacks) {
-    stream << "element " << std::get<0>(element) << " " << std::get<1>(element)
-           << "\r";
-    if (!stream) {
-      return std::unexpected(WriteFailure());
-    }
-
-    for (const auto& property : std::get<2>(element)) {
-      if (std::get<2>(property).has_value()) {
-        stream << "property list "
-               << type_names.at(static_cast<size_t>(*std::get<2>(property)))
-               << " " << type_names.at(std::get<1>(property).index()) << " "
-               << std::get<0>(property) << "\r";
-      } else {
-        stream << "property " << type_names.at(std::get<1>(property).index())
-               << " " << std::get<0>(property) << "\r";
-      }
-
-      if (!stream) {
-        return std::unexpected(WriteFailure());
-      }
-    }
-  }
-
-  stream << "end_header\r";
-  if (!stream) {
-    return std::unexpected(WriteFailure());
-  }
-
-  return callbacks;
-}
-
-template <std::floating_point T>
-std::string_view SerializeFP(std::stringstream& stream, T value) {
-  stream.str("");
-
-  int log = static_cast<int>(std::log10(std::abs(value))) + 1;
-  int num_digits = std::max(std::numeric_limits<T>::max_digits10 - log, 0);
-  stream << std::fixed << std::setprecision(num_digits) << value;
-
-  std::string_view result = stream.view();
-
-  size_t dot = result.find(".");
-  if (dot == std::string_view::npos) {
-    return result;
-  }
-
-  result = result.substr(0u, result.find_last_not_of("0") + 1u);
-  if (result.back() == '.') {
-    result.remove_suffix(1u);
-  }
+    return std::expected<void, std::string_view>();
+  };
 
   return result;
 }
 
-std::expected<void, std::string_view> ValidateListSize(PropertyType type,
-                                                       size_t size) {
-  static const std::array<uint32_t, 16> kSizes = {
-      std::numeric_limits<int8_t>::max(),
-      0u,
-      std::numeric_limits<uint8_t>::max(),
-      0u,
-      std::numeric_limits<int16_t>::max(),
-      0u,
-      std::numeric_limits<uint16_t>::max(),
-      0u,
-      std::numeric_limits<int32_t>::max(),
-      0u,
-      std::numeric_limits<uint32_t>::max(),
-      0u,
-      0u,
-      0u,
-      0u,
-      0u};
+template <bool Ascii, std::endian Endianness, typename T>
+std::expected<std::function<std::expected<void, std::string_view>(uint64_t)>,
+              std::string_view>
+ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
+                std::string_view element_name, size_t element_index,
+                std::string_view property_name, size_t property_index,
+                Context& context, PropertyType value_type_index,
+                std::function<std::expected<PropertyType, std::string_view>(
+                    std::string_view, size_t, std::string_view, size_t)>
+                    get_property_list_size_type) {
+  using R = std::decay_t<decltype(*CallCallback(
+      ply_writer, callback, element_name, element_index, property_name,
+      property_index, 0u, context))>;
 
-  if (kSizes.at(static_cast<size_t>(type)) < size) {
-    return std::unexpected(
-        "The list was too big to be represented with the selected index type");
-  }
+  std::optional<PropertyType> maybe_list_size_type;
+  if constexpr (std::is_class<R>::value) {
+    auto list_size_type = get_property_list_size_type(
+        element_name, element_index, property_name, property_index);
+    if (!list_size_type) {
+      return std::unexpected(list_size_type.error());
+    }
 
-  return std::expected<void, std::string_view>();
-}
+    maybe_list_size_type = *list_size_type;
 
-template <std::endian Endianness>
-std::expected<void, std::string_view> WriteToBinaryImpl(
-    const PlyWriter& ply_writer,
-    const std::function<std::expected<void, std::string_view>(
-        std::map<std::string_view,
-                 std::pair<uint64_t, std::map<std::string_view, Callback>>>&,
-        std::span<const std::string>&, std::span<const std::string>&)>
-        start,
-    const std::function<std::expected<PropertyType, std::string_view>(
-        std::string_view, std::string_view)>
-        get_property_list_size,
-    std::ostream& stream) {
-  std::string_view format;
-  if constexpr (Endianness == std::endian::big) {
-    format = "binary_big_endian";
-  } else {
-    format = "binary_little_endian";
-  }
-  std::map<std::string_view,
-           std::pair<uint64_t, std::map<std::string_view, Callback>>>
-      property_callbacks;
-  std::span<const std::string> comments;
-  std::span<const std::string> object_info;
-  auto result = start(property_callbacks, comments, object_info);
-  if (!result) {
-    return result;
-  }
+    if (*maybe_list_size_type == PropertyType::UINT8) {
+      return ToWriteCallback<Ascii, Endianness, uint8_t>(
+          output, ply_writer, callback, element_name, element_index,
+          property_name, property_index, context, value_type_index,
+          maybe_list_size_type);
+    }
 
-  auto callbacks =
-      WriteHeader(ply_writer, get_property_list_size, stream,
-                  property_callbacks, comments, object_info, format);
-  if (!callbacks) {
-    return std::unexpected(callbacks.error());
-  }
-
-  Context context;
-  for (size_t e = 0; e < callbacks->size(); e++) {
-    const auto& element = callbacks->at(e);
-    for (size_t instance = 0; instance < std::get<1>(element); instance++) {
-      for (size_t p = 0; p < std::get<2>(element).size(); p++) {
-        const auto& property = std::get<2>(element)[p];
-        auto result = std::visit(
-            [&](const auto& callback) -> std::expected<void, std::string_view> {
-              auto result =
-                  CallCallback(ply_writer, callback, std::get<0>(element), e,
-                               std::get<0>(property), p, instance, context);
-              if (!result) {
-                return std::unexpected(result.error());
-              }
-
-              if constexpr (std::is_class<
-                                std::decay_t<decltype(*result)>>::value) {
-                auto size_valid =
-                    ValidateListSize(*std::get<2>(property), result->size());
-                if (!size_valid) {
-                  return size_valid;
-                }
-
-                uint8_t size8;
-                uint16_t size16;
-                uint32_t size32;
-                switch (std::get<2>(property).value()) {
-                  case PropertyType::UINT8:
-                    size8 = static_cast<uint8_t>(result->size());
-                    stream.write(reinterpret_cast<char*>(&size8),
-                                 sizeof(size8));
-                    break;
-                  case PropertyType::UINT16:
-                    size16 = static_cast<uint16_t>(result->size());
-
-                    if (Endianness != std::endian::native) {
-                      size16 = std::byteswap(size16);
-                    }
-
-                    stream.write(reinterpret_cast<char*>(&size16),
-                                 sizeof(size16));
-                    break;
-                  case PropertyType::UINT32:
-                    size32 = static_cast<uint32_t>(result->size());
-
-                    if (Endianness != std::endian::native) {
-                      size32 = std::byteswap(size32);
-                    }
-
-                    stream.write(reinterpret_cast<char*>(&size32),
-                                 sizeof(size32));
-                    break;
-                  default:
-                    // Impossible
-                    break;
-                }
-
-                if (!stream) {
-                  return std::unexpected(WriteFailure());
-                }
-
-                for (auto entry : *result) {
-                  if constexpr (std::is_same<float, decltype(entry)>::value) {
-                    auto to_write = std::bit_cast<uint32_t>(entry);
-
-                    if (Endianness != std::endian::native) {
-                      to_write = std::byteswap(to_write);
-                    }
-
-                    stream.write(reinterpret_cast<char*>(&to_write),
-                                 sizeof(to_write));
-                  } else if constexpr (std::is_same<double,
-                                                    decltype(entry)>::value) {
-                    auto to_write = std::bit_cast<uint64_t>(entry);
-
-                    if (Endianness != std::endian::native) {
-                      to_write = std::byteswap(to_write);
-                    }
-
-                    stream.write(reinterpret_cast<char*>(&to_write),
-                                 sizeof(to_write));
-                  } else {
-                    if (Endianness != std::endian::native) {
-                      entry = std::byteswap(entry);
-                    }
-
-                    stream.write(reinterpret_cast<char*>(&entry),
-                                 sizeof(entry));
-                  }
-
-                  if (!stream) {
-                    return std::unexpected(WriteFailure());
-                  }
-                }
-              } else if constexpr (std::is_same<
-                                       float, std::decay_t<decltype(*result)>>::
-                                       value) {
-                auto to_write = std::bit_cast<uint32_t>(*result);
-
-                if (Endianness != std::endian::native) {
-                  to_write = std::byteswap(to_write);
-                }
-
-                stream.write(reinterpret_cast<char*>(&to_write),
-                             sizeof(to_write));
-
-                if (!stream) {
-                  return std::unexpected(WriteFailure());
-                }
-              } else if constexpr (std::is_same<
-                                       double, std::decay_t<
-                                                   decltype(*result)>>::value) {
-                auto to_write = std::bit_cast<uint64_t>(*result);
-
-                if (Endianness != std::endian::native) {
-                  to_write = std::byteswap(to_write);
-                }
-
-                stream.write(reinterpret_cast<char*>(&to_write),
-                             sizeof(to_write));
-
-                if (!stream) {
-                  return std::unexpected(WriteFailure());
-                }
-              } else {
-                auto to_write = *result;
-
-                if (Endianness != std::endian::native) {
-                  to_write = std::byteswap(to_write);
-                }
-
-                stream.write(reinterpret_cast<char*>(&to_write),
-                             sizeof(to_write));
-
-                if (!stream) {
-                  return std::unexpected(WriteFailure());
-                }
-              }
-
-              return std::expected<void, std::string_view>();
-            },
-            std::get<1>(property));
-
-        if (!result) {
-          return result;
-        }
-      }
+    if (*maybe_list_size_type == PropertyType::UINT16) {
+      return ToWriteCallback<Ascii, Endianness, uint16_t>(
+          output, ply_writer, callback, element_name, element_index,
+          property_name, property_index, context, value_type_index,
+          maybe_list_size_type);
     }
   }
 
-  return std::expected<void, std::string_view>();
+  return ToWriteCallback<Ascii, Endianness, uint32_t>(
+      output, ply_writer, callback, element_name, element_index, property_name,
+      property_index, context, value_type_index, maybe_list_size_type);
 }
 
 }  // namespace
@@ -612,109 +436,80 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
     return result;
   }
 
-  auto callbacks = WriteHeader(
-      *this,
-      [&](std::string_view element_name, std::string_view property_name)
-          -> std::expected<PropertyType, std::string_view> {
-        auto result =
-            this->GetPropertyListSizeType(element_name, property_name);
-        if (!result) {
-          return std::unexpected(result.error());
-        }
-        return static_cast<PropertyType>(*result);
-      },
-      stream, property_callbacks, comments, object_info, "ascii");
-  if (!callbacks) {
-    return std::unexpected(callbacks.error());
+  auto header_started = StartHeader(stream, "ascii", comments, object_info);
+  if (!header_started) {
+    return header_started;
   }
 
   Context context;
-  std::stringstream fp_stream_storage;
-  for (size_t e = 0; e < callbacks->size(); e++) {
-    const auto& element = callbacks->at(e);
-    for (size_t instance = 0; instance < std::get<1>(element); instance++) {
+  std::vector<std::pair<uint64_t, std::vector<std::function<std::expected<
+                                      void, std::string_view>(int64_t)>>>>
+      callbacks;
+  for (const auto& element : property_callbacks) {
+    auto element_name_valid = ValidateName(element.first);
+    if (!element_name_valid) {
+      return std::unexpected(element_name_valid.error());
+    }
+
+    stream << "element " << element.first << " " << element.second.first
+           << "\r";
+    if (!stream) {
+      return std::unexpected(WriteFailure());
+    }
+
+    std::vector<std::function<std::expected<void, std::string_view>(int64_t)>>
+        row;
+    for (const auto& property : element.second.second) {
+      auto write_callback = std::visit(
+          [&](auto callback) {
+            return ToWriteCallback<true, std::endian::native>(
+                stream, *this, callback, element.first, callbacks.size(),
+                property.first, row.size(), context,
+                static_cast<PropertyType>(property.second.index()),
+                [&](std::string_view element_name, size_t element_index,
+                    std::string_view property_name, size_t property_index)
+                    -> std::expected<PropertyType, std::string_view> {
+                  auto result = this->GetPropertyListSizeType(
+                      element_name, element_index, property_name,
+                      property_index);
+                  if (!result) {
+                    return std::unexpected(result.error());
+                  }
+                  return static_cast<PropertyType>(*result);
+                });
+          },
+          property.second);
+      if (!write_callback) {
+        return std::unexpected(write_callback.error());
+      }
+
+      row.emplace_back(std::move(*write_callback));
+    }
+    callbacks.emplace_back(element.second.first, std::move(row));
+  }
+
+  auto header_ended = EndHeader(stream);
+  if (!header_ended) {
+    return header_ended;
+  }
+
+  for (const auto& element : callbacks) {
+    for (uint64_t instance = 0; instance < element.first; instance++) {
       bool first = true;
-      for (size_t p = 0; p < std::get<2>(element).size(); p++) {
-        const auto& property = std::get<2>(element)[p];
+      for (const auto& property : element.second) {
         if (!first) {
-          stream << " ";
-          if (!stream) {
-            return std::unexpected(WriteFailure());
-          }
+          stream << ' ';
         }
 
         first = false;
 
-        auto result = std::visit(
-            [&](const auto& callback) -> std::expected<void, std::string_view> {
-              auto result =
-                  CallCallback(*this, callback, std::get<0>(element), e,
-                               std::get<0>(property), p, instance, context);
-              if (!result) {
-                return std::unexpected(result.error());
-              }
-
-              if constexpr (std::is_class<
-                                std::decay_t<decltype(*result)>>::value) {
-                auto size_valid =
-                    ValidateListSize(*std::get<2>(property), result->size());
-                if (!size_valid) {
-                  return size_valid;
-                }
-
-                stream << result->size();
-                if (!stream) {
-                  return std::unexpected(WriteFailure());
-                }
-
-                for (auto entry : *result) {
-                  if constexpr (std::is_floating_point<
-                                    decltype(entry)>::value) {
-                    if (!std::isfinite(entry)) {
-                      return std::unexpected(FloatingPointError());
-                    }
-
-                    stream << " " << SerializeFP(fp_stream_storage, entry);
-                  } else {
-                    stream << " " << +entry;
-                  }
-
-                  if (!stream) {
-                    return std::unexpected(WriteFailure());
-                  }
-                }
-              } else if constexpr (std::is_floating_point<std::decay_t<
-                                       decltype(*result)>>::value) {
-                if (!std::isfinite(*result)) {
-                  return std::unexpected(FloatingPointError());
-                }
-
-                stream << SerializeFP(fp_stream_storage, *result);
-
-                if (!stream) {
-                  return std::unexpected(WriteFailure());
-                }
-              } else {
-                stream << +*result;
-
-                if (!stream) {
-                  return std::unexpected(WriteFailure());
-                }
-              }
-
-              return std::expected<void, std::string_view>();
-            },
-            std::get<1>(property));
-
+        auto result = property(instance);
         if (!result) {
-          return result;
+          return std::unexpected(result.error());
         }
       }
 
-      stream << "\r";
-      if (!stream) {
-        return std::unexpected(WriteFailure());
-      }
+      stream << '\r';
     }
   }
 
@@ -723,48 +518,170 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
 
 std::expected<void, std::string_view> PlyWriter::WriteToBigEndian(
     std::ostream& stream) const {
-  return WriteToBinaryImpl<std::endian::big>(
-      *this,
-      [&](std::map<std::string_view,
-                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
-              property_callbacks,
-          std::span<const std::string>& comments,
-          std::span<const std::string>& object_info) {
-        return this->Start(property_callbacks, comments, object_info);
-      },
-      [&](std::string_view element_name, std::string_view property_name)
-          -> std::expected<PropertyType, std::string_view> {
-        auto result =
-            this->GetPropertyListSizeType(element_name, property_name);
+  std::map<std::string_view,
+           std::pair<uint64_t, std::map<std::string_view, Callback>>>
+      property_callbacks;
+  std::span<const std::string> comments;
+  std::span<const std::string> object_info;
+  auto result = Start(property_callbacks, comments, object_info);
+  if (!result) {
+    return result;
+  }
+
+  auto header_started =
+      StartHeader(stream, "binary_big_endian", comments, object_info);
+  if (!header_started) {
+    return header_started;
+  }
+
+  Context context;
+  std::vector<std::pair<uint64_t, std::vector<std::function<std::expected<
+                                      void, std::string_view>(int64_t)>>>>
+      callbacks;
+  for (const auto& element : property_callbacks) {
+    auto element_name_valid = ValidateName(element.first);
+    if (!element_name_valid) {
+      return std::unexpected(element_name_valid.error());
+    }
+
+    stream << "element " << element.first << " " << element.second.first
+           << "\r";
+    if (!stream) {
+      return std::unexpected(WriteFailure());
+    }
+
+    std::vector<std::function<std::expected<void, std::string_view>(int64_t)>>
+        row;
+    for (const auto& property : element.second.second) {
+      auto write_callback = std::visit(
+          [&](auto callback) {
+            return ToWriteCallback<false, std::endian::big>(
+                stream, *this, callback, element.first, callbacks.size(),
+                property.first, row.size(), context,
+                static_cast<PropertyType>(property.second.index()),
+                [&](std::string_view element_name, size_t element_index,
+                    std::string_view property_name, size_t property_index)
+                    -> std::expected<PropertyType, std::string_view> {
+                  auto result = this->GetPropertyListSizeType(
+                      element_name, element_index, property_name,
+                      property_index);
+                  if (!result) {
+                    return std::unexpected(result.error());
+                  }
+                  return static_cast<PropertyType>(*result);
+                });
+          },
+          property.second);
+      if (!write_callback) {
+        return std::unexpected(write_callback.error());
+      }
+
+      row.emplace_back(std::move(*write_callback));
+    }
+    callbacks.emplace_back(element.second.first, std::move(row));
+  }
+
+  auto header_ended = EndHeader(stream);
+  if (!header_ended) {
+    return header_ended;
+  }
+
+  for (const auto& element : callbacks) {
+    for (uint64_t instance = 0; instance < element.first; instance++) {
+      for (const auto& property : element.second) {
+        auto result = property(instance);
         if (!result) {
           return std::unexpected(result.error());
         }
-        return static_cast<PropertyType>(*result);
-      },
-      stream);
+      }
+    }
+  }
+
+  return std::expected<void, std::string_view>();
 }
 
 std::expected<void, std::string_view> PlyWriter::WriteToLittleEndian(
     std::ostream& stream) const {
-  return WriteToBinaryImpl<std::endian::little>(
-      *this,
-      [&](std::map<std::string_view,
-                   std::pair<uint64_t, std::map<std::string_view, Callback>>>&
-              property_callbacks,
-          std::span<const std::string>& comments,
-          std::span<const std::string>& object_info) {
-        return this->Start(property_callbacks, comments, object_info);
-      },
-      [&](std::string_view element_name, std::string_view property_name)
-          -> std::expected<PropertyType, std::string_view> {
-        auto result =
-            this->GetPropertyListSizeType(element_name, property_name);
+  std::map<std::string_view,
+           std::pair<uint64_t, std::map<std::string_view, Callback>>>
+      property_callbacks;
+  std::span<const std::string> comments;
+  std::span<const std::string> object_info;
+  auto result = Start(property_callbacks, comments, object_info);
+  if (!result) {
+    return result;
+  }
+
+  auto header_started =
+      StartHeader(stream, "binary_little_endian", comments, object_info);
+  if (!header_started) {
+    return header_started;
+  }
+
+  Context context;
+  std::vector<std::pair<uint64_t, std::vector<std::function<std::expected<
+                                      void, std::string_view>(int64_t)>>>>
+      callbacks;
+  for (const auto& element : property_callbacks) {
+    auto element_name_valid = ValidateName(element.first);
+    if (!element_name_valid) {
+      return std::unexpected(element_name_valid.error());
+    }
+
+    stream << "element " << element.first << " " << element.second.first
+           << "\r";
+    if (!stream) {
+      return std::unexpected(WriteFailure());
+    }
+
+    std::vector<std::function<std::expected<void, std::string_view>(int64_t)>>
+        row;
+    for (const auto& property : element.second.second) {
+      auto write_callback = std::visit(
+          [&](auto callback) {
+            return ToWriteCallback<false, std::endian::little>(
+                stream, *this, callback, element.first, callbacks.size(),
+                property.first, row.size(), context,
+                static_cast<PropertyType>(property.second.index()),
+                [&](std::string_view element_name, size_t element_index,
+                    std::string_view property_name, size_t property_index)
+                    -> std::expected<PropertyType, std::string_view> {
+                  auto result = this->GetPropertyListSizeType(
+                      element_name, element_index, property_name,
+                      property_index);
+                  if (!result) {
+                    return std::unexpected(result.error());
+                  }
+                  return static_cast<PropertyType>(*result);
+                });
+          },
+          property.second);
+      if (!write_callback) {
+        return std::unexpected(write_callback.error());
+      }
+
+      row.emplace_back(std::move(*write_callback));
+    }
+    callbacks.emplace_back(element.second.first, std::move(row));
+  }
+
+  auto header_ended = EndHeader(stream);
+  if (!header_ended) {
+    return header_ended;
+  }
+
+  for (const auto& element : callbacks) {
+    for (uint64_t instance = 0; instance < element.first; instance++) {
+      for (const auto& property : element.second) {
+        auto result = property(instance);
         if (!result) {
           return std::unexpected(result.error());
         }
-        return static_cast<PropertyType>(*result);
-      },
-      stream);
+      }
+    }
+  }
+
+  return std::expected<void, std::string_view>();
 }
 
 // Static assertions to ensure float types are properly sized

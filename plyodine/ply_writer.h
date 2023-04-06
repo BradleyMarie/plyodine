@@ -110,14 +110,16 @@ class PlyWriter {
       std::span<const std::string>& comments,
       std::span<const std::string>& object_info) const = 0;
 
-  enum SizeType {
+  enum class ListSizeType {
     UINT8 = static_cast<int>(PropertyType::UINT8),
     UINT16 = static_cast<int>(PropertyType::UINT16),
     UINT32 = static_cast<int>(PropertyType::UINT32),
   };
 
-  virtual std::expected<SizeType, std::string_view> GetPropertyListSizeType(
-      std::string_view element_name, std::string_view property_name) const = 0;
+  virtual std::expected<PlyWriter::ListSizeType, std::string_view>
+  GetPropertyListSizeType(std::string_view element_name, size_t element_index,
+                          std::string_view property_name,
+                          size_t property_index) const = 0;
 };
 
 }  // namespace plyodine

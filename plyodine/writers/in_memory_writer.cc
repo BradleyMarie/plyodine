@@ -26,9 +26,9 @@ class InMemoryWriter final : public PlyWriter {
       std::span<const std::string>& comments,
       std::span<const std::string>& object_info) const override;
 
-  std::expected<SizeType, std::string_view> GetPropertyListSizeType(
-      std::string_view element_name,
-      std::string_view property_name) const override;
+  std::expected<ListSizeType, std::string_view> GetPropertyListSizeType(
+      std::string_view element_name, size_t element_index,
+      std::string_view property_name, size_t property_index) const override;
 
  private:
   template <typename T>
@@ -209,9 +209,11 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
   return std::expected<void, std::string_view>();
 }
 
-std::expected<PlyWriter::SizeType, std::string_view>
+std::expected<PlyWriter::ListSizeType, std::string_view>
 InMemoryWriter::GetPropertyListSizeType(std::string_view element_name,
-                                        std::string_view property_name) const {
+                                        size_t element_index,
+                                        std::string_view property_name,
+                                        size_t property_index) const {
   size_t max_size = std::visit(
       [&](const auto& entry) -> size_t {
         size_t value = 0u;
@@ -225,15 +227,15 @@ InMemoryWriter::GetPropertyListSizeType(std::string_view element_name,
       properties_.at(element_name).at(property_name));
 
   if (max_size <= std::numeric_limits<uint8_t>::max()) {
-    return PlyWriter::UINT8;
+    return PlyWriter::ListSizeType::UINT8;
   }
 
   if (max_size <= std::numeric_limits<uint16_t>::max()) {
-    return PlyWriter::UINT16;
+    return PlyWriter::ListSizeType::UINT16;
   }
 
   if (max_size <= std::numeric_limits<uint32_t>::max()) {
-    return PlyWriter::UINT32;
+    return PlyWriter::ListSizeType::UINT32;
   }
 
   return std::unexpected(

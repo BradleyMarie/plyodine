@@ -155,9 +155,9 @@ class TestWriter final : public plyodine::PlyWriter {
     return std::expected<void, std::string_view>();
   }
 
-  std::expected<SizeType, std::string_view> GetPropertyListSizeType(
-      std::string_view element_name,
-      std::string_view property_name) const override {
+  std::expected<ListSizeType, std::string_view> GetPropertyListSizeType(
+      std::string_view element_name, size_t element_index,
+      std::string_view property_name, size_t property_index) const override {
     size_t max_size = std::visit(
         [&](const auto& entry) -> size_t {
           size_t value = 0u;
@@ -172,14 +172,14 @@ class TestWriter final : public plyodine::PlyWriter {
         properties_.at(element_name).at(property_name));
 
     if (max_size <= std::numeric_limits<uint8_t>::max()) {
-      return PlyWriter::UINT8;
+      return PlyWriter::ListSizeType::UINT8;
     }
 
     if (max_size <= std::numeric_limits<uint16_t>::max()) {
-      return PlyWriter::UINT16;
+      return PlyWriter::ListSizeType::UINT16;
     }
 
-    return PlyWriter::UINT32;
+    return PlyWriter::ListSizeType::UINT32;
   }
 
  private:
@@ -348,9 +348,9 @@ TEST(Validate, BadComment) {
 TEST(Validate, BadObjInfo) {
   std::stringstream output;
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).error(),
-            "A obj_info may not contain line feed or carriage return");
+            "An obj_info may not contain line feed or carriage return");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).error(),
-            "A obj_info may not contain line feed or carriage return");
+            "An obj_info may not contain line feed or carriage return");
 }
 
 TEST(Validate, ListTooBig) {
@@ -365,7 +365,7 @@ TEST(Validate, ListTooBig) {
     std::stringstream output;
     EXPECT_EQ(
         WriteToASCII(output, {{"element", {{"node0", {list}}}}}).error(),
-        "The list was too big to be represented with the selected index type");
+        "The list was too big to be represented with the selected size type");
   }
 }
 
