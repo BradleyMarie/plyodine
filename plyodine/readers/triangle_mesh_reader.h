@@ -332,7 +332,6 @@ class TriangleMeshReader : public PlyReader {
     return std::nullopt;
   }
 
- public:
   std::expected<
       std::map<std::string_view, std::map<std::string_view, Callback>>,
       std::string_view>
@@ -340,8 +339,8 @@ class TriangleMeshReader : public PlyReader {
             std::string_view,
             std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
             &properties,
-        std::span<const std::string> comments,
-        std::span<const std::string> obj_infos) final {
+        const std::vector<std::string> &comments,
+        const std::vector<std::string> &obj_infos) final {
     Start();
 
     auto x = LocationPropertyIndex<0>(properties, "vertex", "x");

@@ -107,8 +107,8 @@ class PlyWriter {
       std::map<std::string_view,
                std::pair<uint64_t, std::map<std::string_view, Callback>>>&
           property_callbacks,
-      std::span<const std::string>& comments,
-      std::span<const std::string>& object_info) const = 0;
+      std::vector<std::string>& comments,
+      std::vector<std::string>& object_info) const = 0;
 
   enum class ListSizeType {
     UINT8 = static_cast<int>(PropertyType::UINT8),

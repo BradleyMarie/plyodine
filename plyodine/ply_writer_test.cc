@@ -66,8 +66,8 @@ class TestWriter final : public plyodine::PlyWriter {
       std::map<std::string_view,
                std::pair<uint64_t, std::map<std::string_view, Callback>>>&
           property_callbacks,
-      std::span<const std::string>& comments,
-      std::span<const std::string>& object_info) const override {
+      std::vector<std::string>& comments,
+      std::vector<std::string>& object_info) const override {
     if (start_fails_) {
       return std::unexpected("start");
     }
@@ -149,8 +149,9 @@ class TestWriter final : public plyodine::PlyWriter {
           std::make_pair(num_properties, std::move(callbacks));
     }
 
-    comments = comments_;
-    object_info = object_info_;
+    comments.insert(comments.end(), comments_.begin(), comments_.end());
+    object_info.insert(object_info.end(), object_info_.begin(),
+                       object_info_.end());
 
     return std::expected<void, std::string_view>();
   }

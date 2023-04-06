@@ -351,8 +351,8 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
             std::map<std::string_view,
                      std::pair<uint64_t, std::map<std::string_view, T>>>
                 property_callbacks,
-            std::span<const std::string> comments,
-            std::span<const std::string> object_info, Context& context) {
+            const std::vector<std::string>& comments,
+            const std::vector<std::string>& object_info, Context& context) {
   output << "ply\rformat " << format << " 1.0\r";
   if (!output) {
     return std::unexpected(WriteFailure());
@@ -435,8 +435,8 @@ std::expected<void, std::string_view> WriteToBinaryImpl(
     std::map<std::string_view,
              std::pair<uint64_t, std::map<std::string_view, T>>>
         property_callbacks,
-    std::span<const std::string> comments,
-    std::span<const std::string> object_info) {
+    const std::vector<std::string>& comments,
+    const std::vector<std::string>& object_info) {
   std::string_view format;
   if constexpr (Endianness == std::endian::big) {
     format = "binary_big_endian";
@@ -516,8 +516,8 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
   std::map<std::string_view,
            std::pair<uint64_t, std::map<std::string_view, Callback>>>
       property_callbacks;
-  std::span<const std::string> comments;
-  std::span<const std::string> object_info;
+  std::vector<std::string> comments;
+  std::vector<std::string> object_info;
   auto result = Start(property_callbacks, comments, object_info);
   if (!result) {
     return result;
@@ -575,8 +575,8 @@ std::expected<void, std::string_view> PlyWriter::WriteToBigEndian(
   std::map<std::string_view,
            std::pair<uint64_t, std::map<std::string_view, Callback>>>
       property_callbacks;
-  std::span<const std::string> comments;
-  std::span<const std::string> object_info;
+  std::vector<std::string> comments;
+  std::vector<std::string> object_info;
   auto result = Start(property_callbacks, comments, object_info);
   if (!result) {
     return result;
@@ -602,8 +602,8 @@ std::expected<void, std::string_view> PlyWriter::WriteToLittleEndian(
   std::map<std::string_view,
            std::pair<uint64_t, std::map<std::string_view, Callback>>>
       property_callbacks;
-  std::span<const std::string> comments;
-  std::span<const std::string> object_info;
+  std::vector<std::string> comments;
+  std::vector<std::string> object_info;
   auto result = Start(property_callbacks, comments, object_info);
   if (!result) {
     return result;

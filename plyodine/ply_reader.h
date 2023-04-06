@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 #include "plyodine/ply_property.h"
 
@@ -100,8 +101,8 @@ class PlyReader {
             std::string_view,
             std::pair<uint64_t, std::map<std::string_view, PropertyType>>>&
             properties,
-        std::span<const std::string> comments,
-        std::span<const std::string> object_info) = 0;
+        const std::vector<std::string>& comments,
+        const std::vector<std::string>& object_info) = 0;
 };
 
 }  // namespace plyodine

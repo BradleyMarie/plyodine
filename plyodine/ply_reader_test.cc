@@ -14,7 +14,7 @@ class MockPlyReader final : public plyodine::PlyReader {
       ((const std::map<std::string_view,
                        std::pair<uint64_t, std::map<std::string_view,
                                                     plyodine::PropertyType>>>&),
-       std::span<const std::string>, std::span<const std::string>),
+       const std::vector<std::string>&, const std::vector<std::string>&),
       ());
 
   MOCK_METHOD((std::expected<void, std::string_view>), HandleInt8,
@@ -81,8 +81,8 @@ class MockPlyReader final : public plyodine::PlyReader {
                        std::pair<uint64_t, std::map<std::string_view,
                                                     plyodine::PropertyType>>>&
             properties,
-        std::span<const std::string> comments,
-        std::span<const std::string> object_info) override {
+        const std::vector<std::string>& comments,
+        const std::vector<std::string>& object_info) override {
     auto error = StartImpl(properties, comments, object_info);
     if (!error) {
       return std::unexpected(error.error());
