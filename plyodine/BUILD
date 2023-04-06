@@ -12,14 +12,14 @@ cc_library(
 )
 
 cc_library(
-    name = "ply_header",
-    srcs = ["ply_header.cc"],
-    hdrs = ["ply_header.h"],
+    name = "ply_header_reader",
+    srcs = ["ply_header_reader.cc"],
+    hdrs = ["ply_header_reader.h"],
 )
 
 cc_test(
-    name = "ply_header_test",
-    srcs = ["ply_header_test.cc"],
+    name = "ply_header_reader_test",
+    srcs = ["ply_header_reader_test.cc"],
     data = [
         "test_data/header_comment_allows_spaces.ply",
         "test_data/header_comment_empty.ply",
@@ -62,7 +62,7 @@ cc_test(
         "test_data/header_valid_windows.ply",
     ],
     deps = [
-        ":ply_header",
+        ":ply_header_reader",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -77,7 +77,7 @@ cc_library(
     srcs = ["ply_reader.cc"],
     hdrs = ["ply_reader.h"],
     deps = [
-        ":ply_header",
+        ":ply_header_reader",
         ":ply_property",
     ],
 )

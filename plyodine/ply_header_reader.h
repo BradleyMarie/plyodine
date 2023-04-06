@@ -1,5 +1,5 @@
-#ifndef _PLYODINE_PLY_HEADER_
-#define _PLYODINE_PLY_HEADER_
+#ifndef _PLYODINE_PLY_HEADER_READER_
+#define _PLYODINE_PLY_HEADER_READER_
 
 #include <cstdint>
 #include <expected>
@@ -38,4 +38,4 @@ std::expected<PlyHeader, std::string_view> ReadPlyHeader(std::istream& input);
 
 }  // namespace plyodine
 
-#endif  // _PLYODINE_PLY_HEADER_
+#endif  // _PLYODINE_PLY_HEADER_READER_

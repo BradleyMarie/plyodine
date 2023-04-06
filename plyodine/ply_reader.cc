@@ -8,7 +8,7 @@
 #include <tuple>
 #include <type_traits>
 
-#include "plyodine/ply_header.h"
+#include "plyodine/ply_header_reader.h"
 
 namespace plyodine {
 namespace {
