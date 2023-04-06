@@ -13,8 +13,7 @@ TEST(List, UInt8) {
   static const std::vector<std::span<const uint8_t>> l0 = {
       {values.begin(), values.end()}};
 
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      result;
+  std::map<std::string, std::map<std::string, plyodine::Property>> result;
   result["vertex"]["l0"] = l0;
 
   std::stringstream output;
@@ -32,8 +31,7 @@ TEST(List, UInt16) {
   static const std::vector<std::span<const uint8_t>> l0 = {
       {values.begin(), values.end()}};
 
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      result;
+  std::map<std::string, std::map<std::string, plyodine::Property>> result;
   result["vertex"]["l0"] = l0;
 
   std::stringstream output;
@@ -52,8 +50,7 @@ TEST(List, UInt32) {
   static const std::vector<std::span<const uint8_t>> l0 = {
       {values.begin(), values.end()}};
 
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      result;
+  std::map<std::string, std::map<std::string, plyodine::Property>> result;
   result["vertex"]["l0"] = l0;
 
   std::stringstream output;
@@ -74,8 +71,7 @@ TEST(List, TooLargeError) {
     static const std::vector<std::span<const uint8_t>> l0 = {
         {values.begin(), values.end()}};
 
-    std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-        result;
+    std::map<std::string, std::map<std::string, plyodine::Property>> result;
     result["vertex"]["l0"] = l0;
 
     std::stringstream output;
@@ -88,8 +84,7 @@ TEST(Properties, DifferentSizes) {
   static const std::vector<int> l0 = {1, 2};
   static const std::vector<int> l1 = {1, 2, 3};
 
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      result;
+  std::map<std::string, std::map<std::string, plyodine::Property>> result;
   result["vertex"]["l0"] = l0;
   result["vertex"]["l1"] = l1;
 
@@ -116,8 +111,7 @@ TEST(ASCII, WithData) {
   static const std::vector<std::span<const float>> gl = {{g}};
   static const std::vector<std::span<const double>> hl = {{h}};
 
-  std::map<std::string_view, std::map<std::string_view, plyodine::Property>>
-      result;
+  std::map<std::string, std::map<std::string, plyodine::Property>> result;
   result["vertex"]["a"] = a;
   result["vertex"]["b"] = b;
   result["vertex"]["c"] = c;

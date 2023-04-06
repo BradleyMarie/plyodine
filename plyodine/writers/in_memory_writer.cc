@@ -14,38 +14,36 @@ namespace {
 class InMemoryWriter final : public PlyWriter {
  public:
   InMemoryWriter(
-      const std::map<std::string_view, std::map<std::string_view, Property>>&
-          properties,
+      const std::map<std::string, std::map<std::string, Property>>& properties,
       std::span<const std::string> comments,
       std::span<const std::string> object_info);
 
-  std::expected<void, std::string_view> Start(
-      std::map<std::string_view,
-               std::pair<uint64_t, std::map<std::string_view, Callback>>>&
+  std::expected<void, std::string> Start(
+      std::map<std::string,
+               std::pair<uint64_t, std::map<std::string, Callback>>>&
           property_callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override;
 
-  std::expected<ListSizeType, std::string_view> GetPropertyListSizeType(
-      std::string_view element_name, size_t element_index,
-      std::string_view property_name, size_t property_index) const override;
+  std::expected<ListSizeType, std::string> GetPropertyListSizeType(
+      const std::string& element_name, size_t element_index,
+      const std::string& property_name, size_t property_index) const override;
 
  private:
   template <typename T>
-  std::expected<T, std::string_view> Callback(std::string_view element_name,
-                                              size_t element_index,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              uint64_t instance) const;
+  std::expected<T, std::string> Callback(const std::string& element_name,
+                                         size_t element_index,
+                                         const std::string& property_name,
+                                         size_t property_index,
+                                         uint64_t instance) const;
 
   template <typename T>
-  std::expected<std::span<const T>, std::string_view> ListCallback(
-      std::string_view element_name, size_t element_index,
-      std::string_view property_name, size_t property_index, uint64_t instance,
-      std::vector<T>& storage) const;
+  std::expected<std::span<const T>, std::string> ListCallback(
+      const std::string& element_name, size_t element_index,
+      const std::string& property_name, size_t property_index,
+      uint64_t instance, std::vector<T>& storage) const;
 
-  const std::map<std::string_view, std::map<std::string_view, Property>>&
-      properties_;
+  const std::map<std::string, std::map<std::string, Property>>& properties_;
   std::span<const std::string> comments_;
   std::span<const std::string> object_info_;
 
@@ -54,8 +52,7 @@ class InMemoryWriter final : public PlyWriter {
 };
 
 InMemoryWriter::InMemoryWriter(
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments,
     std::span<const std::string> object_info)
     : properties_(properties), comments_(comments), object_info_(object_info) {
@@ -72,9 +69,9 @@ InMemoryWriter::InMemoryWriter(
 }
 
 template <typename T>
-std::expected<T, std::string_view> InMemoryWriter::Callback(
-    std::string_view element_name, size_t element_index,
-    std::string_view property_name, size_t property_index,
+std::expected<T, std::string> InMemoryWriter::Callback(
+    const std::string& element_name, size_t element_index,
+    const std::string& property_name, size_t property_index,
     uint64_t instance) const {
   return std::get<std::span<const T>>(
       *indexed_properties_.at(element_index)
@@ -82,26 +79,23 @@ std::expected<T, std::string_view> InMemoryWriter::Callback(
 }
 
 template <typename T>
-std::expected<std::span<const T>, std::string_view>
-InMemoryWriter::ListCallback(std::string_view element_name,
-                             size_t element_index,
-                             std::string_view property_name,
-                             size_t property_index, uint64_t instance,
-                             std::vector<T>& storage) const {
+std::expected<std::span<const T>, std::string> InMemoryWriter::ListCallback(
+    const std::string& element_name, size_t element_index,
+    const std::string& property_name, size_t property_index, uint64_t instance,
+    std::vector<T>& storage) const {
   return std::get<std::span<const std::span<const T>>>(
       *indexed_properties_.at(element_index)
            .second.at(property_index))[instance];
 }
 
-std::expected<void, std::string_view> InMemoryWriter::Start(
-    std::map<
-        std::string_view,
-        std::pair<uint64_t, std::map<std::string_view, PlyWriter::Callback>>>&
+std::expected<void, std::string> InMemoryWriter::Start(
+    std::map<std::string,
+             std::pair<uint64_t, std::map<std::string, PlyWriter::Callback>>>&
         property_callbacks,
     std::vector<std::string>& comments,
     std::vector<std::string>& object_info) const {
   for (const auto& element : properties_) {
-    std::map<std::string_view, PlyWriter::Callback> callbacks;
+    std::map<std::string, PlyWriter::Callback> callbacks;
     std::optional<size_t> num_elements;
     for (const auto& property : element.second) {
       size_t property_num_elements = property.second.size();
@@ -207,13 +201,13 @@ std::expected<void, std::string_view> InMemoryWriter::Start(
   object_info.insert(object_info.end(), object_info_.begin(),
                      object_info_.end());
 
-  return std::expected<void, std::string_view>();
+  return std::expected<void, std::string>();
 }
 
-std::expected<PlyWriter::ListSizeType, std::string_view>
-InMemoryWriter::GetPropertyListSizeType(std::string_view element_name,
+std::expected<PlyWriter::ListSizeType, std::string>
+InMemoryWriter::GetPropertyListSizeType(const std::string& element_name,
                                         size_t element_index,
-                                        std::string_view property_name,
+                                        const std::string& property_name,
                                         size_t property_index) const {
   size_t max_size = std::visit(
       [&](const auto& entry) -> size_t {
@@ -225,7 +219,7 @@ InMemoryWriter::GetPropertyListSizeType(std::string_view element_name,
         }
         return value;
       },
-      properties_.at(element_name).at(property_name));
+      *indexed_properties_.at(element_index).second.at(property_index));
 
   if (max_size <= std::numeric_limits<uint8_t>::max()) {
     return PlyWriter::ListSizeType::UINT8;
@@ -245,10 +239,9 @@ InMemoryWriter::GetPropertyListSizeType(std::string_view element_name,
 
 }  // namespace
 
-std::expected<void, std::string_view> WriteTo(
+std::expected<void, std::string> WriteTo(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments,
     std::span<const std::string> object_info) {
   InMemoryWriter writer(properties, comments, object_info);
@@ -256,10 +249,9 @@ std::expected<void, std::string_view> WriteTo(
 }
 
 // Most clients should prefer WriteTo over this
-std::expected<void, std::string_view> WriteToASCII(
+std::expected<void, std::string> WriteToASCII(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments,
     std::span<const std::string> object_info) {
   InMemoryWriter writer(properties, comments, object_info);
@@ -267,10 +259,9 @@ std::expected<void, std::string_view> WriteToASCII(
 }
 
 // Most clients should prefer WriteTo over this
-std::expected<void, std::string_view> WriteToBigEndian(
+std::expected<void, std::string> WriteToBigEndian(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments,
     std::span<const std::string> object_info) {
   InMemoryWriter writer(properties, comments, object_info);
@@ -278,10 +269,9 @@ std::expected<void, std::string_view> WriteToBigEndian(
 }
 
 // Most clients should prefer WriteTo over this
-std::expected<void, std::string_view> WriteToLittleEndian(
+std::expected<void, std::string> WriteToLittleEndian(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments,
     std::span<const std::string> object_info) {
   InMemoryWriter writer(properties, comments, object_info);

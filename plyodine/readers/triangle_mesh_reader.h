@@ -25,7 +25,7 @@ class TriangleMeshReader : public PlyReader {
   virtual void AddFace(const std::array<FaceIndexType, 3> &face) = 0;
 
  private:
-  std::expected<void, std::string_view> MaybeAddVertex() {
+  std::expected<void, std::string> MaybeAddVertex() {
     current_vertex_index_ += 1u;
 
     if (current_vertex_index_ == handle_vertex_index_) {
@@ -39,14 +39,15 @@ class TriangleMeshReader : public PlyReader {
       current_vertex_index_ = 0u;
     }
 
-    return std::expected<void, std::string_view>();
+    return std::expected<void, std::string>();
   }
 
   template <size_t index, typename T>
-  std::expected<void, std::string_view> AddPosition(
-      std::string_view element_name, size_t element_index,
-      std::string_view property_name, size_t property_index, uint64_t instance,
-      T value) {
+  std::expected<void, std::string> AddPosition(const std::string &element_name,
+                                               size_t element_index,
+                                               const std::string &property_name,
+                                               size_t property_index,
+                                               uint64_t instance, T value) {
     xyz_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(xyz_[index])) {
@@ -63,10 +64,11 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index, typename T>
-  std::expected<void, std::string_view> AddNormal(
-      std::string_view element_name, size_t element_index,
-      std::string_view property_name, size_t property_index, uint64_t instance,
-      T value) {
+  std::expected<void, std::string> AddNormal(const std::string &element_name,
+                                             size_t element_index,
+                                             const std::string &property_name,
+                                             size_t property_index,
+                                             uint64_t instance, T value) {
     normals_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(normals_storage_[index])) {
@@ -83,11 +85,11 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index, typename T>
-  std::expected<void, std::string_view> AddUV(std::string_view element_name,
-                                              size_t element_index,
-                                              std::string_view property_name,
-                                              size_t property_index,
-                                              uint64_t instance, T value) {
+  std::expected<void, std::string> AddUV(const std::string &element_name,
+                                         size_t element_index,
+                                         const std::string &property_name,
+                                         size_t property_index,
+                                         uint64_t instance, T value) {
     uv_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(uv_storage_[index])) {
@@ -102,7 +104,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <typename T>
-  std::expected<void, std::string_view> ValidateVertexIndex(T index) {
+  std::expected<void, std::string> ValidateVertexIndex(T index) {
     static const char *message = "A vertex index was out of range";
 
     if constexpr (std::is_signed<T>::value) {
@@ -122,14 +124,14 @@ class TriangleMeshReader : public PlyReader {
       return std::unexpected(message);
     }
 
-    return std::expected<void, std::string_view>();
+    return std::expected<void, std::string>();
   }
 
   template <typename T>
-  std::expected<void, std::string_view> AddVertexIndices(
-      std::string_view element_name, size_t element_index,
-      std::string_view property_name, size_t property_index, uint64_t instance,
-      std::span<const T> value) {
+  std::expected<void, std::string> AddVertexIndices(
+      const std::string &element_name, size_t element_index,
+      const std::string &property_name, size_t property_index,
+      uint64_t instance, std::span<const T> value) {
     if (value.size() >= 3) {
       auto v0_valid = ValidateVertexIndex(value[0]);
       if (!v0_valid) {
@@ -155,16 +157,14 @@ class TriangleMeshReader : public PlyReader {
       }
     }
 
-    return std::expected<void, std::string_view>();
+    return std::expected<void, std::string>();
   }
 
   static const PropertyType *LookupProperty(
-      const std::map<
-          std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+      const std::map<std::string,
+                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
           &properties,
-      const std::string_view &element_name,
-      const std::string_view &property_name) {
+      const std::string &element_name, const std::string &property_name) {
     auto element_iter = properties.find(element_name);
     if (element_iter == properties.end()) {
       return nullptr;
@@ -179,14 +179,12 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<PlyReader::Callback>, std::string_view>
+  std::expected<std::optional<PlyReader::Callback>, std::string>
   LocationPropertyIndex(
-      const std::map<
-          std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+      const std::map<std::string,
+                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
           &properties,
-      const std::string_view &element_name,
-      const std::string_view &property_name) {
+      const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property) {
@@ -208,14 +206,12 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<PlyReader::Callback>, std::string_view>
+  std::expected<std::optional<PlyReader::Callback>, std::string>
   NormalPropertyIndex(
-      const std::map<
-          std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+      const std::map<std::string,
+                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
           &properties,
-      const std::string_view &element_name,
-      const std::string_view &property_name) {
+      const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property) {
@@ -237,15 +233,13 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<std::pair<std::string_view, PlyReader::Callback>>,
-                std::string_view>
+  std::expected<std::optional<std::pair<std::string, PlyReader::Callback>>,
+                std::string>
   UVPropertyIndex(
-      const std::map<
-          std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+      const std::map<std::string,
+                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
           &properties,
-      const std::string_view &element_name,
-      const std::string_view &property_name) {
+      const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property) {
@@ -272,15 +266,14 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<std::pair<std::string_view, PlyReader::Callback>>,
-                std::string_view>
+  std::expected<std::optional<std::pair<std::string, PlyReader::Callback>>,
+                std::string>
   UVPropertyIndex(
-      const std::map<
-          std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+      const std::map<std::string,
+                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
           &properties,
-      const std::string_view &element_name,
-      std::span<const std::string_view> property_names) {
+      const std::string &element_name,
+      const std::vector<std::string> &property_names) {
     for (const auto &property_name : property_names) {
       auto face_property_index =
           UVPropertyIndex<index>(properties, element_name, property_name);
@@ -292,14 +285,12 @@ class TriangleMeshReader : public PlyReader {
     return std::nullopt;
   }
 
-  std::expected<std::optional<PlyReader::Callback>, std::string_view>
+  std::expected<std::optional<PlyReader::Callback>, std::string>
   FacePropertyIndex(
-      const std::map<
-          std::string_view,
-          std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+      const std::map<std::string,
+                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
           &properties,
-      const std::string_view &element_name,
-      const std::string_view &property_name) {
+      const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(properties, element_name, property_name);
 
     if (property) {
@@ -332,12 +323,10 @@ class TriangleMeshReader : public PlyReader {
     return std::nullopt;
   }
 
-  std::expected<
-      std::map<std::string_view, std::map<std::string_view, Callback>>,
-      std::string_view>
-  Start(const std::map<
-            std::string_view,
-            std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+  std::expected<std::map<std::string, std::map<std::string, Callback>>,
+                std::string>
+  Start(const std::map<std::string,
+                       std::pair<uint64_t, std::map<std::string, PropertyType>>>
             &properties,
         const std::vector<std::string> &comments,
         const std::vector<std::string> &obj_infos) final {
@@ -374,13 +363,13 @@ class TriangleMeshReader : public PlyReader {
     }
 
     auto u = UVPropertyIndex<0>(properties, "vertex",
-                                {{"u", "s", "texture_u", "texture_s"}});
+                                {"u", "s", "texture_u", "texture_s"});
     if (!u) {
       return std::unexpected(u.error());
     }
 
     auto v = UVPropertyIndex<1>(properties, "vertex",
-                                {{"v", "t", "texture_v", "texture_t"}});
+                                {"v", "t", "texture_v", "texture_t"});
     if (!v) {
       return std::unexpected(v.error());
     }
@@ -397,7 +386,7 @@ class TriangleMeshReader : public PlyReader {
 
     num_vertices_ = properties.at("vertex").first;
 
-    std::map<std::string_view, std::map<std::string_view, Callback>> result;
+    std::map<std::string, std::map<std::string, Callback>> result;
     result["vertex"]["x"] = **x;
     result["vertex"]["y"] = **y;
     result["vertex"]["z"] = **z;
@@ -428,9 +417,8 @@ class TriangleMeshReader : public PlyReader {
 
     result["face"]["vertex_indices"] = **vertex_indices;
 
-    return std::expected<
-        std::map<std::string_view, std::map<std::string_view, Callback>>,
-        std::string_view>(result);
+    return std::expected<std::map<std::string, std::map<std::string, Callback>>,
+                         std::string>(result);
   }
 
  private:

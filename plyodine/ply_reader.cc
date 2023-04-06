@@ -13,70 +13,61 @@
 namespace plyodine {
 namespace {
 
-typedef std::expected<void, std::string_view> (
-    PlyReader::*Int8PropertyCallback)(std::string_view, size_t,
-                                      std::string_view, size_t, uint64_t,
-                                      Int8Property);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*Int8PropertyListCallback)(std::string_view, size_t,
-                                          std::string_view, size_t, uint64_t,
-                                          Int8PropertyList);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*UInt8PropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t, uint64_t,
-                                       UInt8Property);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*UInt8PropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
+typedef std::expected<void, std::string> (PlyReader::*Int8PropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    Int8Property);
+typedef std::expected<void, std::string> (PlyReader::*Int8PropertyListCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    Int8PropertyList);
+typedef std::expected<void, std::string> (PlyReader::*UInt8PropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    UInt8Property);
+typedef std::expected<void, std::string> (
+    PlyReader::*UInt8PropertyListCallback)(const std::string&, size_t,
+                                           const std::string&, size_t, uint64_t,
                                            UInt8PropertyList);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*Int16PropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t, uint64_t,
-                                       Int16Property);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*Int16PropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
+typedef std::expected<void, std::string> (PlyReader::*Int16PropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    Int16Property);
+typedef std::expected<void, std::string> (
+    PlyReader::*Int16PropertyListCallback)(const std::string&, size_t,
+                                           const std::string&, size_t, uint64_t,
                                            Int16PropertyList);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*UInt16PropertyCallback)(std::string_view, size_t,
-                                        std::string_view, size_t, uint64_t,
-                                        UInt16Property);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*UInt16PropertyListCallback)(std::string_view, size_t,
-                                            std::string_view, size_t, uint64_t,
-                                            UInt16PropertyList);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*Int32PropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t, uint64_t,
-                                       Int32Property);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*Int32PropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
+typedef std::expected<void, std::string> (PlyReader::*UInt16PropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    UInt16Property);
+typedef std::expected<void, std::string> (
+    PlyReader::*UInt16PropertyListCallback)(const std::string&, size_t,
+                                            const std::string&, size_t,
+                                            uint64_t, UInt16PropertyList);
+typedef std::expected<void, std::string> (PlyReader::*Int32PropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    Int32Property);
+typedef std::expected<void, std::string> (
+    PlyReader::*Int32PropertyListCallback)(const std::string&, size_t,
+                                           const std::string&, size_t, uint64_t,
                                            Int32PropertyList);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*UInt32PropertyCallback)(std::string_view, size_t,
-                                        std::string_view, size_t, uint64_t,
-                                        UInt32Property);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*UInt32PropertyListCallback)(std::string_view, size_t,
-                                            std::string_view, size_t, uint64_t,
-                                            UInt32PropertyList);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*FloatPropertyCallback)(std::string_view, size_t,
-                                       std::string_view, size_t, uint64_t,
-                                       FloatProperty);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*FloatPropertyListCallback)(std::string_view, size_t,
-                                           std::string_view, size_t, uint64_t,
+typedef std::expected<void, std::string> (PlyReader::*UInt32PropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    UInt32Property);
+typedef std::expected<void, std::string> (
+    PlyReader::*UInt32PropertyListCallback)(const std::string&, size_t,
+                                            const std::string&, size_t,
+                                            uint64_t, UInt32PropertyList);
+typedef std::expected<void, std::string> (PlyReader::*FloatPropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    FloatProperty);
+typedef std::expected<void, std::string> (
+    PlyReader::*FloatPropertyListCallback)(const std::string&, size_t,
+                                           const std::string&, size_t, uint64_t,
                                            FloatPropertyList);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*DoublePropertyCallback)(std::string_view, size_t,
-                                        std::string_view, size_t, uint64_t,
-                                        DoubleProperty);
-typedef std::expected<void, std::string_view> (
-    PlyReader::*DoublePropertyListCallback)(std::string_view, size_t,
-                                            std::string_view, size_t, uint64_t,
-                                            DoublePropertyList);
+typedef std::expected<void, std::string> (PlyReader::*DoublePropertyCallback)(
+    const std::string&, size_t, const std::string&, size_t, uint64_t,
+    DoubleProperty);
+typedef std::expected<void, std::string> (
+    PlyReader::*DoublePropertyListCallback)(const std::string&, size_t,
+                                            const std::string&, size_t,
+                                            uint64_t, DoublePropertyList);
 
 typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
                      UInt8PropertyCallback, UInt8PropertyListCallback,
@@ -91,8 +82,8 @@ typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
 struct Context {
   PlyReader* reader_;
   std::vector<
-      std::tuple<uint64_t, std::string_view,
-                 std::vector<std::tuple<std::string_view, size_t, Callback>>>>
+      std::tuple<uint64_t, const std::string&,
+                 std::vector<std::tuple<const std::string&, size_t, Callback>>>>
       callbacks_;
   std::vector<int8_t> int8_;
   std::vector<uint8_t> uint8_;
@@ -105,14 +96,14 @@ struct Context {
   std::string token_;
 };
 
-std::string_view UnexpectedEOF() { return "Unexpected EOF"; }
+std::string UnexpectedEOF() { return "Unexpected EOF"; }
 
-std::string_view NegativeListSize() {
+std::string NegativeListSize() {
   return "The input contained a property list with a negative size";
 }
 
 template <std::endian Endianness, typename T, typename ReadType = T>
-std::expected<void, std::string_view> ReadBinaryPropertyDataImpl(
+std::expected<void, std::string> ReadBinaryPropertyDataImpl(
     std::istream& input, std::vector<T>& output) {
   static_assert(sizeof(T) == sizeof(ReadType));
 
@@ -138,12 +129,11 @@ std::expected<void, std::string_view> ReadBinaryPropertyDataImpl(
     }
   }
 
-  return std::expected<void, std::string_view>();
+  return std::expected<void, std::string>();
 }
 
 template <std::endian Endianness, typename T>
-std::expected<size_t, std::string_view> ReadBinaryListSizeImpl(
-    std::istream& input) {
+std::expected<size_t, std::string> ReadBinaryListSizeImpl(std::istream& input) {
   T result;
 
   if (!input.read(reinterpret_cast<char*>(&result), sizeof(T))) {
@@ -165,9 +155,9 @@ std::expected<size_t, std::string_view> ReadBinaryListSizeImpl(
 
 template <std::endian Endianness, PropertyType Index, typename T,
           typename ReadType = T>
-std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
-    std::istream& input, std::string_view element_name, size_t element_index,
-    std::string_view property_name, size_t property_index, uint64_t instance,
+std::expected<void, std::string> ReadBinaryPropertyScalarData(
+    std::istream& input, const std::string& element_name, size_t element_index,
+    const std::string& property_name, size_t property_index, uint64_t instance,
     Callback callback, std::vector<T>& storage, PlyReader* reader) {
   storage.clear();
 
@@ -179,7 +169,7 @@ std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
 
   auto actual_callback = std::get<static_cast<size_t>(Index)>(callback);
   if (actual_callback == nullptr) {
-    return std::expected<void, std::string_view>();
+    return std::expected<void, std::string>();
   }
 
   return (reader->*actual_callback)(element_name, element_index, property_name,
@@ -187,11 +177,11 @@ std::expected<void, std::string_view> ReadBinaryPropertyScalarData(
 }
 
 template <std::endian Endianness>
-std::expected<void, std::string_view> ReadBinaryPropertyScalar(
-    std::istream& input, std::string_view element_name, size_t element_index,
+std::expected<void, std::string> ReadBinaryPropertyScalar(
+    std::istream& input, const std::string& element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
     uint64_t instance, Callback callback, Context& context) {
-  std::expected<void, std::string_view> result;
+  std::expected<void, std::string> result;
 
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
@@ -242,9 +232,9 @@ std::expected<void, std::string_view> ReadBinaryPropertyScalar(
 }
 
 template <std::endian Endianness>
-std::expected<size_t, std::string_view> ReadBinaryListSize(
+std::expected<size_t, std::string> ReadBinaryListSize(
     std::istream& input, PlyHeader::Property::Type type) {
-  std::expected<size_t, std::string_view> result;
+  std::expected<size_t, std::string> result;
 
   switch (type) {
     case PlyHeader::Property::INT8:
@@ -274,9 +264,9 @@ std::expected<size_t, std::string_view> ReadBinaryListSize(
 
 template <std::endian Endianness, PropertyType Index, typename T,
           typename ReadType = T>
-std::expected<void, std::string_view> ReadBinaryPropertyListData(
-    std::istream& input, std::string_view element_name, size_t element_index,
-    std::string_view property_name, size_t property_index, uint64_t instance,
+std::expected<void, std::string> ReadBinaryPropertyListData(
+    std::istream& input, const std::string& element_name, size_t element_index,
+    const std::string& property_name, size_t property_index, uint64_t instance,
     Callback callback, std::vector<T>& storage, size_t num_to_read,
     PlyReader* reader) {
   storage.clear();
@@ -291,7 +281,7 @@ std::expected<void, std::string_view> ReadBinaryPropertyListData(
 
   auto actual_callback = std::get<static_cast<size_t>(Index)>(callback);
   if (actual_callback == nullptr) {
-    return std::expected<void, std::string_view>();
+    return std::expected<void, std::string>();
   }
 
   return (reader->*actual_callback)(element_name, element_index, property_name,
@@ -299,8 +289,8 @@ std::expected<void, std::string_view> ReadBinaryPropertyListData(
 }
 
 template <std::endian Endianness>
-std::expected<void, std::string_view> ReadBinaryPropertyList(
-    std::istream& input, std::string_view element_name, size_t element_index,
+std::expected<void, std::string> ReadBinaryPropertyList(
+    std::istream& input, const std::string& element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
     uint64_t instance, Callback callback, Context& context) {
   auto num_to_read =
@@ -309,7 +299,7 @@ std::expected<void, std::string_view> ReadBinaryPropertyList(
     return std::unexpected(num_to_read.error());
   }
 
-  std::expected<void, std::string_view> result;
+  std::expected<void, std::string> result;
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
       result = ReadBinaryPropertyListData<Endianness, PropertyType::INT8_LIST>(
@@ -369,9 +359,9 @@ std::expected<void, std::string_view> ReadBinaryPropertyList(
 }
 
 template <std::endian Endianness>
-std::expected<void, std::string_view> ReadBinaryData(std::istream& input,
-                                                     const PlyHeader& header,
-                                                     Context& context) {
+std::expected<void, std::string> ReadBinaryData(std::istream& input,
+                                                const PlyHeader& header,
+                                                Context& context) {
   for (size_t e = 0; e < header.elements.size(); e++) {
     for (uint64_t instance = 0; instance < header.elements[e].num_in_file;
          instance++) {
@@ -399,12 +389,12 @@ std::expected<void, std::string_view> ReadBinaryData(std::istream& input,
     }
   }
 
-  return std::expected<void, std::string_view>();
+  return std::expected<void, std::string>();
 }
 
-std::expected<void, std::string_view> ReadNextAsciiToken(std::istream& input,
-                                                         std::string& token,
-                                                         bool last_line) {
+std::expected<void, std::string> ReadNextAsciiToken(std::istream& input,
+                                                    std::string& token,
+                                                    bool last_line) {
   token.clear();
 
   char c = 0;
@@ -429,11 +419,11 @@ std::expected<void, std::string_view> ReadNextAsciiToken(std::istream& input,
     return std::unexpected("The input contained an empty token");
   }
 
-  return std::expected<void, std::string_view>();
+  return std::expected<void, std::string>();
 }
 
 template <typename T>
-std::expected<void, std::string_view> ReadAsciiPropertyDataImpl(
+std::expected<void, std::string> ReadAsciiPropertyDataImpl(
     std::istream& input, std::string& token, std::vector<T>& output,
     bool last_line) {
   auto success = ReadNextAsciiToken(input, token, last_line);
@@ -453,12 +443,13 @@ std::expected<void, std::string_view> ReadAsciiPropertyDataImpl(
 
   output.push_back(data);
 
-  return std::expected<void, std::string_view>();
+  return std::expected<void, std::string>();
 }
 
 template <typename T>
-std::expected<size_t, std::string_view> ReadAsciiListSizeImpl(
-    std::istream& input, std::string& token, bool last_line) {
+std::expected<size_t, std::string> ReadAsciiListSizeImpl(std::istream& input,
+                                                         std::string& token,
+                                                         bool last_line) {
   auto success = ReadNextAsciiToken(input, token, last_line);
   if (!success) {
     return std::unexpected(success.error());
@@ -485,9 +476,9 @@ std::expected<size_t, std::string_view> ReadAsciiListSizeImpl(
 }
 
 template <PropertyType Index, typename T>
-std::expected<void, std::string_view> ReadAsciiPropertyScalarData(
-    std::istream& input, std::string_view element_name, size_t element_index,
-    std::string_view property_name, size_t property_index, uint64_t instance,
+std::expected<void, std::string> ReadAsciiPropertyScalarData(
+    std::istream& input, const std::string& element_name, size_t element_index,
+    const std::string& property_name, size_t property_index, uint64_t instance,
     Callback callback, std::string& token, std::vector<T>& storage,
     PlyReader* reader, bool last_line) {
   storage.clear();
@@ -499,18 +490,18 @@ std::expected<void, std::string_view> ReadAsciiPropertyScalarData(
 
   auto actual_callback = std::get<static_cast<size_t>(Index)>(callback);
   if (actual_callback == nullptr) {
-    return std::expected<void, std::string_view>();
+    return std::expected<void, std::string>();
   }
 
   return (reader->*actual_callback)(element_name, element_index, property_name,
                                     property_index, instance, storage[0]);
 }
 
-std::expected<void, std::string_view> ReadAsciiPropertyScalar(
-    std::istream& input, std::string_view element_name, size_t element_index,
+std::expected<void, std::string> ReadAsciiPropertyScalar(
+    std::istream& input, const std::string& element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
     uint64_t instance, Callback callback, Context& context, bool last_line) {
-  std::expected<void, std::string_view> result;
+  std::expected<void, std::string> result;
 
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
@@ -566,10 +557,10 @@ std::expected<void, std::string_view> ReadAsciiPropertyScalar(
   return result;
 }
 
-std::expected<size_t, std::string_view> ReadAsciiListSize(
+std::expected<size_t, std::string> ReadAsciiListSize(
     std::istream& input, std::string& token, PlyHeader::Property::Type type,
     bool last_line) {
-  std::expected<size_t, std::string_view> result;
+  std::expected<size_t, std::string> result;
 
   switch (type) {
     case PlyHeader::Property::INT8:
@@ -598,9 +589,9 @@ std::expected<size_t, std::string_view> ReadAsciiListSize(
 }
 
 template <PropertyType Index, typename T>
-std::expected<void, std::string_view> ReadAsciiPropertyListData(
-    std::istream& input, std::string_view element_name, size_t element_index,
-    std::string_view property_name, size_t property_index, uint64_t instance,
+std::expected<void, std::string> ReadAsciiPropertyListData(
+    std::istream& input, const std::string& element_name, size_t element_index,
+    const std::string& property_name, size_t property_index, uint64_t instance,
     Callback callback, std::string& token, std::vector<T>& storage,
     size_t num_to_read, PlyReader* reader, bool last_line) {
   storage.clear();
@@ -615,15 +606,15 @@ std::expected<void, std::string_view> ReadAsciiPropertyListData(
 
   auto actual_callback = std::get<static_cast<size_t>(Index)>(callback);
   if (actual_callback == nullptr) {
-    return std::expected<void, std::string_view>();
+    return std::expected<void, std::string>();
   }
 
   return (reader->*actual_callback)(element_name, element_index, property_name,
                                     property_index, instance, storage);
 }
 
-std::expected<void, std::string_view> ReadAsciiPropertyList(
-    std::istream& input, std::string_view element_name, size_t element_index,
+std::expected<void, std::string> ReadAsciiPropertyList(
+    std::istream& input, const std::string& element_name, size_t element_index,
     const PlyHeader::Property& header_property, size_t property_index,
     uint64_t instance, Callback callback, Context& context, bool last_line) {
   auto num_to_read = ReadAsciiListSize(input, context.token_,
@@ -632,7 +623,7 @@ std::expected<void, std::string_view> ReadAsciiPropertyList(
     return std::unexpected(num_to_read.error());
   }
 
-  std::expected<void, std::string_view> result;
+  std::expected<void, std::string> result;
   switch (header_property.data_type) {
     case PlyHeader::Property::INT8:
       result = ReadAsciiPropertyListData<PropertyType::INT8_LIST>(
@@ -687,9 +678,9 @@ std::expected<void, std::string_view> ReadAsciiPropertyList(
   return result;
 }
 
-std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
-                                                    const PlyHeader& header,
-                                                    Context& context) {
+std::expected<void, std::string> ReadAsciiData(std::istream& input,
+                                               const PlyHeader& header,
+                                               Context& context) {
   std::stringstream line;
 
   for (size_t e = 0; e < header.elements.size(); e++) {
@@ -755,17 +746,15 @@ std::expected<void, std::string_view> ReadAsciiData(std::istream& input,
     }
   }
 
-  return std::expected<void, std::string_view>();
+  return std::expected<void, std::string>();
 }
 
-std::tuple<std::string_view, size_t, Callback> MakeCallback(
-    const std::map<
-        std::string_view,
-        std::pair<uint64_t, std::map<std::string_view, PropertyType>>>&
+std::tuple<const std::string&, size_t, Callback> MakeCallback(
+    const std::map<std::string,
+                   std::pair<uint64_t, std::map<std::string, PropertyType>>>&
         all_properties,
-    const std::map<std::string_view, std::map<std::string_view, Callback>>&
-        callbacks,
-    std::string_view element_name, std::string_view property_name,
+    const std::map<std::string, std::map<std::string, Callback>>& callbacks,
+    const std::string& element_name, const std::string& property_name,
     size_t& property_index) {
   PropertyType type = all_properties.at(element_name).second.at(property_name);
 
@@ -839,7 +828,7 @@ std::tuple<std::string_view, size_t, Callback> MakeCallback(
 
 }  // namespace
 
-std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
+std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   // Static assertions to ensure variants of Callback are properly ordered
   static_assert(Callback(Int8PropertyCallback(nullptr)).index() ==
                 static_cast<size_t>(PropertyType::INT8));
@@ -879,11 +868,11 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
     return std::unexpected(header.error());
   }
 
-  std::map<std::string_view,
-           std::pair<uint64_t, std::map<std::string_view, PropertyType>>>
+  std::map<std::string,
+           std::pair<uint64_t, std::map<std::string, PropertyType>>>
       all_properties;
   for (const auto& element : header->elements) {
-    std::map<std::string_view, PropertyType> properties;
+    std::map<std::string, PropertyType> properties;
     for (const auto& property : element.properties) {
       if (property.list_type) {
         switch (property.data_type) {
@@ -952,7 +941,7 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
 
   Context context = {this};
   for (const auto& element : header->elements) {
-    std::vector<std::tuple<std::string_view, size_t, Callback>> callbacks;
+    std::vector<std::tuple<const std::string&, size_t, Callback>> callbacks;
     size_t property_index = 0;
     for (const auto& property : element.properties) {
       callbacks.push_back(MakeCallback(all_properties, *started, element.name,
@@ -962,7 +951,7 @@ std::expected<void, std::string_view> PlyReader::ReadFrom(std::istream& input) {
                                     std::move(callbacks));
   }
 
-  std::expected<void, std::string_view> result;
+  std::expected<void, std::string> result;
   switch (header->format) {
     case PlyHeader::ASCII:
       result = ReadAsciiData(input, *header, context);

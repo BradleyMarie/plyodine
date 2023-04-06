@@ -9,7 +9,7 @@
 namespace plyodine {
 namespace {
 
-std::expected<std::string_view, std::string_view> ReadNextLine(
+std::expected<std::string_view, std::string> ReadNextLine(
     std::istream& input, std::string& storage, std::string_view line_ending) {
   storage.clear();
 
@@ -35,8 +35,8 @@ std::expected<std::string_view, std::string_view> ReadNextLine(
   return storage;
 }
 
-std::expected<std::optional<std::string_view>, std::string_view>
-ReadNextTokenOnLine(std::string_view& line) {
+std::expected<std::optional<std::string_view>, std::string> ReadNextTokenOnLine(
+    std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
   }
@@ -66,7 +66,7 @@ ReadNextTokenOnLine(std::string_view& line) {
   return result;
 }
 
-std::expected<std::optional<std::string_view>, std::string_view>
+std::expected<std::optional<std::string_view>, std::string>
 ReadFirstTokenOnLine(std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
@@ -79,7 +79,7 @@ ReadFirstTokenOnLine(std::string_view& line) {
   return ReadNextTokenOnLine(line);
 }
 
-std::expected<std::string_view, std::string_view> ParseMagicString(
+std::expected<std::string_view, std::string> ParseMagicString(
     std::istream& input) {
   char c;
   if (!input.get(c) || c != 'p' || !input.get(c) || c != 'l' || !input.get(c) ||
@@ -142,7 +142,7 @@ bool CheckVersion(std::string_view version) {
   return true;
 }
 
-std::expected<PlyHeader::Format, std::string_view> ParseFormat(
+std::expected<PlyHeader::Format, std::string> ParseFormat(
     std::istream& input, std::string& storage, std::string_view line_ending) {
   auto line = ReadNextLine(input, storage, line_ending);
   if (!line) {
@@ -161,7 +161,7 @@ std::expected<PlyHeader::Format, std::string_view> ParseFormat(
 
   auto second_token = ReadNextTokenOnLine(*line);
   if (!second_token) {
-    return std::unexpected(line.error());
+    return std::unexpected(second_token.error());
   }
 
   PlyHeader::Format format;
@@ -181,7 +181,7 @@ std::expected<PlyHeader::Format, std::string_view> ParseFormat(
 
   auto third_token = ReadNextTokenOnLine(*line);
   if (!third_token) {
-    return std::unexpected(line.error());
+    return std::unexpected(third_token.error());
   }
 
   if (!third_token->has_value() || !CheckVersion(**third_token)) {
@@ -200,11 +200,11 @@ std::expected<PlyHeader::Format, std::string_view> ParseFormat(
   return format;
 }
 
-std::string_view TooFewElementParamsError() {
+std::string TooFewElementParamsError() {
   return "Too few prameters to element";
 }
 
-std::expected<std::pair<std::string, uint64_t>, std::string_view> ParseElement(
+std::expected<std::pair<std::string, uint64_t>, std::string> ParseElement(
     std::string_view line,
     const std::unordered_set<std::string>& element_names) {
   auto name = ReadNextTokenOnLine(line);
@@ -251,7 +251,7 @@ std::expected<std::pair<std::string, uint64_t>, std::string_view> ParseElement(
   return std::make_pair(std::move(str_name), parsed_num_in_file);
 }
 
-std::expected<PlyHeader::Property::Type, std::string_view> ParseType(
+std::expected<PlyHeader::Property::Type, std::string> ParseType(
     std::string_view type_name) {
   static const std::unordered_map<std::string_view, PlyHeader::Property::Type>
       type_map = {{"char", PlyHeader::Property::INT8},
@@ -270,19 +270,19 @@ std::expected<PlyHeader::Property::Type, std::string_view> ParseType(
   return iter->second;
 }
 
-std::string_view TooFewPropertyParamsError() {
+std::string TooFewPropertyParamsError() {
   return "Too few prameters to property";
 }
 
-std::string_view TooManyPropertyParamsError() {
+std::string TooManyPropertyParamsError() {
   return "Too many prameters to property";
 }
 
-std::string_view DuplicatePropertyNameError() {
+std::string DuplicatePropertyNameError() {
   return "An element contains two properties with the same name";
 }
 
-std::expected<PlyHeader::Property, std::string_view> ParsePropertyList(
+std::expected<PlyHeader::Property, std::string> ParsePropertyList(
     std::string_view line,
     const std::unordered_set<std::string>& property_names) {
   auto first_token = ReadNextTokenOnLine(line);
@@ -311,7 +311,7 @@ std::expected<PlyHeader::Property, std::string_view> ParsePropertyList(
 
   auto second_token = ReadNextTokenOnLine(line);
   if (!second_token) {
-    return std::unexpected(first_token.error());
+    return std::unexpected(second_token.error());
   }
 
   if (!second_token->has_value()) {
@@ -349,7 +349,7 @@ std::expected<PlyHeader::Property, std::string_view> ParsePropertyList(
   return PlyHeader::Property{std::move(str_name), *data_type, *list_type};
 }
 
-std::expected<PlyHeader::Property, std::string_view> ParseProperty(
+std::expected<PlyHeader::Property, std::string> ParseProperty(
     std::string_view line,
     const std::unordered_set<std::string>& property_names) {
   auto first_token = ReadNextTokenOnLine(line);
@@ -398,7 +398,7 @@ std::expected<PlyHeader::Property, std::string_view> ParseProperty(
 
 }  // namespace
 
-std::expected<PlyHeader, std::string_view> ReadPlyHeader(std::istream& input) {
+std::expected<PlyHeader, std::string> ReadPlyHeader(std::istream& input) {
   if (input.fail()) {
     return std::unexpected("Bad stream passed");
   }

@@ -34,7 +34,7 @@ struct PlyHeader final {
   std::vector<Element> elements;
 };
 
-std::expected<PlyHeader, std::string_view> ReadPlyHeader(std::istream& input);
+std::expected<PlyHeader, std::string> ReadPlyHeader(std::istream& input);
 
 }  // namespace plyodine
 

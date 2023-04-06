@@ -42,34 +42,30 @@ struct Property final
   }
 };
 
-std::expected<void, std::string_view> WriteTo(
+std::expected<void, std::string> WriteTo(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {});
 
 // Most clients should prefer WriteTo over this
-std::expected<void, std::string_view> WriteToASCII(
+std::expected<void, std::string> WriteToASCII(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {});
 
 // Most clients should prefer WriteTo over this
-std::expected<void, std::string_view> WriteToBigEndian(
+std::expected<void, std::string> WriteToBigEndian(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {});
 
 // Most clients should prefer WriteTo over this
-std::expected<void, std::string_view> WriteToLittleEndian(
+std::expected<void, std::string> WriteToLittleEndian(
     std::ostream& stream,
-    const std::map<std::string_view, std::map<std::string_view, Property>>&
-        properties,
+    const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
     std::span<const std::string> object_info = {});
 
