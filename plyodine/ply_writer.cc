@@ -49,28 +49,14 @@ std::expected<void, std::string_view> ValidateName(std::string_view name) {
   return std::expected<void, std::string_view>();
 }
 
-std::expected<void, std::string_view> ValidateComment(
-    const std::string_view comment) {
+bool ValidateComment(const std::string_view comment) {
   for (char c : comment) {
     if (c == '\r' || c == '\n') {
-      return std::unexpected(
-          "A comment may not contain line feed or carriage return");
+      return false;
     }
   }
 
-  return std::expected<void, std::string_view>();
-}
-
-std::expected<void, std::string_view> ValidateObjectInfo(
-    const std::string_view comment) {
-  for (char c : comment) {
-    if (c == '\r' || c == '\n') {
-      return std::unexpected(
-          "An obj_info may not contain line feed or carriage return");
-    }
-  }
-
-  return std::expected<void, std::string_view>();
+  return true;
 }
 
 std::expected<void, std::string_view> StartHeader(
@@ -83,9 +69,9 @@ std::expected<void, std::string_view> StartHeader(
   }
 
   for (const auto& comment : comments) {
-    auto result = ValidateComment(comment);
-    if (!result) {
-      return result;
+    if (!ValidateComment(comment)) {
+      return std::unexpected(
+          "A comment may not contain line feed or carriage return");
     }
 
     output << "comment " << comment << "\r";
@@ -95,9 +81,9 @@ std::expected<void, std::string_view> StartHeader(
   }
 
   for (const auto& info : object_info) {
-    auto result = ValidateObjectInfo(info);
-    if (!result) {
-      return result;
+    if (!ValidateComment(info)) {
+      return std::unexpected(
+          "An obj_info may not contain line feed or carriage return");
     }
 
     output << "obj_info " << info << "\r";
@@ -123,6 +109,9 @@ std::expected<void, std::string_view> SerializeASCII(std::ostream& output,
                                                      Context& context,
                                                      T value) {
   output << +value;
+  if (!output) {
+    return std::unexpected(WriteFailure());
+  }
 
   return std::expected<void, std::string_view>();
 }
@@ -154,6 +143,9 @@ std::expected<void, std::string_view> SerializeASCII(std::ostream& output,
   }
 
   output << result;
+  if (!output) {
+    return std::unexpected(WriteFailure());
+  }
 
   return std::expected<void, std::string_view>();
 }
@@ -173,6 +165,9 @@ std::expected<void, std::string_view> SerializeASCII(
 
   for (const auto& entry : values) {
     output << ' ';
+    if (!output) {
+      return std::unexpected(WriteFailure());
+    }
 
     auto entry_success = SerializeASCII<SizeType>(output, context, entry);
     if (!entry_success) {
@@ -191,6 +186,9 @@ std::expected<void, std::string_view> SerializeBinary(std::ostream& output,
   }
 
   output.write(reinterpret_cast<char*>(&value), sizeof(value));
+  if (!output) {
+    return std::unexpected(WriteFailure());
+  }
 
   return std::expected<void, std::string_view>();
 }
@@ -205,6 +203,9 @@ std::expected<void, std::string_view> SerializeBinary(std::ostream& output,
   }
 
   output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+  if (!output) {
+    return std::unexpected(WriteFailure());
+  }
 
   return std::expected<void, std::string_view>();
 }
@@ -219,6 +220,9 @@ std::expected<void, std::string_view> SerializeBinary(std::ostream& output,
   }
 
   output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+  if (!output) {
+    return std::unexpected(WriteFailure());
+  }
 
   return std::expected<void, std::string_view>();
 }
@@ -499,6 +503,9 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
       for (const auto& property : element.second) {
         if (!first) {
           stream << ' ';
+          if (!stream) {
+            return std::unexpected(WriteFailure());
+          }
         }
 
         first = false;
@@ -510,6 +517,9 @@ std::expected<void, std::string_view> PlyWriter::WriteToASCII(
       }
 
       stream << '\r';
+      if (!stream) {
+        return std::unexpected(WriteFailure());
+      }
     }
   }
 
