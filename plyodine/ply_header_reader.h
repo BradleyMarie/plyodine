@@ -6,7 +6,6 @@
 #include <istream>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace plyodine {
@@ -26,7 +25,7 @@ struct PlyHeader final {
   };
 
   enum Format { ASCII, BINARY_LITTLE_ENDIAN, BINARY_BIG_ENDIAN } format;
-  std::string_view line_ending;
+  std::string line_ending;
   uint8_t major_version;
   uint8_t minor_version;
   std::vector<std::string> comments;

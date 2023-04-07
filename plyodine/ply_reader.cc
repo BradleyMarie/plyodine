@@ -692,7 +692,7 @@ std::expected<void, std::string> ReadAsciiData(std::istream& input,
       char c;
       while (input.get(c)) {
         if (c == header.line_ending[0]) {
-          auto line_ending = header.line_ending;
+          std::string_view line_ending = header.line_ending;
           line_ending.remove_prefix(1);
 
           while (!line_ending.empty() && input.get(c)) {

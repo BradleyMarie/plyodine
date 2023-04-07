@@ -79,8 +79,7 @@ ReadFirstTokenOnLine(std::string_view& line) {
   return ReadNextTokenOnLine(line);
 }
 
-std::expected<std::string_view, std::string> ParseMagicString(
-    std::istream& input) {
+std::expected<std::string, std::string> ParseMagicString(std::istream& input) {
   char c;
   if (!input.get(c) || c != 'p' || !input.get(c) || c != 'l' || !input.get(c) ||
       c != 'y' || !input.get(c) || (c != '\r' && c != '\n')) {
@@ -143,7 +142,7 @@ bool CheckVersion(std::string_view version) {
 }
 
 std::expected<PlyHeader::Format, std::string> ParseFormat(
-    std::istream& input, std::string& storage, std::string_view line_ending) {
+    std::istream& input, std::string& storage, const std::string& line_ending) {
   auto line = ReadNextLine(input, storage, line_ending);
   if (!line) {
     return std::unexpected(line.error());
