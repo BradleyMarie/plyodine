@@ -354,141 +354,45 @@ std::function<std::expected<void, std::string>(uint64_t)> ToReadCallback(
       property_index, actual_property_index, num_properties, context);
 }
 
-PropertyType ToPropertyType(const PlyHeader::Property& property) {
-  int list_offset = property.list_type.has_value() ? 1 : 0;
-  return static_cast<PropertyType>(2 * property.data_type + list_offset);
-}
-
 template <bool Ascii, std::endian Endianness, typename T>
 std::vector<std::pair<
     uint64_t,
     std::vector<std::function<std::expected<void, std::string>(uint64_t)>>>>
 BuildCallbacks(
-    std::istream& input, PlyReader& ply_reader, const PlyHeader& ply_header,
-    const std::map<std::string, std::map<std::string, T>>& property_callbacks,
+    std::istream& input, PlyReader& ply_reader,
+    const std::vector<
+        std::tuple<std::string, uint64_t,
+                   std::vector<std::tuple<
+                       std::string, std::optional<PlyHeader::Property::Type>,
+                       size_t, size_t, T>>>>& ordered_callbacks,
     Context& context) {
   std::vector<std::pair<
       uint64_t,
       std::vector<std::function<std::expected<void, std::string>(uint64_t)>>>>
       result;
+  for (size_t actual_element_index = 0;
+       actual_element_index < ordered_callbacks.size();
+       actual_element_index++) {
+    const auto& element = ordered_callbacks.at(actual_element_index);
+    const auto& properties = std::get<2>(element);
 
-  size_t element_index = 0;
-  for (const auto& element : ply_header.elements) {
     std::vector<std::function<std::expected<void, std::string>(uint64_t)>>
         callbacks;
-    size_t property_index = 0;
-    bool had_properties = false;
     for (size_t actual_property_index = 0;
-         actual_property_index < element.properties.size();
-         actual_property_index++) {
-      const auto& property = element.properties.at(actual_property_index);
-      PropertyType type = ToPropertyType(property);
-
-      T callback;
-      switch (type) {
-        case PropertyType::INT8:
-          callback.template emplace<static_cast<size_t>(PropertyType::INT8)>(
-              nullptr);
-          break;
-        case PropertyType::INT8_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::INT8_LIST)>(
-                  nullptr);
-          break;
-        case PropertyType::UINT8:
-          callback.template emplace<static_cast<size_t>(PropertyType::UINT8)>(
-              nullptr);
-          break;
-        case PropertyType::UINT8_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::UINT8_LIST)>(
-                  nullptr);
-          break;
-        case PropertyType::INT16:
-          callback.template emplace<static_cast<size_t>(PropertyType::INT16)>(
-              nullptr);
-          break;
-        case PropertyType::INT16_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::INT16_LIST)>(
-                  nullptr);
-          break;
-        case PropertyType::UINT16:
-          callback.template emplace<static_cast<size_t>(PropertyType::UINT16)>(
-              nullptr);
-          break;
-        case PropertyType::UINT16_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::UINT16_LIST)>(
-                  nullptr);
-          break;
-        case PropertyType::INT32:
-          callback.template emplace<static_cast<size_t>(PropertyType::INT32)>(
-              nullptr);
-          break;
-        case PropertyType::INT32_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::INT32_LIST)>(
-                  nullptr);
-          break;
-        case PropertyType::UINT32:
-          callback.template emplace<static_cast<size_t>(PropertyType::UINT32)>(
-              nullptr);
-          break;
-        case PropertyType::UINT32_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::UINT32_LIST)>(
-                  nullptr);
-          break;
-        case PropertyType::FLOAT:
-          callback.template emplace<static_cast<size_t>(PropertyType::FLOAT)>(
-              nullptr);
-          break;
-        case PropertyType::FLOAT_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::FLOAT_LIST)>(
-                  nullptr);
-          break;
-        case PropertyType::DOUBLE:
-          callback.template emplace<static_cast<size_t>(PropertyType::DOUBLE)>(
-              nullptr);
-          break;
-        case PropertyType::DOUBLE_LIST:
-          callback
-              .template emplace<static_cast<size_t>(PropertyType::DOUBLE_LIST)>(
-                  nullptr);
-          break;
-      }
-
-      size_t current_property_index = property_index;
-
-      auto element_iter = property_callbacks.find(element.name);
-      if (element_iter != property_callbacks.end()) {
-        auto property_iter = element_iter->second.find(property.name);
-        if (property_iter != element_iter->second.end()) {
-          if (property_iter->second.index() == static_cast<size_t>(type)) {
-            callback = property_iter->second;
-            property_index += 1u;
-            had_properties = true;
-          }
-        }
-      }
+         actual_property_index < properties.size(); actual_property_index++) {
+      const auto& property = properties.at(actual_property_index);
 
       callbacks.emplace_back(std::visit(
           [&](const auto& func_ptr) {
             return ToReadCallback<Ascii, Endianness>(
-                input, ply_reader, func_ptr, element.name, element_index,
-                property.name, current_property_index, actual_property_index,
-                element.properties.size(), property.list_type, context);
+                input, ply_reader, func_ptr, std::get<0>(element),
+                std::get<2>(property), std::get<0>(property),
+                std::get<3>(property), actual_property_index, properties.size(),
+                std::get<1>(property), context);
           },
-          callback));
+          std::get<4>(property)));
     }
-
-    if (had_properties) {
-      element_index += 1;
-    }
-
-    result.emplace_back(element.num_in_file, std::move(callbacks));
+    result.emplace_back(std::get<uint64_t>(element), callbacks);
   }
 
   return result;
@@ -607,6 +511,128 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
     return std::unexpected(started.error());
   }
 
+  size_t element_index = 0;
+  std::map<std::string,
+           std::map<std::string, std::tuple<size_t, size_t, Callback>>>
+      numbered_callbacks;
+  for (const auto& element : *started) {
+    size_t property_index = 0;
+    for (const auto& property : element.second) {
+      numbered_callbacks[element.first][property.first] =
+          std::make_tuple(element_index, property_index, property.second);
+      property_index += 1;
+    }
+    element_index += 1;
+  }
+
+  std::vector<
+      std::tuple<std::string, uint64_t,
+                 std::vector<std::tuple<
+                     std::string, std::optional<PlyHeader::Property::Type>,
+                     size_t, size_t, Callback>>>>
+      ordered_callbacks;
+  for (const auto& element : header->elements) {
+    std::vector<
+        std::tuple<std::string, std::optional<PlyHeader::Property::Type>,
+                   size_t, size_t, Callback>>
+        element_callbacks;
+    for (const auto& property : element.properties) {
+      int list_offset = property.list_type.has_value() ? 1 : 0;
+      auto type =
+          static_cast<PropertyType>(2 * property.data_type + list_offset);
+
+      Callback callback;
+      switch (type) {
+        case PropertyType::INT8:
+          callback.emplace<static_cast<size_t>(PropertyType::INT8)>(nullptr);
+          break;
+        case PropertyType::INT8_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::INT8_LIST)>(
+              nullptr);
+          break;
+        case PropertyType::UINT8:
+          callback.emplace<static_cast<size_t>(PropertyType::UINT8)>(nullptr);
+          break;
+        case PropertyType::UINT8_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::UINT8_LIST)>(
+              nullptr);
+          break;
+        case PropertyType::INT16:
+          callback.emplace<static_cast<size_t>(PropertyType::INT16)>(nullptr);
+          break;
+        case PropertyType::INT16_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::INT16_LIST)>(
+              nullptr);
+          break;
+        case PropertyType::UINT16:
+          callback.emplace<static_cast<size_t>(PropertyType::UINT16)>(nullptr);
+          break;
+        case PropertyType::UINT16_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::UINT16_LIST)>(
+              nullptr);
+          break;
+        case PropertyType::INT32:
+          callback.emplace<static_cast<size_t>(PropertyType::INT32)>(nullptr);
+          break;
+        case PropertyType::INT32_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::INT32_LIST)>(
+              nullptr);
+          break;
+        case PropertyType::UINT32:
+          callback.emplace<static_cast<size_t>(PropertyType::UINT32)>(nullptr);
+          break;
+        case PropertyType::UINT32_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::UINT32_LIST)>(
+              nullptr);
+          break;
+        case PropertyType::FLOAT:
+          callback.emplace<static_cast<size_t>(PropertyType::FLOAT)>(nullptr);
+          break;
+        case PropertyType::FLOAT_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::FLOAT_LIST)>(
+              nullptr);
+          break;
+        case PropertyType::DOUBLE:
+          callback.emplace<static_cast<size_t>(PropertyType::DOUBLE)>(nullptr);
+          break;
+        case PropertyType::DOUBLE_LIST:
+          callback.emplace<static_cast<size_t>(PropertyType::DOUBLE_LIST)>(
+              nullptr);
+          break;
+      }
+
+      std::tuple<std::string, std::optional<PlyHeader::Property::Type>, size_t,
+                 size_t, Callback>
+          entry = std::make_tuple(property.name, property.list_type, 0u, 0u,
+                                  callback);
+
+      auto element_iter = numbered_callbacks.find(element.name);
+      if (element_iter == numbered_callbacks.end()) {
+        element_callbacks.push_back(entry);
+        continue;
+      }
+
+      auto property_iter = element_iter->second.find(property.name);
+      if (property_iter == element_iter->second.end()) {
+        element_callbacks.push_back(entry);
+        continue;
+      }
+
+      const auto& numbered_callback = std::get<Callback>(property_iter->second);
+      if (numbered_callback.index() != static_cast<size_t>(type)) {
+        element_callbacks.push_back(entry);
+        continue;
+      }
+
+      element_callbacks.emplace_back(property.name, property.list_type,
+                                     std::get<0>(property_iter->second),
+                                     std::get<1>(property_iter->second),
+                                     std::get<2>(property_iter->second));
+    }
+    ordered_callbacks.emplace_back(element.name, element.num_in_file,
+                                   std::move(element_callbacks));
+  }
+
   Context context;
   std::get<std::string_view>(context) = header->line_ending;
 
@@ -617,15 +643,15 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   switch (header->format) {
     case PlyHeader::ASCII:
       callbacks = BuildCallbacks<true, std::endian::native>(
-          input, *this, *header, *started, context);
+          input, *this, ordered_callbacks, context);
       break;
     case PlyHeader::BINARY_BIG_ENDIAN:
-      callbacks = BuildCallbacks<false, std::endian::big>(input, *this, *header,
-                                                          *started, context);
+      callbacks = BuildCallbacks<false, std::endian::big>(
+          input, *this, ordered_callbacks, context);
       break;
     case PlyHeader::BINARY_LITTLE_ENDIAN:
       callbacks = BuildCallbacks<false, std::endian::little>(
-          input, *this, *header, *started, context);
+          input, *this, ordered_callbacks, context);
       break;
   }
 
