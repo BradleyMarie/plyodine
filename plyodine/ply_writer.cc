@@ -148,27 +148,12 @@ std::expected<void, std::string> SerializeBinary(std::ostream& output,
   return std::expected<void, std::string>();
 }
 
-template <std::endian Endianness, std::integral SizeType>
+template <std::endian Endianness, std::integral SizeType, std::floating_point T>
 std::expected<void, std::string> SerializeBinary(std::ostream& output,
-                                                 float value) {
-  auto entry = std::bit_cast<uint32_t>(value);
-
-  if (Endianness != std::endian::native) {
-    entry = std::byteswap(entry);
-  }
-
-  output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
-  if (!output) {
-    return std::unexpected(WriteFailure());
-  }
-
-  return std::expected<void, std::string>();
-}
-
-template <std::endian Endianness, std::integral SizeType>
-std::expected<void, std::string> SerializeBinary(std::ostream& output,
-                                                 double value) {
-  auto entry = std::bit_cast<uint64_t>(value);
+                                                 T value) {
+  auto entry = std::bit_cast<
+      std::conditional_t<std::is_same<T, float>::value, uint32_t, uint64_t>>(
+      value);
 
   if (Endianness != std::endian::native) {
     entry = std::byteswap(entry);
