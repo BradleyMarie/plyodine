@@ -161,17 +161,15 @@ class TriangleMeshReader : public PlyReader {
   }
 
   static const Callback *LookupProperty(
-      const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, Callback>>>
-          &property_callbacks,
+      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto element_iter = property_callbacks.find(element_name);
-    if (element_iter == property_callbacks.end()) {
+    auto element_iter = callbacks.find(element_name);
+    if (element_iter == callbacks.end()) {
       return nullptr;
     }
 
-    auto property_iter = element_iter->second.second.find(property_name);
-    if (property_iter == element_iter->second.second.end()) {
+    auto property_iter = element_iter->second.find(property_name);
+    if (property_iter == element_iter->second.end()) {
       return nullptr;
     }
 
@@ -180,12 +178,9 @@ class TriangleMeshReader : public PlyReader {
 
   template <size_t index>
   std::expected<std::optional<Callback>, std::string> LocationPropertyIndex(
-      const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, Callback>>>
-          &property_callbacks,
+      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property =
-        LookupProperty(property_callbacks, element_name, property_name);
+    auto property = LookupProperty(callbacks, element_name, property_name);
 
     if (property) {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
@@ -210,12 +205,9 @@ class TriangleMeshReader : public PlyReader {
 
   template <size_t index>
   std::expected<std::optional<Callback>, std::string> NormalPropertyIndex(
-      const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, Callback>>>
-          &property_callbacks,
+      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property =
-        LookupProperty(property_callbacks, element_name, property_name);
+    auto property = LookupProperty(callbacks, element_name, property_name);
 
     if (property) {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
@@ -241,12 +233,9 @@ class TriangleMeshReader : public PlyReader {
   template <size_t index>
   std::expected<std::optional<std::pair<std::string, Callback>>, std::string>
   UVPropertyIndex(
-      const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, Callback>>>
-          &property_callbacks,
+      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property =
-        LookupProperty(property_callbacks, element_name, property_name);
+    auto property = LookupProperty(callbacks, element_name, property_name);
 
     if (property) {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
@@ -274,14 +263,12 @@ class TriangleMeshReader : public PlyReader {
   template <size_t index>
   std::expected<std::optional<std::pair<std::string, Callback>>, std::string>
   UVPropertyIndex(
-      const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, Callback>>>
-          &property_callbacks,
+      std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::string &element_name,
       const std::vector<std::string> &property_names) {
     for (const auto &property_name : property_names) {
-      auto face_property_index = UVPropertyIndex<index>(
-          property_callbacks, element_name, property_name);
+      auto face_property_index =
+          UVPropertyIndex<index>(callbacks, element_name, property_name);
       if (!face_property_index || *face_property_index) {
         return face_property_index;
       }
@@ -291,12 +278,9 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::expected<std::optional<Callback>, std::string> FacePropertyIndex(
-      const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, Callback>>>
-          &property_callbacks,
+      std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property =
-        LookupProperty(property_callbacks, element_name, property_name);
+    auto property = LookupProperty(callbacks, element_name, property_name);
 
     if (property) {
       auto *int8_callback = std::get_if<Int8PropertyListCallback>(property);
@@ -344,57 +328,56 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::expected<void, std::string> Start(
-      std::map<std::string,
-               std::pair<uint64_t, std::map<std::string, Callback>>>
-          &property_callbacks,
+      const std::map<std::string, uint64_t> &num_element_instances,
+      std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::vector<std::string> &comments,
       const std::vector<std::string> &obj_infos) final {
     Start();
 
-    auto x = LocationPropertyIndex<0>(property_callbacks, "vertex", "x");
+    auto x = LocationPropertyIndex<0>(callbacks, "vertex", "x");
     if (!x) {
       return std::unexpected(x.error());
     }
 
-    auto y = LocationPropertyIndex<1>(property_callbacks, "vertex", "y");
+    auto y = LocationPropertyIndex<1>(callbacks, "vertex", "y");
     if (!y) {
       return std::unexpected(y.error());
     }
 
-    auto z = LocationPropertyIndex<2>(property_callbacks, "vertex", "z");
+    auto z = LocationPropertyIndex<2>(callbacks, "vertex", "z");
     if (!z) {
       return std::unexpected(z.error());
     }
 
-    auto nx = NormalPropertyIndex<0>(property_callbacks, "vertex", "nx");
+    auto nx = NormalPropertyIndex<0>(callbacks, "vertex", "nx");
     if (!nx) {
       return std::unexpected(nx.error());
     }
 
-    auto ny = NormalPropertyIndex<1>(property_callbacks, "vertex", "ny");
+    auto ny = NormalPropertyIndex<1>(callbacks, "vertex", "ny");
     if (!ny) {
       return std::unexpected(ny.error());
     }
 
-    auto nz = NormalPropertyIndex<2>(property_callbacks, "vertex", "nz");
+    auto nz = NormalPropertyIndex<2>(callbacks, "vertex", "nz");
     if (!nz) {
       return std::unexpected(nz.error());
     }
 
-    auto u = UVPropertyIndex<0>(property_callbacks, "vertex",
+    auto u = UVPropertyIndex<0>(callbacks, "vertex",
                                 {"u", "s", "texture_u", "texture_s"});
     if (!u) {
       return std::unexpected(u.error());
     }
 
-    auto v = UVPropertyIndex<1>(property_callbacks, "vertex",
+    auto v = UVPropertyIndex<1>(callbacks, "vertex",
                                 {"v", "t", "texture_v", "texture_t"});
     if (!v) {
       return std::unexpected(v.error());
     }
 
     auto vertex_indices =
-        FacePropertyIndex(property_callbacks, "face", "vertex_indices");
+        FacePropertyIndex(callbacks, "face", "vertex_indices");
     if (!vertex_indices) {
       return std::unexpected(vertex_indices.error());
     }
@@ -403,37 +386,37 @@ class TriangleMeshReader : public PlyReader {
       return std::unexpected("Element vertex must have properties x, y, and z");
     }
 
-    num_vertices_ = property_callbacks.at("vertex").first;
+    num_vertices_ = num_element_instances.at("vertex");
 
-    property_callbacks["vertex"].second["x"] = **x;
-    property_callbacks["vertex"].second["y"] = **y;
-    property_callbacks["vertex"].second["z"] = **z;
+    callbacks["vertex"]["x"] = **x;
+    callbacks["vertex"]["y"] = **y;
+    callbacks["vertex"]["z"] = **z;
 
     if (*nx && *ny && *nz) {
       normals_ = &normals_storage_;
-      property_callbacks["vertex"].second["nx"] = **nx;
-      property_callbacks["vertex"].second["ny"] = **ny;
-      property_callbacks["vertex"].second["nz"] = **nz;
+      callbacks["vertex"]["nx"] = **nx;
+      callbacks["vertex"]["ny"] = **ny;
+      callbacks["vertex"]["nz"] = **nz;
     } else {
       normals_ = nullptr;
     }
 
     if (*u && *v) {
       uvs_ = &uv_storage_;
-      property_callbacks["vertex"].second[(*u)->first] = (*u)->second;
-      property_callbacks["vertex"].second[(*v)->first] = (*v)->second;
+      callbacks["vertex"][(*u)->first] = (*u)->second;
+      callbacks["vertex"][(*v)->first] = (*v)->second;
     } else {
       uvs_ = nullptr;
     }
 
-    handle_vertex_index_ = property_callbacks["vertex"].second.size();
+    handle_vertex_index_ = callbacks["vertex"].size();
     current_vertex_index_ = 0u;
 
     if (!*vertex_indices) {
       return std::unexpected("Element face must have property vertex_indices");
     }
 
-    property_callbacks["face"].second["vertex_indices"] = **vertex_indices;
+    callbacks["face"]["vertex_indices"] = **vertex_indices;
 
     return std::expected<void, std::string>();
   }

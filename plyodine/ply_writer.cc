@@ -338,16 +338,15 @@ std::expected<
     std::vector<std::pair<uint64_t, std::vector<std::function<std::expected<
                                         void, std::string>(int64_t)>>>>,
     std::string>
-WriteHeader(
-    std::ostream& output, const PlyWriter& ply_writer,
-    const std::function<std::expected<size_t, std::string>(
-        const std::string&, size_t, const std::string&, size_t)>&
-        get_property_list_size_type,
-    const char* format,
-    const std::map<std::string, std::pair<uint64_t, std::map<std::string, T>>>&
-        property_callbacks,
-    const std::vector<std::string>& comments,
-    const std::vector<std::string>& object_info, Context& context) {
+WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
+            const std::function<std::expected<size_t, std::string>(
+                const std::string&, size_t, const std::string&, size_t)>&
+                get_property_list_size_type,
+            const char* format,
+            const std::map<std::string, uint64_t>& num_element_instances,
+            const std::map<std::string, std::map<std::string, T>>& callbacks,
+            const std::vector<std::string>& comments,
+            const std::vector<std::string>& object_info, Context& context) {
   output << "ply\rformat " << format << " 1.0\r";
   if (!output) {
     return std::unexpected(WriteFailure());
@@ -380,27 +379,27 @@ WriteHeader(
   std::vector<std::pair<
       uint64_t,
       std::vector<std::function<std::expected<void, std::string>(int64_t)>>>>
-      callbacks;
-  for (const auto& element : property_callbacks) {
+      actual_callbacks;
+  for (const auto& element : callbacks) {
     auto element_name_valid = ValidateName(element.first);
     if (!element_name_valid) {
       return std::unexpected(element_name_valid.error());
     }
 
-    output << "element " << element.first << " " << element.second.first
-           << "\r";
+    output << "element " << element.first << " "
+           << num_element_instances.at(element.first) << "\r";
     if (!output) {
       return std::unexpected(WriteFailure());
     }
 
     std::vector<std::function<std::expected<void, std::string>(int64_t)>> row;
-    for (const auto& property : element.second.second) {
+    for (const auto& property : element.second) {
       auto write_callback = std::visit(
           [&](auto callback) {
             return ToWriteCallback<Ascii, Endianness>(
-                output, ply_writer, callback, element.first, callbacks.size(),
-                property.first, row.size(), context, property.second.index(),
-                get_property_list_size_type);
+                output, ply_writer, callback, element.first,
+                actual_callbacks.size(), property.first, row.size(), context,
+                property.second.index(), get_property_list_size_type);
           },
           property.second);
       if (!write_callback) {
@@ -409,7 +408,8 @@ WriteHeader(
 
       row.emplace_back(std::move(*write_callback));
     }
-    callbacks.emplace_back(element.second.first, std::move(row));
+    actual_callbacks.emplace_back(num_element_instances.at(element.first),
+                                  std::move(row));
   }
 
   output << "end_header\r";
@@ -417,7 +417,7 @@ WriteHeader(
     return std::unexpected(WriteFailure());
   }
 
-  return callbacks;
+  return actual_callbacks;
 }
 
 template <std::endian Endianness, typename T>
@@ -426,8 +426,8 @@ std::expected<void, std::string> WriteToBinaryImpl(
     const std::function<std::expected<size_t, std::string>(
         const std::string&, size_t, const std::string&, size_t)>&
         get_property_list_size_type,
-    const std::map<std::string, std::pair<uint64_t, std::map<std::string, T>>>&
-        property_callbacks,
+    const std::map<std::string, uint64_t>& num_element_instances,
+    const std::map<std::string, std::map<std::string, T>>& callbacks,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
   const char* format;
@@ -438,14 +438,14 @@ std::expected<void, std::string> WriteToBinaryImpl(
   }
 
   Context context;
-  auto callbacks = WriteHeader<false, Endianness>(
+  auto actual_callbacks = WriteHeader<false, Endianness>(
       output, ply_writer, get_property_list_size_type, format,
-      property_callbacks, comments, object_info, context);
-  if (!callbacks) {
-    return std::unexpected(callbacks.error());
+      num_element_instances, callbacks, comments, object_info, context);
+  if (!actual_callbacks) {
+    return std::unexpected(actual_callbacks.error());
   }
 
-  for (const auto& element : *callbacks) {
+  for (const auto& element : *actual_callbacks) {
     for (uint64_t instance = 0; instance < element.first; instance++) {
       for (const auto& property : element.second) {
         auto result = property(instance);
@@ -472,17 +472,17 @@ std::expected<void, std::string> PlyWriter::WriteTo(
 
 std::expected<void, std::string> PlyWriter::WriteToASCII(
     std::ostream& stream) const {
-  std::map<std::string, std::pair<uint64_t, std::map<std::string, Callback>>>
-      property_callbacks;
+  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  auto result = Start(property_callbacks, comments, object_info);
+  auto result = Start(num_element_instances, callbacks, comments, object_info);
   if (!result) {
     return result;
   }
 
   Context context;
-  auto callbacks = WriteHeader<true, std::endian::native>(
+  auto actual_callbacks = WriteHeader<true, std::endian::native>(
       stream, *this,
       [&](const std::string& element_name, size_t element_index,
           const std::string& property_name,
@@ -494,12 +494,13 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
         }
         return static_cast<size_t>(*result);
       },
-      "ascii", property_callbacks, comments, object_info, context);
-  if (!callbacks) {
-    return std::unexpected(callbacks.error());
+      "ascii", num_element_instances, callbacks, comments, object_info,
+      context);
+  if (!actual_callbacks) {
+    return std::unexpected(actual_callbacks.error());
   }
 
-  for (const auto& element : *callbacks) {
+  for (const auto& element : *actual_callbacks) {
     for (uint64_t instance = 0; instance < element.first; instance++) {
       bool first = true;
       for (const auto& property : element.second) {
@@ -530,11 +531,11 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
 
 std::expected<void, std::string> PlyWriter::WriteToBigEndian(
     std::ostream& stream) const {
-  std::map<std::string, std::pair<uint64_t, std::map<std::string, Callback>>>
-      property_callbacks;
+  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  auto result = Start(property_callbacks, comments, object_info);
+  auto result = Start(num_element_instances, callbacks, comments, object_info);
   if (!result) {
     return result;
   }
@@ -551,16 +552,16 @@ std::expected<void, std::string> PlyWriter::WriteToBigEndian(
         }
         return static_cast<size_t>(*result);
       },
-      property_callbacks, comments, object_info);
+      num_element_instances, callbacks, comments, object_info);
 }
 
 std::expected<void, std::string> PlyWriter::WriteToLittleEndian(
     std::ostream& stream) const {
-  std::map<std::string, std::pair<uint64_t, std::map<std::string, Callback>>>
-      property_callbacks;
+  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  auto result = Start(property_callbacks, comments, object_info);
+  auto result = Start(num_element_instances, callbacks, comments, object_info);
   if (!result) {
     return result;
   }
@@ -577,7 +578,7 @@ std::expected<void, std::string> PlyWriter::WriteToLittleEndian(
         }
         return static_cast<size_t>(*result);
       },
-      property_callbacks, comments, object_info);
+      num_element_instances, callbacks, comments, object_info);
 }
 
 // Static assertions to ensure float types are properly sized

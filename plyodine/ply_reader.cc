@@ -407,16 +407,14 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
     return std::unexpected(header.error());
   }
 
-  std::map<std::string, std::pair<uint64_t, std::map<std::string, Callback>>>
-      empty_property_callbacks;
+  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, std::map<std::string, Callback>> empty_callbacks;
   for (const auto& element : header->elements) {
-    auto insertion_iterator =
-        empty_property_callbacks
-            .emplace(element.name,
-                     std::make_pair(element.num_in_file,
-                                    std::map<std::string, Callback>()))
-            .first;
+    num_element_instances[element.name] = element.num_in_file;
 
+    auto insertion_iterator =
+        empty_callbacks.emplace(element.name, std::map<std::string, Callback>())
+            .first;
     for (const auto& property : element.properties) {
       Callback callback;
       if (property.list_type) {
@@ -475,13 +473,13 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
         }
       }
 
-      insertion_iterator->second.second[property.name] = callback;
+      insertion_iterator->second[property.name] = callback;
     }
   }
 
-  auto property_callbacks = empty_property_callbacks;
-  auto started =
-      Start(property_callbacks, header->comments, header->object_info);
+  auto callbacks = empty_callbacks;
+  auto started = Start(num_element_instances, callbacks, header->comments,
+                       header->object_info);
   if (!started) {
     return std::unexpected(started.error());
   }
@@ -489,16 +487,16 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   size_t element_index = 0;
   std::map<std::string,
            std::map<std::string, std::tuple<size_t, size_t, Callback>>>
-      numbered_property_callbacks;
-  for (const auto& element : property_callbacks) {
+      requested_callbacks;
+  for (const auto& element : callbacks) {
     size_t property_index = 0;
-    for (const auto& property : element.second.second) {
+    for (const auto& property : element.second) {
       if (std::visit([](auto value) { return value == nullptr; },
                      property.second)) {
         continue;
       }
 
-      numbered_property_callbacks[element.first][property.first] =
+      requested_callbacks[element.first][property.first] =
           std::make_tuple(element_index, property_index, property.second);
       property_index += 1;
     }
@@ -511,15 +509,15 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   std::map<std::string,
            std::map<std::string, std::tuple<size_t, size_t, Callback>>>
       numbered_callbacks;
-  for (const auto& element : empty_property_callbacks) {
-    for (const auto& property : element.second.second) {
+  for (const auto& element : empty_callbacks) {
+    for (const auto& property : element.second) {
       auto insertion_iterator =
           numbered_callbacks[element.first]
               .emplace(property.first, std::make_tuple(0, 0, property.second))
               .first;
 
-      auto element_iter = numbered_property_callbacks.find(element.first);
-      if (element_iter == numbered_property_callbacks.end()) {
+      auto element_iter = requested_callbacks.find(element.first);
+      if (element_iter == requested_callbacks.end()) {
         continue;
       }
 
@@ -565,23 +563,23 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   std::vector<std::pair<
       uint64_t,
       std::vector<std::function<std::expected<void, std::string>(uint64_t)>>>>
-      callbacks;
+      wrapped_callbacks;
   switch (header->format) {
     case PlyHeader::ASCII:
-      callbacks = BuildCallbacks<true, std::endian::native>(
+      wrapped_callbacks = BuildCallbacks<true, std::endian::native>(
           input, *this, ordered_callbacks, context);
       break;
     case PlyHeader::BINARY_BIG_ENDIAN:
-      callbacks = BuildCallbacks<false, std::endian::big>(
+      wrapped_callbacks = BuildCallbacks<false, std::endian::big>(
           input, *this, ordered_callbacks, context);
       break;
     case PlyHeader::BINARY_LITTLE_ENDIAN:
-      callbacks = BuildCallbacks<false, std::endian::little>(
+      wrapped_callbacks = BuildCallbacks<false, std::endian::little>(
           input, *this, ordered_callbacks, context);
       break;
   }
 
-  for (const auto& element : callbacks) {
+  for (const auto& element : wrapped_callbacks) {
     for (uint64_t instance = 0; instance < element.first; instance++) {
       for (const auto& property : element.second) {
         auto result = property(instance);

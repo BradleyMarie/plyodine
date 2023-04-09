@@ -93,17 +93,17 @@ class MockPlyReader final : public plyodine::PlyReader {
                std::span<const double>));
 
   std::expected<void, std::string> Start(
-      std::map<std::string,
-               std::pair<uint64_t, std::map<std::string, Callback>>>&
-          property_callbacks,
+      const std::map<std::string, uint64_t>& num_element_instances,
+      std::map<std::string, std::map<std::string, Callback>>& callbacks,
       const std::vector<std::string>& comments,
       const std::vector<std::string>& object_info) override {
     std::map<std::string,
              std::pair<uint64_t, std::map<std::string, PropertyType>>>
         properties;
-    for (const auto& element : property_callbacks) {
-      for (const auto& property : element.second.second) {
-        properties[element.first].first = element.second.first;
+    for (const auto& element : callbacks) {
+      for (const auto& property : element.second) {
+        properties[element.first].first =
+            num_element_instances.at(element.first);
         properties[element.first].second[property.first] =
             static_cast<PropertyType>(property.second.index());
       }
@@ -124,82 +124,82 @@ class MockPlyReader final : public plyodine::PlyReader {
       for (const auto& property : element.second.second) {
         switch (property.second) {
           case PropertyType::INT8:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::Int8PropertyCallback(
                     &MockPlyReader::HandleInt8);
             break;
           case PropertyType::INT8_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::Int8PropertyListCallback(
                     &MockPlyReader::HandleInt8List);
             break;
           case PropertyType::UINT8:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::UInt8PropertyCallback(
                     &MockPlyReader::HandleUInt8);
             break;
           case PropertyType::UINT8_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::UInt8PropertyListCallback(
                     &MockPlyReader::HandleUInt8List);
             break;
           case PropertyType::INT16:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::Int16PropertyCallback(
                     &MockPlyReader::HandleInt16);
             break;
           case PropertyType::INT16_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::Int16PropertyListCallback(
                     &MockPlyReader::HandleInt16List);
             break;
           case PropertyType::UINT16:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::UInt16PropertyCallback(
                     &MockPlyReader::HandleUInt16);
             break;
           case PropertyType::UINT16_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::UInt16PropertyListCallback(
                     &MockPlyReader::HandleUInt16List);
             break;
           case PropertyType::INT32:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::Int32PropertyCallback(
                     &MockPlyReader::HandleInt32);
             break;
           case PropertyType::INT32_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::Int32PropertyListCallback(
                     &MockPlyReader::HandleInt32List);
             break;
           case PropertyType::UINT32:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::UInt32PropertyCallback(
                     &MockPlyReader::HandleUInt32);
             break;
           case PropertyType::UINT32_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::UInt32PropertyListCallback(
                     &MockPlyReader::HandleUInt32List);
             break;
           case PropertyType::FLOAT:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::FloatPropertyCallback(
                     &MockPlyReader::HandleFloat);
             break;
           case PropertyType::FLOAT_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::FloatPropertyListCallback(
                     &MockPlyReader::HandleFloatList);
             break;
           case PropertyType::DOUBLE:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::DoublePropertyCallback(
                     &MockPlyReader::HandleDouble);
             break;
           case PropertyType::DOUBLE_LIST:
-            property_callbacks[element.first].second[property.first] =
+            callbacks[element.first][property.first] =
                 plyodine::PlyReader::DoublePropertyListCallback(
                     &MockPlyReader::HandleDoubleList);
             break;

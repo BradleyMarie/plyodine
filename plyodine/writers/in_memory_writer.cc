@@ -24,9 +24,8 @@ class InMemoryWriter final : public PlyWriter {
       std::span<const std::string> object_info);
 
   std::expected<void, std::string> Start(
-      std::map<std::string,
-               std::pair<uint64_t, std::map<std::string, Callback>>>&
-          property_callbacks,
+      std::map<std::string, uint64_t>& num_element_instances,
+      std::map<std::string, std::map<std::string, Callback>>& callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override;
 
@@ -94,13 +93,13 @@ std::expected<std::span<const T>, std::string> InMemoryWriter::ListCallback(
 }
 
 std::expected<void, std::string> InMemoryWriter::Start(
-    std::map<std::string,
-             std::pair<uint64_t, std::map<std::string, PlyWriter::Callback>>>&
-        property_callbacks,
+    std::map<std::string, uint64_t>& num_element_instances,
+    std::map<std::string, std::map<std::string, PlyWriter::Callback>>&
+        callbacks,
     std::vector<std::string>& comments,
     std::vector<std::string>& object_info) const {
   for (const auto& element : properties_) {
-    std::map<std::string, PlyWriter::Callback> callbacks;
+    std::map<std::string, PlyWriter::Callback> property_callbacks;
     std::optional<size_t> num_elements;
     for (const auto& property : element.second) {
       size_t property_num_elements = property.second.size();
@@ -117,90 +116,95 @@ std::expected<void, std::string> InMemoryWriter::Start(
       std::visit(
           overloaded{
               [&](const std::span<const int8_t>& data) {
-                callbacks.emplace(
+                property_callbacks.emplace(
                     property.first,
                     Int8PropertyCallback(&InMemoryWriter::Callback<int8_t>));
               },
               [&](const std::span<const std::span<const int8_t>>& data) {
-                callbacks.emplace(property.first,
-                                  Int8PropertyListCallback(
-                                      &InMemoryWriter::ListCallback<int8_t>));
+                property_callbacks.emplace(
+                    property.first, Int8PropertyListCallback(
+                                        &InMemoryWriter::ListCallback<int8_t>));
               },
               [&](const std::span<const uint8_t>& data) {
-                callbacks.emplace(
+                property_callbacks.emplace(
                     property.first,
                     UInt8PropertyCallback(&InMemoryWriter::Callback<uint8_t>));
               },
               [&](const std::span<const std::span<const uint8_t>>& data) {
-                callbacks.emplace(property.first,
-                                  UInt8PropertyListCallback(
-                                      &InMemoryWriter::ListCallback<uint8_t>));
+                property_callbacks.emplace(
+                    property.first,
+                    UInt8PropertyListCallback(
+                        &InMemoryWriter::ListCallback<uint8_t>));
               },
               [&](const std::span<const int16_t>& data) {
-                callbacks.emplace(
+                property_callbacks.emplace(
                     property.first,
                     Int16PropertyCallback(&InMemoryWriter::Callback<int16_t>));
               },
               [&](const std::span<const std::span<const int16_t>>& data) {
-                callbacks.emplace(property.first,
-                                  Int16PropertyListCallback(
-                                      &InMemoryWriter::ListCallback<int16_t>));
+                property_callbacks.emplace(
+                    property.first,
+                    Int16PropertyListCallback(
+                        &InMemoryWriter::ListCallback<int16_t>));
               },
               [&](const std::span<const uint16_t>& data) {
-                callbacks.emplace(property.first,
-                                  UInt16PropertyCallback(
-                                      &InMemoryWriter::Callback<uint16_t>));
+                property_callbacks.emplace(
+                    property.first, UInt16PropertyCallback(
+                                        &InMemoryWriter::Callback<uint16_t>));
               },
               [&](const std::span<const std::span<const uint16_t>>& data) {
-                callbacks.emplace(property.first,
-                                  UInt16PropertyListCallback(
-                                      &InMemoryWriter::ListCallback<uint16_t>));
+                property_callbacks.emplace(
+                    property.first,
+                    UInt16PropertyListCallback(
+                        &InMemoryWriter::ListCallback<uint16_t>));
               },
               [&](const std::span<const int32_t>& data) {
-                callbacks.emplace(
+                property_callbacks.emplace(
                     property.first,
                     Int32PropertyCallback(&InMemoryWriter::Callback<int32_t>));
               },
               [&](const std::span<const std::span<const int32_t>>& data) {
-                callbacks.emplace(property.first,
-                                  Int32PropertyListCallback(
-                                      &InMemoryWriter::ListCallback<int32_t>));
+                property_callbacks.emplace(
+                    property.first,
+                    Int32PropertyListCallback(
+                        &InMemoryWriter::ListCallback<int32_t>));
               },
               [&](const std::span<const uint32_t>& data) {
-                callbacks.emplace(property.first,
-                                  UInt32PropertyCallback(
-                                      &InMemoryWriter::Callback<uint32_t>));
+                property_callbacks.emplace(
+                    property.first, UInt32PropertyCallback(
+                                        &InMemoryWriter::Callback<uint32_t>));
               },
               [&](const std::span<const std::span<const uint32_t>>& data) {
-                callbacks.emplace(property.first,
-                                  UInt32PropertyListCallback(
-                                      &InMemoryWriter::ListCallback<uint32_t>));
+                property_callbacks.emplace(
+                    property.first,
+                    UInt32PropertyListCallback(
+                        &InMemoryWriter::ListCallback<uint32_t>));
               },
               [&](const std::span<const float>& data) {
-                callbacks.emplace(
+                property_callbacks.emplace(
                     property.first,
                     FloatPropertyCallback(&InMemoryWriter::Callback<float>));
               },
               [&](const std::span<const std::span<const float>>& data) {
-                callbacks.emplace(property.first,
-                                  FloatPropertyListCallback(
-                                      &InMemoryWriter::ListCallback<float>));
+                property_callbacks.emplace(
+                    property.first, FloatPropertyListCallback(
+                                        &InMemoryWriter::ListCallback<float>));
               },
               [&](const std::span<const double>& data) {
-                callbacks.emplace(
+                property_callbacks.emplace(
                     property.first,
                     DoublePropertyCallback(&InMemoryWriter::Callback<double>));
               },
               [&](const std::span<const std::span<const double>>& data) {
-                callbacks.emplace(property.first,
-                                  DoublePropertyListCallback(
-                                      &InMemoryWriter::ListCallback<double>));
+                property_callbacks.emplace(
+                    property.first, DoublePropertyListCallback(
+                                        &InMemoryWriter::ListCallback<double>));
               }},
           property.second);
     }
 
-    property_callbacks[element.first] =
-        std::make_pair(num_elements.value_or(0), std::move(callbacks));
+    callbacks[element.first] = std::move(property_callbacks);
+    num_element_instances[element.first] = num_elements.value_or(0);
   }
 
   comments.insert(comments.end(), comments_.begin(), comments_.end());

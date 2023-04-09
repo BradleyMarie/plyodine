@@ -46,9 +46,8 @@ class TestWriter final : public plyodine::PlyWriter {
         start_fails_(start_fails) {}
 
   std::expected<void, std::string> Start(
-      std::map<std::string,
-               std::pair<uint64_t, std::map<std::string, Callback>>>&
-          property_callbacks,
+      std::map<std::string, uint64_t>& num_element_instances,
+      std::map<std::string, std::map<std::string, Callback>>& callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override {
     if (start_fails_) {
@@ -56,80 +55,77 @@ class TestWriter final : public plyodine::PlyWriter {
     }
 
     for (const auto& element : properties_) {
-      uint64_t num_properties = 0u;
-      std::map<std::string, PlyWriter::Callback> callbacks;
+      auto& property_callbacks = callbacks[element.first];
+      auto& num_instances = num_element_instances[element.first];
       for (const auto& property : element.second) {
-        num_properties = property.second.size();
+        num_instances = property.second.size();
         switch (property.second.index()) {
           case 0:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 Int8PropertyCallback(&TestWriter::Callback<int8_t>);
             break;
           case 1:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 Int8PropertyListCallback(&TestWriter::ListCallback<int8_t>);
             break;
           case 2:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 UInt8PropertyCallback(&TestWriter::Callback<uint8_t>);
             break;
           case 3:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 UInt8PropertyListCallback(&TestWriter::ListCallback<uint8_t>);
             break;
           case 4:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 Int16PropertyCallback(&TestWriter::Callback<int16_t>);
             break;
           case 5:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 Int16PropertyListCallback(&TestWriter::ListCallback<int16_t>);
             break;
           case 6:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 UInt16PropertyCallback(&TestWriter::Callback<uint16_t>);
             break;
           case 7:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 UInt16PropertyListCallback(&TestWriter::ListCallback<uint16_t>);
             break;
           case 8:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 Int32PropertyCallback(&TestWriter::Callback<int32_t>);
             break;
           case 9:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 Int32PropertyListCallback(&TestWriter::ListCallback<int32_t>);
             break;
           case 10:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 UInt32PropertyCallback(&TestWriter::Callback<uint32_t>);
             break;
           case 11:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 UInt32PropertyListCallback(&TestWriter::ListCallback<uint32_t>);
             break;
           case 12:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 FloatPropertyCallback(&TestWriter::Callback<float>);
             break;
           case 13:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 FloatPropertyListCallback(&TestWriter::ListCallback<float>);
             break;
           case 14:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 DoublePropertyCallback(&TestWriter::Callback<double>);
             break;
           case 15:
-            callbacks[property.first] =
+            property_callbacks[property.first] =
                 DoublePropertyListCallback(&TestWriter::ListCallback<double>);
             break;
         };
       }
-
-      property_callbacks[element.first] =
-          std::make_pair(num_properties, std::move(callbacks));
     }
 
     comments.insert(comments.end(), comments_.begin(), comments_.end());

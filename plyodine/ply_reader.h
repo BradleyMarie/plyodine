@@ -95,9 +95,8 @@ class PlyReader {
       Callback;
 
   virtual std::expected<void, std::string> Start(
-      std::map<std::string,
-               std::pair<uint64_t, std::map<std::string, Callback>>>&
-          property_callbacks,
+      const std::map<std::string, uint64_t>& num_element_instances,
+      std::map<std::string, std::map<std::string, Callback>>& callbacks,
       const std::vector<std::string>& comments,
       const std::vector<std::string>& object_info) = 0;
 };
