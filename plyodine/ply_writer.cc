@@ -211,9 +211,10 @@ std::expected<std::span<const T>, std::string> CallCallback(
     const std::string& element_name, size_t element_index,
     const std::string& property_name, size_t property_index, uint64_t instance,
     Context& context) {
+  auto& vector = std::get<std::vector<T>>(context);
+  vector.clear();
   return (ply_writer.*callback)(element_name, element_index, property_name,
-                                property_index, instance,
-                                std::get<std::vector<T>>(context));
+                                property_index, instance, vector);
 }
 
 static const std::array<std::string, 16> kTypeNames = {
