@@ -1,14 +1,14 @@
 #ifndef _PLYODINE_PLY_WRITER_
 #define _PLYODINE_PLY_WRITER_
 
+#include <cstdint>
 #include <expected>
 #include <map>
 #include <ostream>
+#include <span>
 #include <string>
 #include <variant>
 #include <vector>
-
-#include "plyodine/ply_property.h"
 
 namespace plyodine {
 
@@ -24,75 +24,81 @@ class PlyWriter {
       std::ostream& stream) const;
 
  protected:
-  typedef std::expected<Int8Property, std::string> (
-      PlyWriter::*Int8PropertyCallback)(const std::string&, size_t,
-                                        const std::string&, size_t,
-                                        uint64_t) const;
-  typedef std::expected<Int8PropertyList, std::string> (
+  typedef std::expected<int8_t, std::string> (PlyWriter::*Int8PropertyCallback)(
+      const std::string&, size_t, const std::string&, size_t, uint64_t) const;
+  typedef std::expected<std::span<const int8_t>, std::string> (
       PlyWriter::*Int8PropertyListCallback)(const std::string&, size_t,
                                             const std::string&, size_t,
                                             uint64_t,
-                                            std::vector<Int8Property>&) const;
-  typedef std::expected<UInt8Property, std::string> (
+                                            std::vector<int8_t>&) const;
+
+  typedef std::expected<uint8_t, std::string> (
       PlyWriter::*UInt8PropertyCallback)(const std::string&, size_t,
                                          const std::string&, size_t,
                                          uint64_t) const;
-  typedef std::expected<UInt8PropertyList, std::string> (
+  typedef std::expected<std::span<const uint8_t>, std::string> (
       PlyWriter::*UInt8PropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
                                              uint64_t,
-                                             std::vector<UInt8Property>&) const;
-  typedef std::expected<Int16Property, std::string> (
+                                             std::vector<uint8_t>&) const;
+
+  typedef std::expected<int16_t, std::string> (
       PlyWriter::*Int16PropertyCallback)(const std::string&, size_t,
                                          const std::string&, size_t,
                                          uint64_t) const;
-  typedef std::expected<Int16PropertyList, std::string> (
+  typedef std::expected<std::span<const int16_t>, std::string> (
       PlyWriter::*Int16PropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
                                              uint64_t,
-                                             std::vector<Int16Property>&) const;
-  typedef std::expected<UInt16Property, std::string> (
+                                             std::vector<int16_t>&) const;
+
+  typedef std::expected<uint16_t, std::string> (
       PlyWriter::*UInt16PropertyCallback)(const std::string&, size_t,
                                           const std::string&, size_t,
                                           uint64_t) const;
-  typedef std::expected<UInt16PropertyList, std::string> (
-      PlyWriter::*UInt16PropertyListCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
-      std::vector<UInt16Property>&) const;
-  typedef std::expected<Int32Property, std::string> (
+  typedef std::expected<std::span<const uint16_t>, std::string> (
+      PlyWriter::*UInt16PropertyListCallback)(const std::string&, size_t,
+                                              const std::string&, size_t,
+                                              uint64_t,
+                                              std::vector<uint16_t>&) const;
+
+  typedef std::expected<int32_t, std::string> (
       PlyWriter::*Int32PropertyCallback)(const std::string&, size_t,
                                          const std::string&, size_t,
                                          uint64_t) const;
-  typedef std::expected<Int32PropertyList, std::string> (
+  typedef std::expected<std::span<const int32_t>, std::string> (
       PlyWriter::*Int32PropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
                                              uint64_t,
-                                             std::vector<Int32Property>&) const;
-  typedef std::expected<UInt32Property, std::string> (
+                                             std::vector<int32_t>&) const;
+
+  typedef std::expected<uint32_t, std::string> (
       PlyWriter::*UInt32PropertyCallback)(const std::string&, size_t,
                                           const std::string&, size_t,
                                           uint64_t) const;
-  typedef std::expected<UInt32PropertyList, std::string> (
-      PlyWriter::*UInt32PropertyListCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
-      std::vector<UInt32Property>&) const;
-  typedef std::expected<FloatProperty, std::string> (
-      PlyWriter::*FloatPropertyCallback)(const std::string&, size_t,
-                                         const std::string&, size_t,
-                                         uint64_t) const;
-  typedef std::expected<FloatPropertyList, std::string> (
+  typedef std::expected<std::span<const uint32_t>, std::string> (
+      PlyWriter::*UInt32PropertyListCallback)(const std::string&, size_t,
+                                              const std::string&, size_t,
+                                              uint64_t,
+                                              std::vector<uint32_t>&) const;
+
+  typedef std::expected<float, std::string> (PlyWriter::*FloatPropertyCallback)(
+      const std::string&, size_t, const std::string&, size_t, uint64_t) const;
+  typedef std::expected<std::span<const float>, std::string> (
       PlyWriter::*FloatPropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
                                              uint64_t,
-                                             std::vector<FloatProperty>&) const;
-  typedef std::expected<DoubleProperty, std::string> (
+                                             std::vector<float>&) const;
+
+  typedef std::expected<double, std::string> (
       PlyWriter::*DoublePropertyCallback)(const std::string&, size_t,
                                           const std::string&, size_t,
                                           uint64_t) const;
-  typedef std::expected<DoublePropertyList, std::string> (
-      PlyWriter::*DoublePropertyListCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
-      std::vector<DoubleProperty>&) const;
+  typedef std::expected<std::span<const double>, std::string> (
+      PlyWriter::*DoublePropertyListCallback)(const std::string&, size_t,
+                                              const std::string&, size_t,
+                                              uint64_t,
+                                              std::vector<double>&) const;
 
   typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
                        UInt8PropertyCallback, UInt8PropertyListCallback,

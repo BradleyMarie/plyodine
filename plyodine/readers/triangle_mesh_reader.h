@@ -191,13 +191,13 @@ class TriangleMeshReader : public PlyReader {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
       if (float_callback) {
         return FloatPropertyCallback(
-            &TriangleMeshReader::AddPosition<index, FloatProperty>);
+            &TriangleMeshReader::AddPosition<index, float>);
       }
 
       auto *double_callback = std::get_if<DoublePropertyCallback>(property);
       if (double_callback) {
         return DoublePropertyCallback(
-            &TriangleMeshReader::AddPosition<index, DoubleProperty>);
+            &TriangleMeshReader::AddPosition<index, double>);
       }
 
       return std::unexpected(
@@ -221,13 +221,13 @@ class TriangleMeshReader : public PlyReader {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
       if (float_callback) {
         return FloatPropertyCallback(
-            &TriangleMeshReader::AddNormal<index, FloatProperty>);
+            &TriangleMeshReader::AddNormal<index, float>);
       }
 
       auto *double_callback = std::get_if<DoublePropertyCallback>(property);
       if (double_callback) {
         return DoublePropertyCallback(
-            &TriangleMeshReader::AddNormal<index, DoubleProperty>);
+            &TriangleMeshReader::AddNormal<index, double>);
       }
 
       return std::unexpected(
@@ -253,16 +253,14 @@ class TriangleMeshReader : public PlyReader {
       if (float_callback) {
         return std::make_pair(
             property_name,
-            FloatPropertyCallback(
-                &TriangleMeshReader::AddUV<index, FloatProperty>));
+            FloatPropertyCallback(&TriangleMeshReader::AddUV<index, float>));
       }
 
       auto *double_callback = std::get_if<DoublePropertyCallback>(property);
       if (double_callback) {
         return std::make_pair(
             property_name,
-            DoublePropertyCallback(
-                &TriangleMeshReader::AddUV<index, DoubleProperty>));
+            DoublePropertyCallback(&TriangleMeshReader::AddUV<index, double>));
       }
 
       return std::unexpected(

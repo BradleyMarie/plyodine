@@ -44,9 +44,8 @@ snapshot.
 
 PLYodine code is structured with the core modules residing in the `plyodine`
 directory. `ply_reader` contains the parent class for PLY readers, `ply_writer`
-contains the logic for writing a PLY file, `ply_property` contains type
-definitions shared between the PLY reader and writer, and `ply_header` contains
-a library for reading PLY file headers and is relied on by the reader class.
+contains the logic for writing a PLY file, and `ply_header_reader` contains a
+library for reading PLY file headers and is depended on by `ply_reader`.
 
 There is no dependency between `ply_reader` and `ply_writer`.
 

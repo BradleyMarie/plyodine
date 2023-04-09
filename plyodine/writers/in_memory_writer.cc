@@ -115,102 +115,87 @@ std::expected<void, std::string> InMemoryWriter::Start(
       }
 
       std::visit(
-          overloaded{[&](const std::span<const Int8Property>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           Int8PropertyCallback(
-                               &InMemoryWriter::Callback<Int8Property>));
-                     },
-                     [&](const std::span<const Int8PropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           Int8PropertyListCallback(
-                               &InMemoryWriter::ListCallback<Int8Property>));
-                     },
-                     [&](const std::span<const UInt8Property>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           UInt8PropertyCallback(
-                               &InMemoryWriter::Callback<UInt8Property>));
-                     },
-                     [&](const std::span<const UInt8PropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           UInt8PropertyListCallback(
-                               &InMemoryWriter::ListCallback<UInt8Property>));
-                     },
-                     [&](const std::span<const Int16Property>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           Int16PropertyCallback(
-                               &InMemoryWriter::Callback<Int16Property>));
-                     },
-                     [&](const std::span<const Int16PropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           Int16PropertyListCallback(
-                               &InMemoryWriter::ListCallback<Int16Property>));
-                     },
-                     [&](const std::span<const UInt16Property>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           UInt16PropertyCallback(
-                               &InMemoryWriter::Callback<UInt16Property>));
-                     },
-                     [&](const std::span<const UInt16PropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           UInt16PropertyListCallback(
-                               &InMemoryWriter::ListCallback<UInt16Property>));
-                     },
-                     [&](const std::span<const Int32Property>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           Int32PropertyCallback(
-                               &InMemoryWriter::Callback<Int32Property>));
-                     },
-                     [&](const std::span<const Int32PropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           Int32PropertyListCallback(
-                               &InMemoryWriter::ListCallback<Int32Property>));
-                     },
-                     [&](const std::span<const UInt32Property>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           UInt32PropertyCallback(
-                               &InMemoryWriter::Callback<UInt32Property>));
-                     },
-                     [&](const std::span<const UInt32PropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           UInt32PropertyListCallback(
-                               &InMemoryWriter::ListCallback<UInt32Property>));
-                     },
-                     [&](const std::span<const FloatProperty>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           FloatPropertyCallback(
-                               &InMemoryWriter::Callback<FloatProperty>));
-                     },
-                     [&](const std::span<const FloatPropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           FloatPropertyListCallback(
-                               &InMemoryWriter::ListCallback<FloatProperty>));
-                     },
-                     [&](const std::span<const DoubleProperty>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           DoublePropertyCallback(
-                               &InMemoryWriter::Callback<DoubleProperty>));
-                     },
-                     [&](const std::span<const DoublePropertyList>& data) {
-                       callbacks.emplace(
-                           property.first,
-                           DoublePropertyListCallback(
-                               &InMemoryWriter::ListCallback<DoubleProperty>));
-                     }},
+          overloaded{
+              [&](const std::span<const int8_t>& data) {
+                callbacks.emplace(
+                    property.first,
+                    Int8PropertyCallback(&InMemoryWriter::Callback<int8_t>));
+              },
+              [&](const std::span<const std::span<const int8_t>>& data) {
+                callbacks.emplace(property.first,
+                                  Int8PropertyListCallback(
+                                      &InMemoryWriter::ListCallback<int8_t>));
+              },
+              [&](const std::span<const uint8_t>& data) {
+                callbacks.emplace(
+                    property.first,
+                    UInt8PropertyCallback(&InMemoryWriter::Callback<uint8_t>));
+              },
+              [&](const std::span<const std::span<const uint8_t>>& data) {
+                callbacks.emplace(property.first,
+                                  UInt8PropertyListCallback(
+                                      &InMemoryWriter::ListCallback<uint8_t>));
+              },
+              [&](const std::span<const int16_t>& data) {
+                callbacks.emplace(
+                    property.first,
+                    Int16PropertyCallback(&InMemoryWriter::Callback<int16_t>));
+              },
+              [&](const std::span<const std::span<const int16_t>>& data) {
+                callbacks.emplace(property.first,
+                                  Int16PropertyListCallback(
+                                      &InMemoryWriter::ListCallback<int16_t>));
+              },
+              [&](const std::span<const uint16_t>& data) {
+                callbacks.emplace(property.first,
+                                  UInt16PropertyCallback(
+                                      &InMemoryWriter::Callback<uint16_t>));
+              },
+              [&](const std::span<const std::span<const uint16_t>>& data) {
+                callbacks.emplace(property.first,
+                                  UInt16PropertyListCallback(
+                                      &InMemoryWriter::ListCallback<uint16_t>));
+              },
+              [&](const std::span<const int32_t>& data) {
+                callbacks.emplace(
+                    property.first,
+                    Int32PropertyCallback(&InMemoryWriter::Callback<int32_t>));
+              },
+              [&](const std::span<const std::span<const int32_t>>& data) {
+                callbacks.emplace(property.first,
+                                  Int32PropertyListCallback(
+                                      &InMemoryWriter::ListCallback<int32_t>));
+              },
+              [&](const std::span<const uint32_t>& data) {
+                callbacks.emplace(property.first,
+                                  UInt32PropertyCallback(
+                                      &InMemoryWriter::Callback<uint32_t>));
+              },
+              [&](const std::span<const std::span<const uint32_t>>& data) {
+                callbacks.emplace(property.first,
+                                  UInt32PropertyListCallback(
+                                      &InMemoryWriter::ListCallback<uint32_t>));
+              },
+              [&](const std::span<const float>& data) {
+                callbacks.emplace(
+                    property.first,
+                    FloatPropertyCallback(&InMemoryWriter::Callback<float>));
+              },
+              [&](const std::span<const std::span<const float>>& data) {
+                callbacks.emplace(property.first,
+                                  FloatPropertyListCallback(
+                                      &InMemoryWriter::ListCallback<float>));
+              },
+              [&](const std::span<const double>& data) {
+                callbacks.emplace(
+                    property.first,
+                    DoublePropertyCallback(&InMemoryWriter::Callback<double>));
+              },
+              [&](const std::span<const std::span<const double>>& data) {
+                callbacks.emplace(property.first,
+                                  DoublePropertyListCallback(
+                                      &InMemoryWriter::ListCallback<double>));
+              }},
           property.second);
     }
 

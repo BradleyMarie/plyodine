@@ -1,37 +1,36 @@
 #ifndef _PLYODINE_WRITERS_IN_MEMORY_WRITER_
 #define _PLYODINE_WRITERS_IN_MEMORY_WRITER_
 
+#include <cstdint>
 #include <expected>
 #include <map>
 #include <ostream>
+#include <span>
 #include <string>
 #include <variant>
-
-#include "plyodine/ply_property.h"
 
 namespace plyodine {
 
 struct Property final
     : public std::variant<
-          std::span<const Int8Property>, std::span<const Int8PropertyList>,
-          std::span<const UInt8Property>, std::span<const UInt8PropertyList>,
-          std::span<const Int16Property>, std::span<const Int16PropertyList>,
-          std::span<const UInt16Property>, std::span<const UInt16PropertyList>,
-          std::span<const Int32Property>, std::span<const Int32PropertyList>,
-          std::span<const UInt32Property>, std::span<const UInt32PropertyList>,
-          std::span<const FloatProperty>, std::span<const FloatPropertyList>,
-          std::span<const DoubleProperty>,
-          std::span<const DoublePropertyList>> {
+          std::span<const int8_t>, std::span<const std::span<const int8_t>>,
+          std::span<const uint8_t>, std::span<const std::span<const uint8_t>>,
+          std::span<const int16_t>, std::span<const std::span<const int16_t>>,
+          std::span<const uint16_t>, std::span<const std::span<const uint16_t>>,
+          std::span<const int32_t>, std::span<const std::span<const int32_t>>,
+          std::span<const uint32_t>, std::span<const std::span<const uint32_t>>,
+          std::span<const float>, std::span<const std::span<const float>>,
+          std::span<const double>, std::span<const std::span<const double>>> {
   using std::variant<
-      std::span<const Int8Property>, std::span<const Int8PropertyList>,
-      std::span<const UInt8Property>, std::span<const UInt8PropertyList>,
-      std::span<const Int16Property>, std::span<const Int16PropertyList>,
-      std::span<const UInt16Property>, std::span<const UInt16PropertyList>,
-      std::span<const Int32Property>, std::span<const Int32PropertyList>,
-      std::span<const UInt32Property>, std::span<const UInt32PropertyList>,
-      std::span<const FloatProperty>, std::span<const FloatPropertyList>,
-      std::span<const DoubleProperty>,
-      std::span<const DoublePropertyList>>::variant;
+      std::span<const int8_t>, std::span<const std::span<const int8_t>>,
+      std::span<const uint8_t>, std::span<const std::span<const uint8_t>>,
+      std::span<const int16_t>, std::span<const std::span<const int16_t>>,
+      std::span<const uint16_t>, std::span<const std::span<const uint16_t>>,
+      std::span<const int32_t>, std::span<const std::span<const int32_t>>,
+      std::span<const uint32_t>, std::span<const std::span<const uint32_t>>,
+      std::span<const float>, std::span<const std::span<const float>>,
+      std::span<const double>,
+      std::span<const std::span<const double>>>::variant;
 
   size_t size() const {
     return std::visit([](const auto& entry) { return entry.size(); }, *this);

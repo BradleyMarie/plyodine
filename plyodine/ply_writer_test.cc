@@ -9,38 +9,25 @@
 #include "googletest/include/gtest/gtest.h"
 
 struct Property final
-    : public std::variant<std::span<const plyodine::Int8Property>,
-                          std::span<const plyodine::Int8PropertyList>,
-                          std::span<const plyodine::UInt8Property>,
-                          std::span<const plyodine::UInt8PropertyList>,
-                          std::span<const plyodine::Int16Property>,
-                          std::span<const plyodine::Int16PropertyList>,
-                          std::span<const plyodine::UInt16Property>,
-                          std::span<const plyodine::UInt16PropertyList>,
-                          std::span<const plyodine::Int32Property>,
-                          std::span<const plyodine::Int32PropertyList>,
-                          std::span<const plyodine::UInt32Property>,
-                          std::span<const plyodine::UInt32PropertyList>,
-                          std::span<const plyodine::FloatProperty>,
-                          std::span<const plyodine::FloatPropertyList>,
-                          std::span<const plyodine::DoubleProperty>,
-                          std::span<const plyodine::DoublePropertyList>> {
-  using std::variant<std::span<const plyodine::Int8Property>,
-                     std::span<const plyodine::Int8PropertyList>,
-                     std::span<const plyodine::UInt8Property>,
-                     std::span<const plyodine::UInt8PropertyList>,
-                     std::span<const plyodine::Int16Property>,
-                     std::span<const plyodine::Int16PropertyList>,
-                     std::span<const plyodine::UInt16Property>,
-                     std::span<const plyodine::UInt16PropertyList>,
-                     std::span<const plyodine::Int32Property>,
-                     std::span<const plyodine::Int32PropertyList>,
-                     std::span<const plyodine::UInt32Property>,
-                     std::span<const plyodine::UInt32PropertyList>,
-                     std::span<const plyodine::FloatProperty>,
-                     std::span<const plyodine::FloatPropertyList>,
-                     std::span<const plyodine::DoubleProperty>,
-                     std::span<const plyodine::DoublePropertyList>>::variant;
+    : public std::variant<
+          std::span<const int8_t>, std::span<const std::span<const int8_t>>,
+          std::span<const uint8_t>, std::span<const std::span<const uint8_t>>,
+          std::span<const int16_t>, std::span<const std::span<const int16_t>>,
+          std::span<const uint16_t>, std::span<const std::span<const uint16_t>>,
+          std::span<const int32_t>, std::span<const std::span<const int32_t>>,
+          std::span<const uint32_t>, std::span<const std::span<const uint32_t>>,
+          std::span<const float>, std::span<const std::span<const float>>,
+          std::span<const double>, std::span<const std::span<const double>>> {
+  using std::variant<
+      std::span<const int8_t>, std::span<const std::span<const int8_t>>,
+      std::span<const uint8_t>, std::span<const std::span<const uint8_t>>,
+      std::span<const int16_t>, std::span<const std::span<const int16_t>>,
+      std::span<const uint16_t>, std::span<const std::span<const uint16_t>>,
+      std::span<const int32_t>, std::span<const std::span<const int32_t>>,
+      std::span<const uint32_t>, std::span<const std::span<const uint32_t>>,
+      std::span<const float>, std::span<const std::span<const float>>,
+      std::span<const double>,
+      std::span<const std::span<const double>>>::variant;
 
   size_t size() const {
     return std::visit([](const auto& entry) { return entry.size(); }, *this);
@@ -75,68 +62,68 @@ class TestWriter final : public plyodine::PlyWriter {
         num_properties = property.second.size();
         switch (property.second.index()) {
           case 0:
-            callbacks[property.first] = Int8PropertyCallback(
-                &TestWriter::Callback<plyodine::Int8Property>);
+            callbacks[property.first] =
+                Int8PropertyCallback(&TestWriter::Callback<int8_t>);
             break;
           case 1:
-            callbacks[property.first] = Int8PropertyListCallback(
-                &TestWriter::ListCallback<plyodine::Int8Property>);
+            callbacks[property.first] =
+                Int8PropertyListCallback(&TestWriter::ListCallback<int8_t>);
             break;
           case 2:
-            callbacks[property.first] = UInt8PropertyCallback(
-                &TestWriter::Callback<plyodine::UInt8Property>);
+            callbacks[property.first] =
+                UInt8PropertyCallback(&TestWriter::Callback<uint8_t>);
             break;
           case 3:
-            callbacks[property.first] = UInt8PropertyListCallback(
-                &TestWriter::ListCallback<plyodine::UInt8Property>);
+            callbacks[property.first] =
+                UInt8PropertyListCallback(&TestWriter::ListCallback<uint8_t>);
             break;
           case 4:
-            callbacks[property.first] = Int16PropertyCallback(
-                &TestWriter::Callback<plyodine::Int16Property>);
+            callbacks[property.first] =
+                Int16PropertyCallback(&TestWriter::Callback<int16_t>);
             break;
           case 5:
-            callbacks[property.first] = Int16PropertyListCallback(
-                &TestWriter::ListCallback<plyodine::Int16Property>);
+            callbacks[property.first] =
+                Int16PropertyListCallback(&TestWriter::ListCallback<int16_t>);
             break;
           case 6:
-            callbacks[property.first] = UInt16PropertyCallback(
-                &TestWriter::Callback<plyodine::UInt16Property>);
+            callbacks[property.first] =
+                UInt16PropertyCallback(&TestWriter::Callback<uint16_t>);
             break;
           case 7:
-            callbacks[property.first] = UInt16PropertyListCallback(
-                &TestWriter::ListCallback<plyodine::UInt16Property>);
+            callbacks[property.first] =
+                UInt16PropertyListCallback(&TestWriter::ListCallback<uint16_t>);
             break;
           case 8:
-            callbacks[property.first] = Int32PropertyCallback(
-                &TestWriter::Callback<plyodine::Int32Property>);
+            callbacks[property.first] =
+                Int32PropertyCallback(&TestWriter::Callback<int32_t>);
             break;
           case 9:
-            callbacks[property.first] = Int32PropertyListCallback(
-                &TestWriter::ListCallback<plyodine::Int32Property>);
+            callbacks[property.first] =
+                Int32PropertyListCallback(&TestWriter::ListCallback<int32_t>);
             break;
           case 10:
-            callbacks[property.first] = UInt32PropertyCallback(
-                &TestWriter::Callback<plyodine::UInt32Property>);
+            callbacks[property.first] =
+                UInt32PropertyCallback(&TestWriter::Callback<uint32_t>);
             break;
           case 11:
-            callbacks[property.first] = UInt32PropertyListCallback(
-                &TestWriter::ListCallback<plyodine::UInt32Property>);
+            callbacks[property.first] =
+                UInt32PropertyListCallback(&TestWriter::ListCallback<uint32_t>);
             break;
           case 12:
-            callbacks[property.first] = FloatPropertyCallback(
-                &TestWriter::Callback<plyodine::FloatProperty>);
+            callbacks[property.first] =
+                FloatPropertyCallback(&TestWriter::Callback<float>);
             break;
           case 13:
-            callbacks[property.first] = FloatPropertyListCallback(
-                &TestWriter::ListCallback<plyodine::FloatProperty>);
+            callbacks[property.first] =
+                FloatPropertyListCallback(&TestWriter::ListCallback<float>);
             break;
           case 14:
-            callbacks[property.first] = DoublePropertyCallback(
-                &TestWriter::Callback<plyodine::DoubleProperty>);
+            callbacks[property.first] =
+                DoublePropertyCallback(&TestWriter::Callback<double>);
             break;
           case 15:
-            callbacks[property.first] = DoublePropertyListCallback(
-                &TestWriter::ListCallback<plyodine::DoubleProperty>);
+            callbacks[property.first] =
+                DoublePropertyListCallback(&TestWriter::ListCallback<double>);
             break;
         };
       }

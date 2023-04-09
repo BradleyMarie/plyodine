@@ -38,59 +38,59 @@ class MockPlyReader final : public plyodine::PlyReader {
 
   MOCK_METHOD((std::expected<void, std::string>), HandleInt8,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::Int8Property));
+               int8_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleInt8List,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::Int8PropertyList));
+               std::span<const int8_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt8,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::UInt8Property));
+               uint8_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt8List,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::UInt8PropertyList));
+               std::span<const uint8_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleInt16,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::Int16Property));
+               int16_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleInt16List,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::Int16PropertyList));
+               std::span<const int16_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt16,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::UInt16Property));
+               uint16_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt16List,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::UInt16PropertyList));
+               std::span<const uint16_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleInt32,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::Int32Property));
+               int32_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleInt32List,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::Int32PropertyList));
+               std::span<const int32_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt32,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::UInt32Property));
+               uint32_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt32List,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::UInt32PropertyList));
+               std::span<const u_int32_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleFloat,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::FloatProperty));
+               float));
   MOCK_METHOD((std::expected<void, std::string>), HandleFloatList,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::FloatPropertyList));
+               std::span<const float>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleDouble,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::DoubleProperty));
+               double));
   MOCK_METHOD((std::expected<void, std::string>), HandleDoubleList,
               (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               plyodine::DoublePropertyList));
+               std::span<const double>));
 
   std::expected<void, std::string> Start(
       std::map<std::string,
