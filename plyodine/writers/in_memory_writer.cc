@@ -11,6 +11,11 @@
 namespace plyodine {
 namespace {
 
+template <class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+
 class InMemoryWriter final : public PlyWriter {
  public:
   InMemoryWriter(
@@ -109,88 +114,104 @@ std::expected<void, std::string> InMemoryWriter::Start(
         num_elements = property_num_elements;
       }
 
-      switch (property.second.type()) {
-        case PropertyType::INT8:
-          callbacks.emplace(
-              property.first,
-              Int8PropertyCallback(&InMemoryWriter::Callback<Int8Property>));
-          break;
-        case PropertyType::INT8_LIST:
-          callbacks.emplace(property.first,
-                            Int8PropertyListCallback(
-                                &InMemoryWriter::ListCallback<Int8Property>));
-          break;
-        case PropertyType::UINT8:
-          callbacks.emplace(
-              property.first,
-              UInt8PropertyCallback(&InMemoryWriter::Callback<UInt8Property>));
-          break;
-        case PropertyType::UINT8_LIST:
-          callbacks.emplace(property.first,
-                            UInt8PropertyListCallback(
-                                &InMemoryWriter::ListCallback<UInt8Property>));
-          break;
-        case PropertyType::INT16:
-          callbacks.emplace(
-              property.first,
-              Int16PropertyCallback(&InMemoryWriter::Callback<Int16Property>));
-          break;
-        case PropertyType::INT16_LIST:
-          callbacks.emplace(property.first,
-                            Int16PropertyListCallback(
-                                &InMemoryWriter::ListCallback<Int16Property>));
-          break;
-        case PropertyType::UINT16:
-          callbacks.emplace(property.first,
-                            UInt16PropertyCallback(
-                                &InMemoryWriter::Callback<UInt16Property>));
-          break;
-        case PropertyType::UINT16_LIST:
-          callbacks.emplace(property.first,
-                            UInt16PropertyListCallback(
-                                &InMemoryWriter::ListCallback<UInt16Property>));
-          break;
-        case PropertyType::INT32:
-          callbacks.emplace(
-              property.first,
-              Int32PropertyCallback(&InMemoryWriter::Callback<Int32Property>));
-          break;
-        case PropertyType::INT32_LIST:
-          callbacks.emplace(property.first,
-                            Int32PropertyListCallback(
-                                &InMemoryWriter::ListCallback<Int32Property>));
-          break;
-        case PropertyType::UINT32:
-          callbacks.emplace(property.first,
-                            UInt32PropertyCallback(
-                                &InMemoryWriter::Callback<UInt32Property>));
-          break;
-        case PropertyType::UINT32_LIST:
-          callbacks.emplace(property.first,
-                            UInt32PropertyListCallback(
-                                &InMemoryWriter::ListCallback<UInt32Property>));
-          break;
-        case PropertyType::FLOAT:
-          callbacks.emplace(
-              property.first,
-              FloatPropertyCallback(&InMemoryWriter::Callback<FloatProperty>));
-          break;
-        case PropertyType::FLOAT_LIST:
-          callbacks.emplace(property.first,
-                            FloatPropertyListCallback(
-                                &InMemoryWriter::ListCallback<FloatProperty>));
-          break;
-        case PropertyType::DOUBLE:
-          callbacks.emplace(property.first,
-                            DoublePropertyCallback(
-                                &InMemoryWriter::Callback<DoubleProperty>));
-          break;
-        case PropertyType::DOUBLE_LIST:
-          callbacks.emplace(property.first,
-                            DoublePropertyListCallback(
-                                &InMemoryWriter::ListCallback<DoubleProperty>));
-          break;
-      };
+      std::visit(
+          overloaded{[&](const std::span<const Int8Property>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           Int8PropertyCallback(
+                               &InMemoryWriter::Callback<Int8Property>));
+                     },
+                     [&](const std::span<const Int8PropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           Int8PropertyListCallback(
+                               &InMemoryWriter::ListCallback<Int8Property>));
+                     },
+                     [&](const std::span<const UInt8Property>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           UInt8PropertyCallback(
+                               &InMemoryWriter::Callback<UInt8Property>));
+                     },
+                     [&](const std::span<const UInt8PropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           UInt8PropertyListCallback(
+                               &InMemoryWriter::ListCallback<UInt8Property>));
+                     },
+                     [&](const std::span<const Int16Property>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           Int16PropertyCallback(
+                               &InMemoryWriter::Callback<Int16Property>));
+                     },
+                     [&](const std::span<const Int16PropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           Int16PropertyListCallback(
+                               &InMemoryWriter::ListCallback<Int16Property>));
+                     },
+                     [&](const std::span<const UInt16Property>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           UInt16PropertyCallback(
+                               &InMemoryWriter::Callback<UInt16Property>));
+                     },
+                     [&](const std::span<const UInt16PropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           UInt16PropertyListCallback(
+                               &InMemoryWriter::ListCallback<UInt16Property>));
+                     },
+                     [&](const std::span<const Int32Property>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           Int32PropertyCallback(
+                               &InMemoryWriter::Callback<Int32Property>));
+                     },
+                     [&](const std::span<const Int32PropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           Int32PropertyListCallback(
+                               &InMemoryWriter::ListCallback<Int32Property>));
+                     },
+                     [&](const std::span<const UInt32Property>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           UInt32PropertyCallback(
+                               &InMemoryWriter::Callback<UInt32Property>));
+                     },
+                     [&](const std::span<const UInt32PropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           UInt32PropertyListCallback(
+                               &InMemoryWriter::ListCallback<UInt32Property>));
+                     },
+                     [&](const std::span<const FloatProperty>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           FloatPropertyCallback(
+                               &InMemoryWriter::Callback<FloatProperty>));
+                     },
+                     [&](const std::span<const FloatPropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           FloatPropertyListCallback(
+                               &InMemoryWriter::ListCallback<FloatProperty>));
+                     },
+                     [&](const std::span<const DoubleProperty>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           DoublePropertyCallback(
+                               &InMemoryWriter::Callback<DoubleProperty>));
+                     },
+                     [&](const std::span<const DoublePropertyList>& data) {
+                       callbacks.emplace(
+                           property.first,
+                           DoublePropertyListCallback(
+                               &InMemoryWriter::ListCallback<DoubleProperty>));
+                     }},
+          property.second);
     }
 
     property_callbacks[element.first] =
@@ -277,39 +298,5 @@ std::expected<void, std::string> WriteToLittleEndian(
   InMemoryWriter writer(properties, comments, object_info);
   return writer.WriteToLittleEndian(stream);
 }
-
-// Static asserts for Property variant
-static_assert(Property(std::span<const Int8Property>()).index() ==
-              static_cast<size_t>(PropertyType::INT8));
-static_assert(Property(std::span<const Int8PropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::INT8_LIST));
-static_assert(Property(std::span<const UInt8Property>()).index() ==
-              static_cast<size_t>(PropertyType::UINT8));
-static_assert(Property(std::span<const UInt8PropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::UINT8_LIST));
-static_assert(Property(std::span<const Int16Property>()).index() ==
-              static_cast<size_t>(PropertyType::INT16));
-static_assert(Property(std::span<const Int16PropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::INT16_LIST));
-static_assert(Property(std::span<const UInt16Property>()).index() ==
-              static_cast<size_t>(PropertyType::UINT16));
-static_assert(Property(std::span<const UInt16PropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::UINT16_LIST));
-static_assert(Property(std::span<const Int32Property>()).index() ==
-              static_cast<size_t>(PropertyType::INT32));
-static_assert(Property(std::span<const Int32PropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::INT32_LIST));
-static_assert(Property(std::span<const UInt32Property>()).index() ==
-              static_cast<size_t>(PropertyType::UINT32));
-static_assert(Property(std::span<const UInt32PropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::UINT32_LIST));
-static_assert(Property(std::span<const FloatProperty>()).index() ==
-              static_cast<size_t>(PropertyType::FLOAT));
-static_assert(Property(std::span<const FloatPropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::FLOAT_LIST));
-static_assert(Property(std::span<const DoubleProperty>()).index() ==
-              static_cast<size_t>(PropertyType::DOUBLE));
-static_assert(Property(std::span<const DoublePropertyList>()).index() ==
-              static_cast<size_t>(PropertyType::DOUBLE_LIST));
 
 }  // namespace plyodine

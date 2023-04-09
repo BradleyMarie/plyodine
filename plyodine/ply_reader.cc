@@ -401,40 +401,6 @@ BuildCallbacks(
 }  // namespace
 
 std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
-  // Static assertions to ensure variants of Callback are properly ordered
-  static_assert(Callback(Int8PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT8));
-  static_assert(Callback(Int8PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT8_LIST));
-  static_assert(Callback(UInt8PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT8));
-  static_assert(Callback(UInt8PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT8_LIST));
-  static_assert(Callback(Int16PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT16));
-  static_assert(Callback(Int16PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT16_LIST));
-  static_assert(Callback(UInt16PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT16));
-  static_assert(Callback(UInt16PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT16_LIST));
-  static_assert(Callback(Int32PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT32));
-  static_assert(Callback(Int32PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT32_LIST));
-  static_assert(Callback(UInt32PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT32));
-  static_assert(Callback(UInt32PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT32_LIST));
-  static_assert(Callback(FloatPropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::FLOAT));
-  static_assert(Callback(FloatPropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::FLOAT_LIST));
-  static_assert(Callback(DoublePropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::DOUBLE));
-  static_assert(Callback(DoublePropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::DOUBLE_LIST));
-
   auto header = ReadPlyHeader(input);
   if (!header) {
     return std::unexpected(header.error());
@@ -665,6 +631,40 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
       }
     }
   }
+
+  // Static assertions to ensure variants of Callback are properly ordered
+  static_assert(Callback(Int8PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT8));
+  static_assert(Callback(Int8PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT8_LIST));
+  static_assert(Callback(UInt8PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT8));
+  static_assert(Callback(UInt8PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT8_LIST));
+  static_assert(Callback(Int16PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT16));
+  static_assert(Callback(Int16PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT16_LIST));
+  static_assert(Callback(UInt16PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT16));
+  static_assert(Callback(UInt16PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT16_LIST));
+  static_assert(Callback(Int32PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT32));
+  static_assert(Callback(Int32PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::INT32_LIST));
+  static_assert(Callback(UInt32PropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT32));
+  static_assert(Callback(UInt32PropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::UINT32_LIST));
+  static_assert(Callback(FloatPropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::FLOAT));
+  static_assert(Callback(FloatPropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::FLOAT_LIST));
+  static_assert(Callback(DoublePropertyCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::DOUBLE));
+  static_assert(Callback(DoublePropertyListCallback(nullptr)).index() ==
+                static_cast<size_t>(PropertyType::DOUBLE_LIST));
 
   return std::expected<void, std::string>();
 }

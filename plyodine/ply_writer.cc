@@ -216,32 +216,42 @@ std::expected<std::span<const T>, std::string> CallCallback(
                                 std::get<std::vector<T>>(context));
 }
 
+static const std::array<std::string, 16> kTypeNames = {
+    "char", "char", "uchar", "uchar", "short", "short", "ushort", "ushort",
+    "int",  "int",  "uint",  "uint",  "float", "float", "double", "double"};
+
+void PropertyString(std::ostream& output, size_t type,
+                    const std::string& name) {
+  output << "property " << kTypeNames.at(type) << " " << name << "\r";
+}
+
+void PropertyListString(std::ostream& output, size_t list_type,
+                        size_t data_type, const std::string& name) {
+  static const std::array<std::string, 16> kListTypeNames = {"uchar", "ushort",
+                                                             "uint"};
+
+  output << "property list " << kListTypeNames.at(list_type) << " "
+         << kTypeNames.at(data_type) << " " << name << "\r";
+}
+
 template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
 std::expected<std::function<std::expected<void, std::string>(uint64_t)>,
               std::string>
 ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
                 const std::string& element_name, size_t element_index,
                 const std::string& property_name, size_t property_index,
-                Context& context, PropertyType value_type_index,
-                std::optional<PropertyType> list_size_type) {
-  static const std::array<std::string, 16> type_names = {
-      "char", "char", "uchar", "uchar", "short", "short", "ushort", "ushort",
-      "int",  "int",  "uint",  "uint",  "float", "float", "double", "double"};
-
+                Context& context, size_t value_type_index,
+                std::optional<size_t> list_size_type) {
   auto property_name_valid = ValidateName(property_name);
   if (!property_name_valid) {
     return std::unexpected(property_name_valid.error());
   }
 
   if (list_size_type.has_value()) {
-    output << "property list "
-           << type_names.at(static_cast<size_t>(*list_size_type)) << " "
-           << type_names.at(static_cast<size_t>(value_type_index)) << " "
-           << property_name << "\r";
+    PropertyListString(output, *list_size_type, value_type_index,
+                       property_name);
   } else {
-    output << "property "
-           << type_names.at(static_cast<size_t>(value_type_index)) << " "
-           << property_name << "\r";
+    PropertyString(output, value_type_index, property_name);
   }
 
   if (!output) {
@@ -285,15 +295,15 @@ std::expected<std::function<std::expected<void, std::string>(uint64_t)>,
 ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
                 const std::string& element_name, size_t element_index,
                 const std::string& property_name, size_t property_index,
-                Context& context, PropertyType value_type_index,
-                std::function<std::expected<PropertyType, std::string>(
+                Context& context, size_t value_type_index,
+                std::function<std::expected<size_t, std::string>(
                     const std::string&, size_t, const std::string&, size_t)>
                     get_property_list_size_type) {
   using R = std::decay_t<decltype(*CallCallback(
       ply_writer, callback, element_name, element_index, property_name,
       property_index, 0u, context))>;
 
-  std::optional<PropertyType> maybe_list_size_type;
+  std::optional<size_t> maybe_list_size_type;
   if constexpr (std::is_class<R>::value) {
     auto list_size_type = get_property_list_size_type(
         element_name, element_index, property_name, property_index);
@@ -303,14 +313,14 @@ ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
 
     maybe_list_size_type = *list_size_type;
 
-    if (*maybe_list_size_type == PropertyType::UINT8) {
+    if (*maybe_list_size_type == 0) {
       return ToWriteCallback<Ascii, Endianness, uint8_t>(
           output, ply_writer, callback, element_name, element_index,
           property_name, property_index, context, value_type_index,
           maybe_list_size_type);
     }
 
-    if (*maybe_list_size_type == PropertyType::UINT16) {
+    if (*maybe_list_size_type == 1) {
       return ToWriteCallback<Ascii, Endianness, uint16_t>(
           output, ply_writer, callback, element_name, element_index,
           property_name, property_index, context, value_type_index,
@@ -330,7 +340,7 @@ std::expected<
     std::string>
 WriteHeader(
     std::ostream& output, const PlyWriter& ply_writer,
-    const std::function<std::expected<PropertyType, std::string>(
+    const std::function<std::expected<size_t, std::string>(
         const std::string&, size_t, const std::string&, size_t)>&
         get_property_list_size_type,
     const char* format,
@@ -389,8 +399,7 @@ WriteHeader(
           [&](auto callback) {
             return ToWriteCallback<Ascii, Endianness>(
                 output, ply_writer, callback, element.first, callbacks.size(),
-                property.first, row.size(), context,
-                static_cast<PropertyType>(property.second.index()),
+                property.first, row.size(), context, property.second.index(),
                 get_property_list_size_type);
           },
           property.second);
@@ -414,7 +423,7 @@ WriteHeader(
 template <std::endian Endianness, typename T>
 std::expected<void, std::string> WriteToBinaryImpl(
     std::ostream& output, const PlyWriter& ply_writer,
-    const std::function<std::expected<PropertyType, std::string>(
+    const std::function<std::expected<size_t, std::string>(
         const std::string&, size_t, const std::string&, size_t)>&
         get_property_list_size_type,
     const std::map<std::string, std::pair<uint64_t, std::map<std::string, T>>>&
@@ -454,40 +463,6 @@ std::expected<void, std::string> WriteToBinaryImpl(
 
 std::expected<void, std::string> PlyWriter::WriteTo(
     std::ostream& stream) const {
-  // Static assertions to ensure variants of Callback are properly ordered
-  static_assert(Callback(Int8PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT8));
-  static_assert(Callback(Int8PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT8_LIST));
-  static_assert(Callback(UInt8PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT8));
-  static_assert(Callback(UInt8PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT8_LIST));
-  static_assert(Callback(Int16PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT16));
-  static_assert(Callback(Int16PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT16_LIST));
-  static_assert(Callback(UInt16PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT16));
-  static_assert(Callback(UInt16PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT16_LIST));
-  static_assert(Callback(Int32PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT32));
-  static_assert(Callback(Int32PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::INT32_LIST));
-  static_assert(Callback(UInt32PropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT32));
-  static_assert(Callback(UInt32PropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::UINT32_LIST));
-  static_assert(Callback(FloatPropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::FLOAT));
-  static_assert(Callback(FloatPropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::FLOAT_LIST));
-  static_assert(Callback(DoublePropertyCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::DOUBLE));
-  static_assert(Callback(DoublePropertyListCallback(nullptr)).index() ==
-                static_cast<size_t>(PropertyType::DOUBLE_LIST));
-
   if constexpr (std::endian::native == std::endian::big) {
     return WriteToBigEndian(stream);
   } else {
@@ -511,13 +486,13 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
       stream, *this,
       [&](const std::string& element_name, size_t element_index,
           const std::string& property_name,
-          size_t property_index) -> std::expected<PropertyType, std::string> {
+          size_t property_index) -> std::expected<size_t, std::string> {
         auto result = this->GetPropertyListSizeType(
             element_name, element_index, property_name, property_index);
         if (!result) {
           return std::unexpected(result.error());
         }
-        return static_cast<PropertyType>(*result);
+        return static_cast<size_t>(*result);
       },
       "ascii", property_callbacks, comments, object_info, context);
   if (!callbacks) {
@@ -568,13 +543,13 @@ std::expected<void, std::string> PlyWriter::WriteToBigEndian(
       stream, *this,
       [&](const std::string& element_name, size_t element_index,
           const std::string& property_name,
-          size_t property_index) -> std::expected<PropertyType, std::string> {
+          size_t property_index) -> std::expected<size_t, std::string> {
         auto result = this->GetPropertyListSizeType(
             element_name, element_index, property_name, property_index);
         if (!result) {
           return std::unexpected(result.error());
         }
-        return static_cast<PropertyType>(*result);
+        return static_cast<size_t>(*result);
       },
       property_callbacks, comments, object_info);
 }
@@ -594,13 +569,13 @@ std::expected<void, std::string> PlyWriter::WriteToLittleEndian(
       stream, *this,
       [&](const std::string& element_name, size_t element_index,
           const std::string& property_name,
-          size_t property_index) -> std::expected<PropertyType, std::string> {
+          size_t property_index) -> std::expected<size_t, std::string> {
         auto result = this->GetPropertyListSizeType(
             element_name, element_index, property_name, property_index);
         if (!result) {
           return std::unexpected(result.error());
         }
-        return static_cast<PropertyType>(*result);
+        return static_cast<size_t>(*result);
       },
       property_callbacks, comments, object_info);
 }

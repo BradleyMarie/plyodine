@@ -112,9 +112,9 @@ class PlyWriter {
       std::vector<std::string>& object_info) const = 0;
 
   enum class ListSizeType {
-    UINT8 = static_cast<int>(PropertyType::UINT8),
-    UINT16 = static_cast<int>(PropertyType::UINT16),
-    UINT32 = static_cast<int>(PropertyType::UINT32),
+    UINT8 = 0,
+    UINT16 = 1,
+    UINT32 = 2,
   };
 
   virtual std::expected<PlyWriter::ListSizeType, std::string>

@@ -33,10 +33,6 @@ struct Property final
       std::span<const DoubleProperty>,
       std::span<const DoublePropertyList>>::variant;
 
-  constexpr PropertyType type() const {
-    return static_cast<PropertyType>(index());
-  }
-
   size_t size() const {
     return std::visit([](const auto& entry) { return entry.size(); }, *this);
   }

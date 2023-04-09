@@ -12,6 +12,25 @@
 
 namespace plyodine {
 
+enum class PropertyType {
+  INT8 = 0u,
+  INT8_LIST = 1u,
+  UINT8 = 2u,
+  UINT8_LIST = 3u,
+  INT16 = 4u,
+  INT16_LIST = 5u,
+  UINT16 = 6u,
+  UINT16_LIST = 7u,
+  INT32 = 8u,
+  INT32_LIST = 9u,
+  UINT32 = 10u,
+  UINT32_LIST = 11u,
+  FLOAT = 12u,
+  FLOAT_LIST = 13u,
+  DOUBLE = 14u,
+  DOUBLE_LIST = 15u
+};
+
 class PlyReader {
  public:
   std::expected<void, std::string> ReadFrom(std::istream& stream);
