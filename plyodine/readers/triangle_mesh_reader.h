@@ -15,7 +15,7 @@ namespace plyodine {
 template <std::floating_point LocationType, std::floating_point NormalType,
           std::floating_point UVType, std::integral FaceIndexType>
 class TriangleMeshReader : public PlyReader {
- public:
+ protected:
   virtual void Start() = 0;
 
   virtual void AddVertex(const std::array<LocationType, 3> &position,
@@ -421,7 +421,6 @@ class TriangleMeshReader : public PlyReader {
     return std::expected<void, std::string>();
   }
 
- private:
   uint64_t num_vertices_;
   size_t handle_vertex_index_;
   size_t current_vertex_index_;
