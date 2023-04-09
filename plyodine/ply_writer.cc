@@ -343,7 +343,7 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
                 const std::string&, size_t, const std::string&, size_t)>&
                 get_property_list_size_type,
             const char* format,
-            const std::map<std::string, uint64_t>& num_element_instances,
+            std::map<std::string, uint64_t>& num_element_instances,
             const std::map<std::string, std::map<std::string, T>>& callbacks,
             const std::vector<std::string>& comments,
             const std::vector<std::string>& object_info, Context& context) {
@@ -387,7 +387,7 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
     }
 
     output << "element " << element.first << " "
-           << num_element_instances.at(element.first) << "\r";
+           << num_element_instances[element.first] << "\r";
     if (!output) {
       return std::unexpected(WriteFailure());
     }
@@ -426,7 +426,7 @@ std::expected<void, std::string> WriteToBinaryImpl(
     const std::function<std::expected<size_t, std::string>(
         const std::string&, size_t, const std::string&, size_t)>&
         get_property_list_size_type,
-    const std::map<std::string, uint64_t>& num_element_instances,
+    std::map<std::string, uint64_t>& num_element_instances,
     const std::map<std::string, std::map<std::string, T>>& callbacks,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
