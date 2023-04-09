@@ -160,13 +160,13 @@ class TriangleMeshReader : public PlyReader {
     return std::expected<void, std::string>();
   }
 
-  static const PropertyType *LookupProperty(
+  static const Callback *LookupProperty(
       const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
-          &properties,
+                     std::pair<uint64_t, std::map<std::string, Callback>>>
+          &property_callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto element_iter = properties.find(element_name);
-    if (element_iter == properties.end()) {
+    auto element_iter = property_callbacks.find(element_name);
+    if (element_iter == property_callbacks.end()) {
       return nullptr;
     }
 
@@ -179,104 +179,111 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<PlyReader::Callback>, std::string>
-  LocationPropertyIndex(
+  std::expected<std::optional<Callback>, std::string> LocationPropertyIndex(
       const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
-          &properties,
+                     std::pair<uint64_t, std::map<std::string, Callback>>>
+          &property_callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(properties, element_name, property_name);
+    auto property =
+        LookupProperty(property_callbacks, element_name, property_name);
 
     if (property) {
-      switch (*property) {
-        case PropertyType::FLOAT:
-          return FloatPropertyCallback(
-              &TriangleMeshReader::AddPosition<index, FloatProperty>);
-        case PropertyType::DOUBLE:
-          return DoublePropertyCallback(
-              &TriangleMeshReader::AddPosition<index, DoubleProperty>);
-        default:
-          return std::unexpected(
-              "The type of properties x, y, and z, on vertex elements must be "
-              "either float or double");
+      auto *float_callback = std::get_if<FloatPropertyCallback>(property);
+      if (float_callback) {
+        return FloatPropertyCallback(
+            &TriangleMeshReader::AddPosition<index, FloatProperty>);
       }
+
+      auto *double_callback = std::get_if<DoublePropertyCallback>(property);
+      if (double_callback) {
+        return DoublePropertyCallback(
+            &TriangleMeshReader::AddPosition<index, DoubleProperty>);
+      }
+
+      return std::unexpected(
+          "The type of properties x, y, and z, on vertex elements must be "
+          "either float or double");
     }
 
     return std::nullopt;
   }
 
   template <size_t index>
-  std::expected<std::optional<PlyReader::Callback>, std::string>
-  NormalPropertyIndex(
+  std::expected<std::optional<Callback>, std::string> NormalPropertyIndex(
       const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
-          &properties,
+                     std::pair<uint64_t, std::map<std::string, Callback>>>
+          &property_callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(properties, element_name, property_name);
+    auto property =
+        LookupProperty(property_callbacks, element_name, property_name);
 
     if (property) {
-      switch (*property) {
-        case PropertyType::FLOAT:
-          return FloatPropertyCallback(
-              &TriangleMeshReader::AddNormal<index, FloatProperty>);
-        case PropertyType::DOUBLE:
-          return DoublePropertyCallback(
-              &TriangleMeshReader::AddNormal<index, DoubleProperty>);
-        default:
-          return std::unexpected(
-              "The type of properties nx, ny, and nz, on vertex elements must "
-              "be either float or double");
+      auto *float_callback = std::get_if<FloatPropertyCallback>(property);
+      if (float_callback) {
+        return FloatPropertyCallback(
+            &TriangleMeshReader::AddNormal<index, FloatProperty>);
       }
+
+      auto *double_callback = std::get_if<DoublePropertyCallback>(property);
+      if (double_callback) {
+        return DoublePropertyCallback(
+            &TriangleMeshReader::AddNormal<index, DoubleProperty>);
+      }
+
+      return std::unexpected(
+          "The type of properties nx, ny, and nz, on vertex elements must be "
+          "either float or double");
     }
 
     return std::nullopt;
   }
 
   template <size_t index>
-  std::expected<std::optional<std::pair<std::string, PlyReader::Callback>>,
-                std::string>
+  std::expected<std::optional<std::pair<std::string, Callback>>, std::string>
   UVPropertyIndex(
       const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
-          &properties,
+                     std::pair<uint64_t, std::map<std::string, Callback>>>
+          &property_callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(properties, element_name, property_name);
+    auto property =
+        LookupProperty(property_callbacks, element_name, property_name);
 
     if (property) {
-      switch (*property) {
-        case PropertyType::FLOAT:
-          return std::make_pair(
-              property_name,
-              FloatPropertyCallback(
-                  &TriangleMeshReader::AddUV<index, FloatProperty>));
-        case PropertyType::DOUBLE:
-          return std::make_pair(
-              property_name,
-              DoublePropertyCallback(
-                  &TriangleMeshReader::AddUV<index, DoubleProperty>));
-        default:
-          return std::unexpected(
-              "The type of properties texture_s, texture_t, texture_u, "
-              "texture_v, s, t, u, and v on vertex elements must be either "
-              "float or double");
+      auto *float_callback = std::get_if<FloatPropertyCallback>(property);
+      if (float_callback) {
+        return std::make_pair(
+            property_name,
+            FloatPropertyCallback(
+                &TriangleMeshReader::AddUV<index, FloatProperty>));
       }
+
+      auto *double_callback = std::get_if<DoublePropertyCallback>(property);
+      if (double_callback) {
+        return std::make_pair(
+            property_name,
+            DoublePropertyCallback(
+                &TriangleMeshReader::AddUV<index, DoubleProperty>));
+      }
+
+      return std::unexpected(
+          "The type of properties texture_s, texture_t, texture_u, texture_v, "
+          "s, t, u, and v on vertex elements must be either float or double");
     }
 
     return std::nullopt;
   }
 
   template <size_t index>
-  std::expected<std::optional<std::pair<std::string, PlyReader::Callback>>,
-                std::string>
+  std::expected<std::optional<std::pair<std::string, Callback>>, std::string>
   UVPropertyIndex(
       const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
-          &properties,
+                     std::pair<uint64_t, std::map<std::string, Callback>>>
+          &property_callbacks,
       const std::string &element_name,
       const std::vector<std::string> &property_names) {
     for (const auto &property_name : property_names) {
-      auto face_property_index =
-          UVPropertyIndex<index>(properties, element_name, property_name);
+      auto face_property_index = UVPropertyIndex<index>(
+          property_callbacks, element_name, property_name);
       if (!face_property_index || *face_property_index) {
         return face_property_index;
       }
@@ -285,97 +292,111 @@ class TriangleMeshReader : public PlyReader {
     return std::nullopt;
   }
 
-  std::expected<std::optional<PlyReader::Callback>, std::string>
-  FacePropertyIndex(
+  std::expected<std::optional<Callback>, std::string> FacePropertyIndex(
       const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, PropertyType>>>
-          &properties,
+                     std::pair<uint64_t, std::map<std::string, Callback>>>
+          &property_callbacks,
       const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(properties, element_name, property_name);
+    auto property =
+        LookupProperty(property_callbacks, element_name, property_name);
 
     if (property) {
-      switch (*property) {
-        case PropertyType::INT8_LIST:
-          return Int8PropertyListCallback(
-              &TriangleMeshReader::AddVertexIndices<int8_t>);
-        case PropertyType::UINT8_LIST:
-          return UInt8PropertyListCallback(
-              &TriangleMeshReader::AddVertexIndices<uint8_t>);
-        case PropertyType::INT16_LIST:
-          return Int16PropertyListCallback(
-              &TriangleMeshReader::AddVertexIndices<int16_t>);
-        case PropertyType::UINT16_LIST:
-          return UInt16PropertyListCallback(
-              &TriangleMeshReader::AddVertexIndices<uint16_t>);
-        case PropertyType::INT32_LIST:
-          return Int32PropertyListCallback(
-              &TriangleMeshReader::AddVertexIndices<int32_t>);
-        case PropertyType::UINT32_LIST:
-          return UInt32PropertyListCallback(
-              &TriangleMeshReader::AddVertexIndices<uint32_t>);
-        default:
-          return std::unexpected(
-              "The type of property vertex_indices on face elements must be an "
-              "integral list type");
+      auto *int8_callback = std::get_if<Int8PropertyListCallback>(property);
+      if (int8_callback) {
+        return Int8PropertyListCallback(
+            &TriangleMeshReader::AddVertexIndices<int8_t>);
       }
+
+      auto *uint8_callback = std::get_if<UInt8PropertyListCallback>(property);
+      if (uint8_callback) {
+        return UInt8PropertyListCallback(
+            &TriangleMeshReader::AddVertexIndices<uint8_t>);
+      }
+
+      auto *int16_callback = std::get_if<Int16PropertyListCallback>(property);
+      if (int16_callback) {
+        return Int16PropertyListCallback(
+            &TriangleMeshReader::AddVertexIndices<int16_t>);
+      }
+
+      auto *uint16_callback = std::get_if<UInt16PropertyListCallback>(property);
+      if (uint16_callback) {
+        return UInt16PropertyListCallback(
+            &TriangleMeshReader::AddVertexIndices<uint16_t>);
+      }
+
+      auto *int32_callback = std::get_if<Int32PropertyListCallback>(property);
+      if (int32_callback) {
+        return Int32PropertyListCallback(
+            &TriangleMeshReader::AddVertexIndices<int32_t>);
+      }
+
+      auto *uint32_callback = std::get_if<UInt32PropertyListCallback>(property);
+      if (uint32_callback) {
+        return UInt32PropertyListCallback(
+            &TriangleMeshReader::AddVertexIndices<uint32_t>);
+      }
+
+      return std::unexpected(
+          "The type of property vertex_indices on face elements must be an "
+          "integral list type");
     }
 
     return std::nullopt;
   }
 
-  std::expected<std::map<std::string, std::map<std::string, Callback>>,
-                std::string>
-  Start(const std::map<std::string,
-                       std::pair<uint64_t, std::map<std::string, PropertyType>>>
-            &properties,
-        const std::vector<std::string> &comments,
-        const std::vector<std::string> &obj_infos) final {
+  std::expected<void, std::string> Start(
+      std::map<std::string,
+               std::pair<uint64_t, std::map<std::string, Callback>>>
+          &property_callbacks,
+      const std::vector<std::string> &comments,
+      const std::vector<std::string> &obj_infos) final {
     Start();
 
-    auto x = LocationPropertyIndex<0>(properties, "vertex", "x");
+    auto x = LocationPropertyIndex<0>(property_callbacks, "vertex", "x");
     if (!x) {
       return std::unexpected(x.error());
     }
 
-    auto y = LocationPropertyIndex<1>(properties, "vertex", "y");
+    auto y = LocationPropertyIndex<1>(property_callbacks, "vertex", "y");
     if (!y) {
       return std::unexpected(y.error());
     }
 
-    auto z = LocationPropertyIndex<2>(properties, "vertex", "z");
+    auto z = LocationPropertyIndex<2>(property_callbacks, "vertex", "z");
     if (!z) {
       return std::unexpected(z.error());
     }
 
-    auto nx = NormalPropertyIndex<0>(properties, "vertex", "nx");
+    auto nx = NormalPropertyIndex<0>(property_callbacks, "vertex", "nx");
     if (!nx) {
       return std::unexpected(nx.error());
     }
 
-    auto ny = NormalPropertyIndex<1>(properties, "vertex", "ny");
+    auto ny = NormalPropertyIndex<1>(property_callbacks, "vertex", "ny");
     if (!ny) {
       return std::unexpected(ny.error());
     }
 
-    auto nz = NormalPropertyIndex<2>(properties, "vertex", "nz");
+    auto nz = NormalPropertyIndex<2>(property_callbacks, "vertex", "nz");
     if (!nz) {
       return std::unexpected(nz.error());
     }
 
-    auto u = UVPropertyIndex<0>(properties, "vertex",
+    auto u = UVPropertyIndex<0>(property_callbacks, "vertex",
                                 {"u", "s", "texture_u", "texture_s"});
     if (!u) {
       return std::unexpected(u.error());
     }
 
-    auto v = UVPropertyIndex<1>(properties, "vertex",
+    auto v = UVPropertyIndex<1>(property_callbacks, "vertex",
                                 {"v", "t", "texture_v", "texture_t"});
     if (!v) {
       return std::unexpected(v.error());
     }
 
     auto vertex_indices =
-        FacePropertyIndex(properties, "face", "vertex_indices");
+        FacePropertyIndex(property_callbacks, "face", "vertex_indices");
     if (!vertex_indices) {
       return std::unexpected(vertex_indices.error());
     }
@@ -384,41 +405,39 @@ class TriangleMeshReader : public PlyReader {
       return std::unexpected("Element vertex must have properties x, y, and z");
     }
 
-    num_vertices_ = properties.at("vertex").first;
+    num_vertices_ = property_callbacks.at("vertex").first;
 
-    std::map<std::string, std::map<std::string, Callback>> result;
-    result["vertex"]["x"] = **x;
-    result["vertex"]["y"] = **y;
-    result["vertex"]["z"] = **z;
+    property_callbacks["vertex"].second["x"] = **x;
+    property_callbacks["vertex"].second["y"] = **y;
+    property_callbacks["vertex"].second["z"] = **z;
 
     if (*nx && *ny && *nz) {
       normals_ = &normals_storage_;
-      result["vertex"]["nx"] = **nx;
-      result["vertex"]["ny"] = **ny;
-      result["vertex"]["nz"] = **nz;
+      property_callbacks["vertex"].second["nx"] = **nx;
+      property_callbacks["vertex"].second["ny"] = **ny;
+      property_callbacks["vertex"].second["nz"] = **nz;
     } else {
       normals_ = nullptr;
     }
 
     if (*u && *v) {
       uvs_ = &uv_storage_;
-      result["vertex"][(*u)->first] = (*u)->second;
-      result["vertex"][(*v)->first] = (*v)->second;
+      property_callbacks["vertex"].second[(*u)->first] = (*u)->second;
+      property_callbacks["vertex"].second[(*v)->first] = (*v)->second;
     } else {
       uvs_ = nullptr;
     }
 
-    handle_vertex_index_ = result["vertex"].size();
+    handle_vertex_index_ = property_callbacks["vertex"].second.size();
     current_vertex_index_ = 0u;
 
     if (!*vertex_indices) {
       return std::unexpected("Element face must have property vertex_indices");
     }
 
-    result["face"]["vertex_indices"] = **vertex_indices;
+    property_callbacks["face"].second["vertex_indices"] = **vertex_indices;
 
-    return std::expected<std::map<std::string, std::map<std::string, Callback>>,
-                         std::string>(result);
+    return std::expected<void, std::string>();
   }
 
  private:

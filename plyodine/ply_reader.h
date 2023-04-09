@@ -12,25 +12,6 @@
 
 namespace plyodine {
 
-enum class PropertyType {
-  INT8 = 0u,
-  INT8_LIST = 1u,
-  UINT8 = 2u,
-  UINT8_LIST = 3u,
-  INT16 = 4u,
-  INT16_LIST = 5u,
-  UINT16 = 6u,
-  UINT16_LIST = 7u,
-  INT32 = 8u,
-  INT32_LIST = 9u,
-  UINT32 = 10u,
-  UINT32_LIST = 11u,
-  FLOAT = 12u,
-  FLOAT_LIST = 13u,
-  DOUBLE = 14u,
-  DOUBLE_LIST = 15u
-};
-
 class PlyReader {
  public:
   std::expected<void, std::string> ReadFrom(std::istream& stream);
@@ -103,12 +84,10 @@ class PlyReader {
                        DoublePropertyCallback, DoublePropertyListCallback>
       Callback;
 
-  virtual std::expected<std::map<std::string, std::map<std::string, Callback>>,
-                        std::string>
-  Start(
-      const std::map<std::string,
-                     std::pair<uint64_t, std::map<std::string, PropertyType>>>&
-          properties,
+  virtual std::expected<void, std::string> Start(
+      std::map<std::string,
+               std::pair<uint64_t, std::map<std::string, Callback>>>&
+          property_callbacks,
       const std::vector<std::string>& comments,
       const std::vector<std::string>& object_info) = 0;
 };
