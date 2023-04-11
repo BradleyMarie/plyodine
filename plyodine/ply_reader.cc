@@ -192,7 +192,7 @@ std::expected<void, std::string> DeserializeBinary(std::istream& input,
 template <std::endian Endianness, std::integral SizeType, std::floating_point T>
 std::expected<void, std::string> DeserializeBinary(std::istream& input,
                                                    Context& context, T* value) {
-  std::conditional_t<std::is_same<T, float>::value, uint32_t, uint64_t> read;
+  std::conditional_t<std::is_same<T, float>::value, uint32_t, uintmax_t> read;
 
   input.read(reinterpret_cast<char*>(&read), sizeof(read));
   if (!input) {
@@ -245,17 +245,17 @@ std::expected<void, std::string> DeserializeBinary(std::istream& input,
 }
 
 template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
-std::function<std::expected<void, std::string>(uint64_t)> ToReadCallback(
+std::function<std::expected<void, std::string>(uintmax_t)> ToReadCallback(
     std::istream& input, PlyReader& ply_reader,
     std::expected<void, std::string> (PlyReader::*callback)(
-        const std::string&, size_t, const std::string&, size_t, uint64_t, T),
+        const std::string&, size_t, const std::string&, size_t, uintmax_t, T),
     const std::string& element_name, size_t element_index,
     const std::string& property_name, size_t property_index,
     size_t actual_property_index, size_t num_properties, Context& context) {
   auto result =
       [&input, &ply_reader, callback, element_name, element_index,
        property_name, property_index, actual_property_index, num_properties,
-       &context](uint64_t instance) -> std::expected<void, std::string> {
+       &context](uintmax_t instance) -> std::expected<void, std::string> {
     if constexpr (Ascii) {
       if (actual_property_index == 0) {
         auto read_line = ReadNextLine(input, context);
@@ -305,10 +305,10 @@ std::function<std::expected<void, std::string>(uint64_t)> ToReadCallback(
 }
 
 template <bool Ascii, std::endian Endianness, typename T>
-std::function<std::expected<void, std::string>(uint64_t)> ToReadCallback(
+std::function<std::expected<void, std::string>(uintmax_t)> ToReadCallback(
     std::istream& input, PlyReader& ply_reader,
     std::expected<void, std::string> (PlyReader::*callback)(
-        const std::string&, size_t, const std::string&, size_t, uint64_t, T),
+        const std::string&, size_t, const std::string&, size_t, uintmax_t, T),
     const std::string& element_name, size_t element_index,
     const std::string& property_name, size_t property_index,
     size_t actual_property_index, size_t num_properties,
@@ -356,19 +356,19 @@ std::function<std::expected<void, std::string>(uint64_t)> ToReadCallback(
 
 template <bool Ascii, std::endian Endianness, typename T>
 std::vector<std::pair<
-    uint64_t,
-    std::vector<std::function<std::expected<void, std::string>(uint64_t)>>>>
+    uintmax_t,
+    std::vector<std::function<std::expected<void, std::string>(uintmax_t)>>>>
 BuildCallbacks(
     std::istream& input, PlyReader& ply_reader,
     const std::vector<
-        std::tuple<std::string, uint64_t,
+        std::tuple<std::string, uintmax_t,
                    std::vector<std::tuple<
                        std::string, std::optional<PlyHeader::Property::Type>,
                        size_t, size_t, T>>>>& ordered_callbacks,
     Context& context) {
   std::vector<std::pair<
-      uint64_t,
-      std::vector<std::function<std::expected<void, std::string>(uint64_t)>>>>
+      uintmax_t,
+      std::vector<std::function<std::expected<void, std::string>(uintmax_t)>>>>
       result;
   for (size_t actual_element_index = 0;
        actual_element_index < ordered_callbacks.size();
@@ -377,9 +377,9 @@ BuildCallbacks(
     const auto& properties = std::get<2>(element);
 
     result.emplace_back(
-        std::get<uint64_t>(element),
+        std::get<uintmax_t>(element),
         std::vector<
-            std::function<std::expected<void, std::string>(uint64_t)>>());
+            std::function<std::expected<void, std::string>(uintmax_t)>>());
     for (size_t actual_property_index = 0;
          actual_property_index < properties.size(); actual_property_index++) {
       const auto& property = properties.at(actual_property_index);
@@ -407,7 +407,7 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
     return std::unexpected(header.error());
   }
 
-  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, Callback>> empty_callbacks;
   for (const auto& element : header->elements) {
     num_element_instances[element.name] = element.num_in_file;
@@ -536,7 +536,7 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   }
 
   std::vector<
-      std::tuple<std::string, uint64_t,
+      std::tuple<std::string, uintmax_t,
                  std::vector<std::tuple<
                      std::string, std::optional<PlyHeader::Property::Type>,
                      size_t, size_t, Callback>>>>
@@ -561,8 +561,8 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   std::get<std::string_view>(context) = header->line_ending;
 
   std::vector<std::pair<
-      uint64_t,
-      std::vector<std::function<std::expected<void, std::string>(uint64_t)>>>>
+      uintmax_t,
+      std::vector<std::function<std::expected<void, std::string>(uintmax_t)>>>>
       wrapped_callbacks;
   switch (header->format) {
     case PlyHeader::ASCII:
@@ -580,7 +580,7 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   }
 
   for (const auto& element : wrapped_callbacks) {
-    for (uint64_t instance = 0; instance < element.first; instance++) {
+    for (uintmax_t instance = 0; instance < element.first; instance++) {
       for (const auto& property : element.second) {
         auto result = property(instance);
         if (!result) {

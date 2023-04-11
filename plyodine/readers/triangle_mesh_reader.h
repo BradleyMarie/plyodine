@@ -47,7 +47,7 @@ class TriangleMeshReader : public PlyReader {
                                                size_t element_index,
                                                const std::string &property_name,
                                                size_t property_index,
-                                               uint64_t instance, T value) {
+                                               uintmax_t instance, T value) {
     xyz_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(xyz_[index])) {
@@ -68,7 +68,7 @@ class TriangleMeshReader : public PlyReader {
                                              size_t element_index,
                                              const std::string &property_name,
                                              size_t property_index,
-                                             uint64_t instance, T value) {
+                                             uintmax_t instance, T value) {
     normals_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(normals_storage_[index])) {
@@ -89,7 +89,7 @@ class TriangleMeshReader : public PlyReader {
                                          size_t element_index,
                                          const std::string &property_name,
                                          size_t property_index,
-                                         uint64_t instance, T value) {
+                                         uintmax_t instance, T value) {
     uv_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(uv_storage_[index])) {
@@ -113,14 +113,14 @@ class TriangleMeshReader : public PlyReader {
       }
     }
 
-    uint64_t unsigned_index = static_cast<uint64_t>(index);
+    uintmax_t unsigned_index = static_cast<uintmax_t>(index);
 
     if (unsigned_index >= num_vertices_) {
       return std::unexpected(message);
     }
 
     if (unsigned_index >
-        static_cast<uint64_t>(std::numeric_limits<FaceIndexType>::max())) {
+        static_cast<uintmax_t>(std::numeric_limits<FaceIndexType>::max())) {
       return std::unexpected(message);
     }
 
@@ -131,7 +131,7 @@ class TriangleMeshReader : public PlyReader {
   std::expected<void, std::string> AddVertexIndices(
       const std::string &element_name, size_t element_index,
       const std::string &property_name, size_t property_index,
-      uint64_t instance, std::span<const T> value) {
+      uintmax_t instance, std::span<const T> value) {
     if (value.size() >= 3) {
       auto v0_valid = ValidateVertexIndex(value[0]);
       if (!v0_valid) {
@@ -328,7 +328,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::expected<void, std::string> Start(
-      const std::map<std::string, uint64_t> &num_element_instances,
+      const std::map<std::string, uintmax_t> &num_element_instances,
       std::map<std::string, std::map<std::string, Callback>> &callbacks,
       const std::vector<std::string> &comments,
       const std::vector<std::string> &obj_infos) final {
@@ -421,7 +421,7 @@ class TriangleMeshReader : public PlyReader {
     return std::expected<void, std::string>();
   }
 
-  uint64_t num_vertices_;
+  uintmax_t num_vertices_;
   size_t handle_vertex_index_;
   size_t current_vertex_index_;
 

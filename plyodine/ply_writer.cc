@@ -152,7 +152,7 @@ template <std::endian Endianness, std::integral SizeType, std::floating_point T>
 std::expected<void, std::string> SerializeBinary(std::ostream& output,
                                                  T value) {
   auto entry = std::bit_cast<
-      std::conditional_t<std::is_same<T, float>::value, uint32_t, uint64_t>>(
+      std::conditional_t<std::is_same<T, float>::value, uint32_t, uintmax_t>>(
       value);
 
   if (Endianness != std::endian::native) {
@@ -194,9 +194,10 @@ template <typename T>
 std::expected<T, std::string> CallCallback(
     const PlyWriter& ply_writer,
     std::expected<T, std::string> (PlyWriter::*callback)(
-        const std::string&, size_t, const std::string&, size_t, uint64_t) const,
+        const std::string&, size_t, const std::string&, size_t, uintmax_t)
+        const,
     const std::string& element_name, size_t element_index,
-    const std::string& property_name, size_t property_index, uint64_t instance,
+    const std::string& property_name, size_t property_index, uintmax_t instance,
     Context& context) {
   return (ply_writer.*callback)(element_name, element_index, property_name,
                                 property_index, instance);
@@ -206,10 +207,10 @@ template <typename T>
 std::expected<std::span<const T>, std::string> CallCallback(
     const PlyWriter& ply_writer,
     std::expected<std::span<const T>, std::string> (PlyWriter::*callback)(
-        const std::string&, size_t, const std::string&, size_t, uint64_t,
+        const std::string&, size_t, const std::string&, size_t, uintmax_t,
         std::vector<T>&) const,
     const std::string& element_name, size_t element_index,
-    const std::string& property_name, size_t property_index, uint64_t instance,
+    const std::string& property_name, size_t property_index, uintmax_t instance,
     Context& context) {
   auto& vector = std::get<std::vector<T>>(context);
   vector.clear();
@@ -236,7 +237,7 @@ void PropertyListString(std::ostream& output, size_t list_type,
 }
 
 template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
-std::expected<std::function<std::expected<void, std::string>(uint64_t)>,
+std::expected<std::function<std::expected<void, std::string>(uintmax_t)>,
               std::string>
 ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
                 const std::string& element_name, size_t element_index,
@@ -261,7 +262,7 @@ ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
 
   auto result = [&output, &ply_writer, callback, element_name, element_index,
                  property_name, property_index, &context](
-                    int64_t instance) -> std::expected<void, std::string> {
+                    uintmax_t instance) -> std::expected<void, std::string> {
     auto result =
         CallCallback(ply_writer, callback, element_name, element_index,
                      property_name, property_index, instance, context);
@@ -291,7 +292,7 @@ ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
 }
 
 template <bool Ascii, std::endian Endianness, typename T>
-std::expected<std::function<std::expected<void, std::string>(uint64_t)>,
+std::expected<std::function<std::expected<void, std::string>(uintmax_t)>,
               std::string>
 ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
                 const std::string& element_name, size_t element_index,
@@ -336,15 +337,15 @@ ToWriteCallback(std::ostream& output, const PlyWriter& ply_writer, T callback,
 
 template <bool Ascii, std::endian Endianness, typename T>
 std::expected<
-    std::vector<std::pair<uint64_t, std::vector<std::function<std::expected<
-                                        void, std::string>(int64_t)>>>>,
+    std::vector<std::pair<uintmax_t, std::vector<std::function<std::expected<
+                                         void, std::string>(uintmax_t)>>>>,
     std::string>
 WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
             const std::function<std::expected<size_t, std::string>(
                 const std::string&, size_t, const std::string&, size_t)>&
                 get_property_list_size_type,
             const char* format,
-            std::map<std::string, uint64_t>& num_element_instances,
+            std::map<std::string, uintmax_t>& num_element_instances,
             const std::map<std::string, std::map<std::string, T>>& callbacks,
             const std::vector<std::string>& comments,
             const std::vector<std::string>& object_info, Context& context) {
@@ -378,8 +379,8 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
   }
 
   std::vector<std::pair<
-      uint64_t,
-      std::vector<std::function<std::expected<void, std::string>(int64_t)>>>>
+      uintmax_t,
+      std::vector<std::function<std::expected<void, std::string>(uintmax_t)>>>>
       actual_callbacks;
   for (const auto& element : callbacks) {
     auto element_name_valid = ValidateName(element.first);
@@ -393,7 +394,7 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
       return std::unexpected(WriteFailure());
     }
 
-    std::vector<std::function<std::expected<void, std::string>(int64_t)>> row;
+    std::vector<std::function<std::expected<void, std::string>(uintmax_t)>> row;
     for (const auto& property : element.second) {
       auto write_callback = std::visit(
           [&](auto callback) {
@@ -427,7 +428,7 @@ std::expected<void, std::string> WriteToBinaryImpl(
     const std::function<std::expected<size_t, std::string>(
         const std::string&, size_t, const std::string&, size_t)>&
         get_property_list_size_type,
-    std::map<std::string, uint64_t>& num_element_instances,
+    std::map<std::string, uintmax_t>& num_element_instances,
     const std::map<std::string, std::map<std::string, T>>& callbacks,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
@@ -447,7 +448,7 @@ std::expected<void, std::string> WriteToBinaryImpl(
   }
 
   for (const auto& element : *actual_callbacks) {
-    for (uint64_t instance = 0; instance < element.first; instance++) {
+    for (uintmax_t instance = 0; instance < element.first; instance++) {
       for (const auto& property : element.second) {
         auto result = property(instance);
         if (!result) {
@@ -473,7 +474,7 @@ std::expected<void, std::string> PlyWriter::WriteTo(
 
 std::expected<void, std::string> PlyWriter::WriteToASCII(
     std::ostream& stream) const {
-  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
@@ -502,7 +503,7 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
   }
 
   for (const auto& element : *actual_callbacks) {
-    for (uint64_t instance = 0; instance < element.first; instance++) {
+    for (uintmax_t instance = 0; instance < element.first; instance++) {
       bool first = true;
       for (const auto& property : element.second) {
         if (!first) {
@@ -532,7 +533,7 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
 
 std::expected<void, std::string> PlyWriter::WriteToBigEndian(
     std::ostream& stream) const {
-  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
@@ -558,7 +559,7 @@ std::expected<void, std::string> PlyWriter::WriteToBigEndian(
 
 std::expected<void, std::string> PlyWriter::WriteToLittleEndian(
     std::ostream& stream) const {
-  std::map<std::string, uint64_t> num_element_instances;
+  std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;

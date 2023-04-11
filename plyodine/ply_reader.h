@@ -18,70 +18,72 @@ class PlyReader {
 
  protected:
   typedef std::expected<void, std::string> (PlyReader::*Int8PropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t, int8_t);
+      const std::string&, size_t, const std::string&, size_t, uintmax_t,
+      int8_t);
   typedef std::expected<void, std::string> (
       PlyReader::*Int8PropertyListCallback)(const std::string&, size_t,
                                             const std::string&, size_t,
-                                            uint64_t, std::span<const int8_t>);
+                                            uintmax_t, std::span<const int8_t>);
 
   typedef std::expected<void, std::string> (PlyReader::*UInt8PropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
+      const std::string&, size_t, const std::string&, size_t, uintmax_t,
       uint8_t);
   typedef std::expected<void, std::string> (
       PlyReader::*UInt8PropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
-                                             uint64_t,
+                                             uintmax_t,
                                              std::span<const uint8_t>);
 
   typedef std::expected<void, std::string> (PlyReader::*Int16PropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
+      const std::string&, size_t, const std::string&, size_t, uintmax_t,
       int16_t);
   typedef std::expected<void, std::string> (
       PlyReader::*Int16PropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
-                                             uint64_t,
+                                             uintmax_t,
                                              std::span<const int16_t>);
 
   typedef std::expected<void, std::string> (PlyReader::*UInt16PropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
+      const std::string&, size_t, const std::string&, size_t, uintmax_t,
       uint16_t);
   typedef std::expected<void, std::string> (
       PlyReader::*UInt16PropertyListCallback)(const std::string&, size_t,
                                               const std::string&, size_t,
-                                              uint64_t,
+                                              uintmax_t,
                                               std::span<const uint16_t>);
 
   typedef std::expected<void, std::string> (PlyReader::*Int32PropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
+      const std::string&, size_t, const std::string&, size_t, uintmax_t,
       int32_t);
   typedef std::expected<void, std::string> (
       PlyReader::*Int32PropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
-                                             uint64_t,
+                                             uintmax_t,
                                              std::span<const int32_t>);
 
   typedef std::expected<void, std::string> (PlyReader::*UInt32PropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t,
+      const std::string&, size_t, const std::string&, size_t, uintmax_t,
       uint32_t);
   typedef std::expected<void, std::string> (
       PlyReader::*UInt32PropertyListCallback)(const std::string&, size_t,
                                               const std::string&, size_t,
-                                              uint64_t,
+                                              uintmax_t,
                                               std::span<const uint32_t>);
 
   typedef std::expected<void, std::string> (PlyReader::*FloatPropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t, float);
+      const std::string&, size_t, const std::string&, size_t, uintmax_t, float);
   typedef std::expected<void, std::string> (
       PlyReader::*FloatPropertyListCallback)(const std::string&, size_t,
                                              const std::string&, size_t,
-                                             uint64_t, std::span<const float>);
+                                             uintmax_t, std::span<const float>);
 
   typedef std::expected<void, std::string> (PlyReader::*DoublePropertyCallback)(
-      const std::string&, size_t, const std::string&, size_t, uint64_t, double);
+      const std::string&, size_t, const std::string&, size_t, uintmax_t,
+      double);
   typedef std::expected<void, std::string> (
       PlyReader::*DoublePropertyListCallback)(const std::string&, size_t,
                                               const std::string&, size_t,
-                                              uint64_t,
+                                              uintmax_t,
                                               std::span<const double>);
 
   typedef std::variant<Int8PropertyCallback, Int8PropertyListCallback,
@@ -95,7 +97,7 @@ class PlyReader {
       Callback;
 
   virtual std::expected<void, std::string> Start(
-      const std::map<std::string, uint64_t>& num_element_instances,
+      const std::map<std::string, uintmax_t>& num_element_instances,
       std::map<std::string, std::map<std::string, Callback>>& callbacks,
       const std::vector<std::string>& comments,
       const std::vector<std::string>& object_info) = 0;

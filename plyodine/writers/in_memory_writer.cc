@@ -404,7 +404,7 @@ struct overloaded : Ts... {
 };
 
 std::expected<void, std::string> InMemoryWriter::Start(
-    std::map<std::string, uint64_t>& num_element_instances,
+    std::map<std::string, uintmax_t>& num_element_instances,
     std::map<std::string, std::map<std::string, Callback>>& callbacks,
     std::vector<std::string>& comments,
     std::vector<std::string>& object_info) const {

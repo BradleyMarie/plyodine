@@ -20,7 +20,7 @@ struct PlyHeader final {
 
   struct Element final {
     std::string name;
-    uint64_t num_in_file;
+    uintmax_t num_in_file;
     std::vector<Property> properties;
   };
 

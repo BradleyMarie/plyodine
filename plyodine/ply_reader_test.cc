@@ -31,74 +31,74 @@ class MockPlyReader final : public plyodine::PlyReader {
   MOCK_METHOD((std::expected<void, std::string>), StartImpl,
               ((const std::map<
                    std::string,
-                   std::pair<uint64_t, std::map<std::string, PropertyType>>>&),
+                   std::pair<uintmax_t, std::map<std::string, PropertyType>>>&),
                const std::vector<std::string>&,
                const std::vector<std::string>&),
               ());
 
   MOCK_METHOD((std::expected<void, std::string>), HandleInt8,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               int8_t));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, int8_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleInt8List,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const int8_t>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const int8_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt8,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               uint8_t));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, uint8_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt8List,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const uint8_t>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const uint8_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleInt16,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               int16_t));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, int16_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleInt16List,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const int16_t>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const int16_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt16,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               uint16_t));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, uint16_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt16List,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const uint16_t>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const uint16_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleInt32,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               int32_t));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, int32_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleInt32List,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const int32_t>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const int32_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt32,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               uint32_t));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, uint32_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt32List,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const u_int32_t>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const u_int32_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleFloat,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               float));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, float));
   MOCK_METHOD((std::expected<void, std::string>), HandleFloatList,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const float>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const float>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleDouble,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               double));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, double));
   MOCK_METHOD((std::expected<void, std::string>), HandleDoubleList,
-              (const std::string&, size_t, const std::string&, size_t, uint64_t,
-               std::span<const double>));
+              (const std::string&, size_t, const std::string&, size_t,
+               uintmax_t, std::span<const double>));
 
   std::expected<void, std::string> Start(
-      const std::map<std::string, uint64_t>& num_element_instances,
+      const std::map<std::string, uintmax_t>& num_element_instances,
       std::map<std::string, std::map<std::string, Callback>>& callbacks,
       const std::vector<std::string>& comments,
       const std::vector<std::string>& object_info) override {
     std::map<std::string,
-             std::pair<uint64_t, std::map<std::string, PropertyType>>>
+             std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties;
     for (const auto& element : callbacks) {
       for (const auto& property : element.second) {
@@ -507,7 +507,7 @@ TEST(ASCII, Empty) {
 
 TEST(ASCII, MismatchedLineEndings) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {2u, {{"a", PropertyType::INT8}}}}};
 
   MockPlyReader reader;
@@ -572,7 +572,7 @@ TEST(ASCII, MismatchedLineEndings) {
 
 TEST(ASCII, InvalidCharacter) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {2u, {{"a", PropertyType::INT8}}}}};
 
   MockPlyReader reader;
@@ -636,7 +636,7 @@ TEST(ASCII, InvalidCharacter) {
 
 TEST(ASCII, ListMissingEntries) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -700,7 +700,7 @@ TEST(ASCII, ListMissingEntries) {
 
 TEST(ASCII, MissingElement) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {2u, {{"l", PropertyType::INT8}}}}};
 
   MockPlyReader reader;
@@ -762,7 +762,7 @@ TEST(ASCII, MissingElement) {
 
 TEST(ASCII, EmptyToken) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {
           {"vertex",
            {2u, {{"a", PropertyType::INT8}, {"b", PropertyType::INT8}}}}};
@@ -828,7 +828,7 @@ TEST(ASCII, EmptyToken) {
 TEST(ASCII, ListSizeTooLarge) {
   auto impl = [](const std::string& name) {
     std::map<std::string,
-             std::pair<uint64_t, std::map<std::string, PropertyType>>>
+             std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
     MockPlyReader reader;
@@ -901,7 +901,7 @@ TEST(ASCII, ListSizeTooLarge) {
 TEST(ASCII, ListSizeBad) {
   auto impl = [](const std::string& name) {
     std::map<std::string,
-             std::pair<uint64_t, std::map<std::string, PropertyType>>>
+             std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
     MockPlyReader reader;
@@ -974,7 +974,7 @@ TEST(ASCII, ListSizeBad) {
 TEST(ASCII, EntryBad) {
   auto impl = [](const std::string& name, PropertyType type) {
     std::map<std::string,
-             std::pair<uint64_t, std::map<std::string, PropertyType>>>
+             std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", type}}}}};
 
     MockPlyReader reader;
@@ -1052,7 +1052,7 @@ TEST(ASCII, EntryBad) {
 TEST(ASCII, EntryTooBig) {
   auto impl = [](const std::string& name, PropertyType type) {
     std::map<std::string,
-             std::pair<uint64_t, std::map<std::string, PropertyType>>>
+             std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", type}}}}};
 
     MockPlyReader reader;
@@ -1134,7 +1134,7 @@ TEST(ASCII, EntryTooBig) {
 
 TEST(ASCII, UnusedTokens) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {2u, {{"a", PropertyType::INT8}}}}};
 
   MockPlyReader reader;
@@ -1197,7 +1197,7 @@ TEST(ASCII, UnusedTokens) {
 
 TEST(ASCII, WithData) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", PropertyType::INT8},
@@ -1354,7 +1354,7 @@ TEST(ASCII, WithData) {
 
 TEST(ASCII, WithDataSkipAll) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", PropertyType::INT8},
@@ -1522,7 +1522,7 @@ TEST(ASCII, HandleFails) {
 
 TEST(ASCII, WithUIntListSizes) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", PropertyType::UINT8_LIST},
@@ -1564,7 +1564,7 @@ TEST(ASCII, WithUIntListSizes) {
 
 TEST(ASCII, WithIntListSizes) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", PropertyType::UINT8_LIST},
@@ -1606,7 +1606,7 @@ TEST(ASCII, WithIntListSizes) {
 
 TEST(ASCII, WithNegativeInt8ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1624,7 +1624,7 @@ TEST(ASCII, WithNegativeInt8ListSize) {
 
 TEST(ASCII, WithNegativeInt16ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1642,7 +1642,7 @@ TEST(ASCII, WithNegativeInt16ListSize) {
 
 TEST(ASCII, WithNegativeInt32ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -1719,7 +1719,7 @@ TEST(BigEndian, Empty) {
 
 TEST(BigEndian, WithData) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", PropertyType::INT8},
@@ -1876,7 +1876,7 @@ TEST(BigEndian, WithData) {
 
 TEST(BigEndian, WithDataSkipAll) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", PropertyType::INT8},
@@ -1963,7 +1963,7 @@ TEST(BigEndian, WithDataError) {
 
 TEST(BigEndian, WithUIntListSizes) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", PropertyType::UINT8_LIST},
@@ -2094,7 +2094,7 @@ TEST(BigEndian, HandleFails) {
 
 TEST(BigEndian, WithIntListSizes) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", PropertyType::UINT8_LIST},
@@ -2140,7 +2140,7 @@ TEST(BigEndian, WithIntListSizesError) {
 
 TEST(BigEndian, WithNegativeInt8ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -2158,7 +2158,7 @@ TEST(BigEndian, WithNegativeInt8ListSize) {
 
 TEST(BigEndian, WithNegativeInt16ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -2176,7 +2176,7 @@ TEST(BigEndian, WithNegativeInt16ListSize) {
 
 TEST(BigEndian, WithNegativeInt32ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -2253,7 +2253,7 @@ TEST(LittleEndian, Empty) {
 
 TEST(LittleEndian, WithData) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", PropertyType::INT8},
@@ -2410,7 +2410,7 @@ TEST(LittleEndian, WithData) {
 
 TEST(LittleEndian, WithDataSkipAll) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
                       {{"a", PropertyType::INT8},
@@ -2582,7 +2582,7 @@ TEST(LittleEndian, HandleFails) {
 
 TEST(LittleEndian, WithUIntListSizes) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", PropertyType::UINT8_LIST},
@@ -2628,7 +2628,7 @@ TEST(LittleEndian, WithUIntListSizesError) {
 
 TEST(LittleEndian, WithIntListSizes) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
                       {{"l0", PropertyType::UINT8_LIST},
@@ -2675,7 +2675,7 @@ TEST(LittleEndian, WithIntListSizesError) {
 
 TEST(LittleEndian, WithNegativeInt8ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -2693,7 +2693,7 @@ TEST(LittleEndian, WithNegativeInt8ListSize) {
 
 TEST(LittleEndian, WithNegativeInt16ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;
@@ -2711,7 +2711,7 @@ TEST(LittleEndian, WithNegativeInt16ListSize) {
 
 TEST(LittleEndian, WithNegativeInt32ListSize) {
   std::map<std::string,
-           std::pair<uint64_t, std::map<std::string, PropertyType>>>
+           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
 
   MockPlyReader reader;

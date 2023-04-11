@@ -216,7 +216,7 @@ class InMemoryWriter final : public PlyWriter {
 
  protected:
   std::expected<void, std::string> Start(
-      std::map<std::string, uint64_t>& num_element_instances,
+      std::map<std::string, uintmax_t>& num_element_instances,
       std::map<std::string, std::map<std::string, Callback>>& callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override;
@@ -338,7 +338,7 @@ class InMemoryWriter final : public PlyWriter {
                                                size_t element_index,
                                                const std::string& property_name,
                                                size_t property_index,
-                                               uint64_t instance) const {
+                                               uintmax_t instance) const {
     return std::get<std::span<const T>>(
         *indexed_properties_.at(element_index)
              .at(property_index))[static_cast<size_t>(instance)];
@@ -348,7 +348,7 @@ class InMemoryWriter final : public PlyWriter {
   std::expected<std::span<const T>, std::string> SpanCallback(
       const std::string& element_name, size_t element_index,
       const std::string& property_name, size_t property_index,
-      uint64_t instance, std::vector<T>& storage) const {
+      uintmax_t instance, std::vector<T>& storage) const {
     return std::get<std::span<const std::span<const T>>>(
         *indexed_properties_.at(element_index)
              .at(property_index))[static_cast<size_t>(instance)];
@@ -358,7 +358,7 @@ class InMemoryWriter final : public PlyWriter {
   std::expected<std::span<const T>, std::string> VectorCallback(
       const std::string& element_name, size_t element_index,
       const std::string& property_name, size_t property_index,
-      uint64_t instance, std::vector<T>& storage) const {
+      uintmax_t instance, std::vector<T>& storage) const {
     return std::get<std::span<const std::vector<T>>>(
         *indexed_properties_.at(element_index)
              .at(property_index))[static_cast<size_t>(instance)];

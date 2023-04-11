@@ -46,7 +46,7 @@ class TestWriter final : public plyodine::PlyWriter {
         start_fails_(start_fails) {}
 
   std::expected<void, std::string> Start(
-      std::map<std::string, uint64_t>& num_element_instances,
+      std::map<std::string, uintmax_t>& num_element_instances,
       std::map<std::string, std::map<std::string, Callback>>& callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override {
@@ -168,7 +168,7 @@ class TestWriter final : public plyodine::PlyWriter {
                                          size_t element_index,
                                          const std::string& property_name,
                                          size_t property_index,
-                                         uint64_t instance) const {
+                                         uintmax_t instance) const {
     return std::get<std::span<const T>>(
         properties_.at(element_name).at(property_name))[instance];
   }
@@ -177,7 +177,7 @@ class TestWriter final : public plyodine::PlyWriter {
   std::expected<std::span<const T>, std::string> ListCallback(
       const std::string& element_name, size_t element_index,
       const std::string& property_name, size_t property_index,
-      uint64_t instance, std::vector<T>& storage) const {
+      uintmax_t instance, std::vector<T>& storage) const {
     return std::get<std::span<const std::span<const T>>>(
         properties_.at(element_name).at(property_name))[instance];
   }
