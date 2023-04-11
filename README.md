@@ -33,9 +33,9 @@ your `WORKSPACE` file.
 ```
 http_archive(
     name = "plyodine",
-    sha256 = "e796ce7ba80e9a28d661d75009156eda989d6825cad75c5842f69a632df1bcd4",
-    strip_prefix = "plyodine-af404e94b36ba8fd9dc669a1a26d3a44e24ed68e",
-    url = "https://github.com/BradleyMarie/plyodine/archive/af404e94b36ba8fd9dc669a1a26d3a44e24ed68e.zip",
+    sha256 = "bc23efd6135e226632c67cae17148a7391927e29263e8437f6b3d59843941a29",
+    strip_prefix = "plyodine-d82c25efd676bacdfac491ed2e4945509c3a63dd",
+    url = "https://github.com/BradleyMarie/plyodine/archive/d82c25efd676bacdfac491ed2e4945509c3a63dd.zip",
 )
 ```
 
