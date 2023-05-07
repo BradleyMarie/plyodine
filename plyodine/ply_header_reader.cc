@@ -255,12 +255,20 @@ std::expected<PlyHeader::Property::Type, std::string> ParseType(
   static const std::unordered_map<std::string_view, PlyHeader::Property::Type>
       type_map = {{"char", PlyHeader::Property::INT8},
                   {"uchar", PlyHeader::Property::UINT8},
+                  {"int8", PlyHeader::Property::INT8},
+                  {"uint8", PlyHeader::Property::UINT8},
                   {"short", PlyHeader::Property::INT16},
                   {"ushort", PlyHeader::Property::UINT16},
+                  {"int16", PlyHeader::Property::INT16},
+                  {"uint16", PlyHeader::Property::UINT16},
                   {"int", PlyHeader::Property::INT32},
                   {"uint", PlyHeader::Property::UINT32},
+                  {"int32", PlyHeader::Property::INT32},
+                  {"uint32", PlyHeader::Property::UINT32},
                   {"float", PlyHeader::Property::FLOAT},
-                  {"double", PlyHeader::Property::DOUBLE}};
+                  {"float32", PlyHeader::Property::FLOAT},
+                  {"double", PlyHeader::Property::DOUBLE},
+                  {"float64", PlyHeader::Property::DOUBLE}};
   auto iter = type_map.find(type_name);
   if (iter == type_map.end()) {
     return std::unexpected("A property is of an invalid type");

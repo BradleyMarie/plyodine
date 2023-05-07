@@ -197,9 +197,19 @@ TEST(ReadPlyHeader, ElementCountTooMany) {
 }
 
 TEST(ReadPlyHeader, PropertyTypes) {
-  std::string types[8] = {"char", "uchar", "short", "ushort",
-                          "int",  "uint",  "float", "double"};
-  plyodine::PlyHeader::Property::Type parsed_types[8] = {
+  std::string types[16] = {"char",  "uchar",  "short",   "ushort",
+                           "int",   "uint",   "float",   "double",
+                           "int8",  "uint8",  "int16",   "uint16",
+                           "int32", "uint32", "float32", "float64"};
+  plyodine::PlyHeader::Property::Type parsed_types[16] = {
+      plyodine::PlyHeader::Property::Type::INT8,
+      plyodine::PlyHeader::Property::Type::UINT8,
+      plyodine::PlyHeader::Property::Type::INT16,
+      plyodine::PlyHeader::Property::Type::UINT16,
+      plyodine::PlyHeader::Property::Type::INT32,
+      plyodine::PlyHeader::Property::Type::UINT32,
+      plyodine::PlyHeader::Property::Type::FLOAT,
+      plyodine::PlyHeader::Property::Type::DOUBLE,
       plyodine::PlyHeader::Property::Type::INT8,
       plyodine::PlyHeader::Property::Type::UINT8,
       plyodine::PlyHeader::Property::Type::INT16,
@@ -301,9 +311,19 @@ TEST(ReadPlyHeader, PropertyListTooMany) {
 }
 
 TEST(ReadPlyHeader, PropertyListTypes) {
-  std::string types[8] = {"char", "uchar", "short", "ushort",
-                          "int",  "uint",  "float", "double"};
-  plyodine::PlyHeader::Property::Type parsed_types[8] = {
+  std::string types[16] = {"char",  "uchar",  "short",   "ushort",
+                           "int",   "uint",   "float",   "double",
+                           "int8",  "uint8",  "int16",   "uint16",
+                           "int32", "uint32", "float32", "float64"};
+  plyodine::PlyHeader::Property::Type parsed_types[16] = {
+      plyodine::PlyHeader::Property::Type::INT8,
+      plyodine::PlyHeader::Property::Type::UINT8,
+      plyodine::PlyHeader::Property::Type::INT16,
+      plyodine::PlyHeader::Property::Type::UINT16,
+      plyodine::PlyHeader::Property::Type::INT32,
+      plyodine::PlyHeader::Property::Type::UINT32,
+      plyodine::PlyHeader::Property::Type::FLOAT,
+      plyodine::PlyHeader::Property::Type::DOUBLE,
       plyodine::PlyHeader::Property::Type::INT8,
       plyodine::PlyHeader::Property::Type::UINT8,
       plyodine::PlyHeader::Property::Type::INT16,
