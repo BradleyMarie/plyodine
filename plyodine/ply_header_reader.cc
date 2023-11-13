@@ -231,7 +231,8 @@ std::expected<std::pair<std::string, uintmax_t>, std::string> ParseElement(
 
   uintmax_t parsed_num_in_file;
   auto parsing_result = std::from_chars(
-      (*num_in_file)->begin(), (*num_in_file)->end(), parsed_num_in_file);
+      (*num_in_file)->data(), (*num_in_file)->data() + (*num_in_file)->size(),
+      parsed_num_in_file);
   if (parsing_result.ec == std::errc::result_out_of_range) {
     return std::unexpected("Out of range element count");
   } else if (parsing_result.ec != std::errc{}) {

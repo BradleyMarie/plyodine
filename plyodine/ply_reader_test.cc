@@ -4,6 +4,9 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "tools/cpp/runfiles/runfiles.h"
+
+using bazel::tools::cpp::runfiles::Runfiles;
 
 enum class PropertyType {
   INT8 = 0u,
@@ -76,7 +79,7 @@ class MockPlyReader final : public plyodine::PlyReader {
                uintmax_t, uint32_t));
   MOCK_METHOD((std::expected<void, std::string>), HandleUInt32List,
               (const std::string&, size_t, const std::string&, size_t,
-               uintmax_t, std::span<const u_int32_t>));
+               uintmax_t, std::span<const uint32_t>));
 
   MOCK_METHOD((std::expected<void, std::string>), HandleFloat,
               (const std::string&, size_t, const std::string&, size_t,
@@ -250,6 +253,11 @@ MATCHER_P(ValuesAre, values, "") {
   return true;
 }
 
+std::ifstream OpenRunfile(const std::string& path) {
+  std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest());
+  return std::ifstream(runfiles->Rlocation(path));
+}
+
 void ExpectError(std::istream& stream) {
   MockPlyReader reader;
   EXPECT_CALL(reader, StartImpl(testing::_, testing::_, testing::_))
@@ -308,7 +316,7 @@ void ExpectError(std::istream& stream) {
 
 void RunReadErrorTest(const std::string& file_name,
                       size_t num_bytes = std::numeric_limits<size_t>::max()) {
-  std::ifstream input(file_name);
+  std::ifstream input = OpenRunfile(file_name);
 
   char c;
   std::string base_string;
@@ -380,7 +388,8 @@ TEST(Error, BadHeader) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/header_format_bad.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/header_format_bad.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ(
       "Format must be one of ascii, binary_big_endian, or binary_little_endian",
@@ -442,7 +451,8 @@ TEST(Header, StartFails) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_empty.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_empty.ply");
   EXPECT_EQ(reader.ReadFrom(stream).error(), "Failed");
 }
 
@@ -501,7 +511,8 @@ TEST(ASCII, Empty) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_empty.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_empty.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -564,8 +575,8 @@ TEST(ASCII, MismatchedLineEndings) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_ascii_mismatched_line_endings.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_ascii_mismatched_line_endings.ply");
   EXPECT_EQ(reader.ReadFrom(stream).error(),
             "The input contained mismatched line endings");
 }
@@ -629,7 +640,8 @@ TEST(ASCII, InvalidCharacter) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_invalid_character.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_ascii_invalid_character.ply");
   EXPECT_EQ(reader.ReadFrom(stream).error(),
             "The input contained an invalid character");
 }
@@ -693,7 +705,8 @@ TEST(ASCII, ListMissingEntries) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_list_missing_entries.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_ascii_list_missing_entries.ply");
   EXPECT_EQ(reader.ReadFrom(stream).error(),
             "The input contained an element with too few tokens");
 }
@@ -756,7 +769,8 @@ TEST(ASCII, MissingElement) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_missing_element.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_missing_element.ply");
   EXPECT_EQ(reader.ReadFrom(stream).error(), "Unexpected EOF");
 }
 
@@ -820,7 +834,8 @@ TEST(ASCII, EmptyToken) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_empty_token.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_empty_token.ply");
   EXPECT_EQ(reader.ReadFrom(stream).error(),
             "The input contained an empty token");
 }
@@ -885,17 +900,17 @@ TEST(ASCII, ListSizeTooLarge) {
                                          testing::_, testing::_, testing::_))
         .Times(0);
 
-    std::ifstream stream(name);
+    std::ifstream stream = OpenRunfile(name);
     EXPECT_EQ(reader.ReadFrom(stream).error(),
               "The input contained a property list size that was out of range");
   };
 
-  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_int8.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_int16.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_int32.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_uint8.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_uint16.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_too_large_uint32.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_too_large_int8.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_too_large_int16.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_too_large_int32.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_too_large_uint8.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_too_large_uint16.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_too_large_uint32.ply");
 }
 
 TEST(ASCII, ListSizeBad) {
@@ -958,17 +973,17 @@ TEST(ASCII, ListSizeBad) {
                                          testing::_, testing::_, testing::_))
         .Times(0);
 
-    std::ifstream stream(name);
+    std::ifstream stream = OpenRunfile(name);
     EXPECT_EQ(reader.ReadFrom(stream).error(),
               "The input contained an unparsable property list size");
   };
 
-  impl("plyodine/test_data/ply_ascii_list_sizes_bad_int8.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_bad_int16.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_bad_int32.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_bad_uint8.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_bad_uint16.ply");
-  impl("plyodine/test_data/ply_ascii_list_sizes_bad_uint32.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_bad_int8.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_bad_int16.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_bad_int32.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_bad_uint8.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_bad_uint16.ply");
+  impl("__main__/plyodine/test_data/ply_ascii_list_sizes_bad_uint32.ply");
 }
 
 TEST(ASCII, EntryBad) {
@@ -1031,21 +1046,26 @@ TEST(ASCII, EntryBad) {
                                          testing::_, testing::_, testing::_))
         .Times(0);
 
-    std::ifstream stream(name);
+    std::ifstream stream = OpenRunfile(name);
     EXPECT_EQ(reader.ReadFrom(stream).error(),
               "The input contained an unparsable property entry");
   };
 
-  impl("plyodine/test_data/ply_ascii_entry_bad_double.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_double.ply",
        PropertyType::DOUBLE);
-  impl("plyodine/test_data/ply_ascii_entry_bad_float.ply", PropertyType::FLOAT);
-  impl("plyodine/test_data/ply_ascii_entry_bad_int8.ply", PropertyType::INT8);
-  impl("plyodine/test_data/ply_ascii_entry_bad_int16.ply", PropertyType::INT16);
-  impl("plyodine/test_data/ply_ascii_entry_bad_int32.ply", PropertyType::INT32);
-  impl("plyodine/test_data/ply_ascii_entry_bad_uint8.ply", PropertyType::UINT8);
-  impl("plyodine/test_data/ply_ascii_entry_bad_uint16.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_float.ply",
+       PropertyType::FLOAT);
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_int8.ply",
+       PropertyType::INT8);
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_int16.ply",
+       PropertyType::INT16);
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_int32.ply",
+       PropertyType::INT32);
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_uint8.ply",
+       PropertyType::UINT8);
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_uint16.ply",
        PropertyType::UINT16);
-  impl("plyodine/test_data/ply_ascii_entry_bad_uint32.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_bad_uint32.ply",
        PropertyType::UINT32);
 }
 
@@ -1109,26 +1129,26 @@ TEST(ASCII, EntryTooBig) {
                                          testing::_, testing::_, testing::_))
         .Times(0);
 
-    std::ifstream stream(name);
+    std::ifstream stream = OpenRunfile(name);
     EXPECT_EQ(reader.ReadFrom(stream).error(),
               "The input contained a property entry that was out of range");
   };
 
-  impl("plyodine/test_data/ply_ascii_entry_too_large_double.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_double.ply",
        PropertyType::DOUBLE);
-  impl("plyodine/test_data/ply_ascii_entry_too_large_float.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_float.ply",
        PropertyType::FLOAT);
-  impl("plyodine/test_data/ply_ascii_entry_too_large_int8.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_int8.ply",
        PropertyType::INT8);
-  impl("plyodine/test_data/ply_ascii_entry_too_large_int16.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_int16.ply",
        PropertyType::INT16);
-  impl("plyodine/test_data/ply_ascii_entry_too_large_int32.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_int32.ply",
        PropertyType::INT32);
-  impl("plyodine/test_data/ply_ascii_entry_too_large_uint8.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_uint8.ply",
        PropertyType::UINT8);
-  impl("plyodine/test_data/ply_ascii_entry_too_large_uint16.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_uint16.ply",
        PropertyType::UINT16);
-  impl("plyodine/test_data/ply_ascii_entry_too_large_uint32.ply",
+  impl("__main__/plyodine/test_data/ply_ascii_entry_too_large_uint32.ply",
        PropertyType::UINT32);
 }
 
@@ -1190,7 +1210,8 @@ TEST(ASCII, UnusedTokens) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_unused_tokens.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_unused_tokens.ply");
   EXPECT_EQ(reader.ReadFrom(stream).error(),
             "The input contained an element with unused tokens");
 }
@@ -1348,7 +1369,8 @@ TEST(ASCII, WithData) {
                                        ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -1431,7 +1453,8 @@ TEST(ASCII, WithDataSkipAll) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -1498,7 +1521,8 @@ TEST(ASCII, HandleFails) {
                                          testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(15u, index)));
 
-    std::ifstream stream("plyodine/test_data/ply_ascii_data.ply");
+    std::ifstream stream =
+        OpenRunfile("__main__/plyodine/test_data/ply_ascii_data.ply");
     EXPECT_EQ(reader.ReadFrom(stream).error(), "Failed");
   };
 
@@ -1558,7 +1582,8 @@ TEST(ASCII, WithUIntListSizes) {
               HandleUInt8List("vertex", 0, "l3", 3, 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_list_sizes.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_ascii_list_sizes.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -1600,7 +1625,8 @@ TEST(ASCII, WithIntListSizes) {
               HandleUInt8List("vertex", 0, "l3", 3, 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_ascii_list_sizes_signed.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_ascii_list_sizes_signed.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -1615,8 +1641,8 @@ TEST(ASCII, WithNegativeInt8ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_ascii_list_sizes_negative_int8.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_ascii_list_sizes_negative_int8.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -1633,8 +1659,8 @@ TEST(ASCII, WithNegativeInt16ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_ascii_list_sizes_negative_int16.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_ascii_list_sizes_negative_int16.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -1651,8 +1677,8 @@ TEST(ASCII, WithNegativeInt32ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_ascii_list_sizes_negative_int32.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_ascii_list_sizes_negative_int32.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -1713,7 +1739,8 @@ TEST(BigEndian, Empty) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_big_empty.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_big_empty.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -1870,7 +1897,8 @@ TEST(BigEndian, WithData) {
                                        ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_big_data.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_big_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -1953,12 +1981,13 @@ TEST(BigEndian, WithDataSkipAll) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_big_data.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_big_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(BigEndian, WithDataError) {
-  RunReadErrorTest("plyodine/test_data/ply_big_data.ply");
+  RunReadErrorTest("__main__/plyodine/test_data/ply_big_data.ply");
 }
 
 TEST(BigEndian, WithUIntListSizes) {
@@ -1999,12 +2028,13 @@ TEST(BigEndian, WithUIntListSizes) {
               HandleUInt8List("vertex", 0, "l3", 3, 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_big_list_sizes.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_big_list_sizes.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(BigEndian, WithUIntListSizesError) {
-  RunReadErrorTest("plyodine/test_data/ply_big_list_sizes.ply", 1000u);
+  RunReadErrorTest("__main__/plyodine/test_data/ply_big_list_sizes.ply", 1000u);
 }
 
 TEST(BigEndian, HandleFails) {
@@ -2070,7 +2100,8 @@ TEST(BigEndian, HandleFails) {
                                          testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(15u, index)));
 
-    std::ifstream stream("plyodine/test_data/ply_big_data.ply");
+    std::ifstream stream =
+        OpenRunfile("__main__/plyodine/test_data/ply_big_data.ply");
     EXPECT_EQ(reader.ReadFrom(stream).error(), "Failed");
   };
 
@@ -2130,12 +2161,14 @@ TEST(BigEndian, WithIntListSizes) {
               HandleUInt8List("vertex", 0, "l3", 3, 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_big_list_sizes_signed.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_big_list_sizes_signed.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(BigEndian, WithIntListSizesError) {
-  RunReadErrorTest("plyodine/test_data/ply_big_list_sizes_signed.ply", 1000u);
+  RunReadErrorTest("__main__/plyodine/test_data/ply_big_list_sizes_signed.ply",
+                   1000u);
 }
 
 TEST(BigEndian, WithNegativeInt8ListSize) {
@@ -2149,8 +2182,8 @@ TEST(BigEndian, WithNegativeInt8ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_big_list_sizes_negative_int8.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_big_list_sizes_negative_int8.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -2167,8 +2200,8 @@ TEST(BigEndian, WithNegativeInt16ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_big_list_sizes_negative_int16.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_big_list_sizes_negative_int16.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -2185,8 +2218,8 @@ TEST(BigEndian, WithNegativeInt32ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_big_list_sizes_negative_int32.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_big_list_sizes_negative_int32.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -2247,7 +2280,8 @@ TEST(LittleEndian, Empty) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_little_empty.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_little_empty.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -2404,7 +2438,8 @@ TEST(LittleEndian, WithData) {
                                        ValuesAre(values_double)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_little_data.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_little_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
@@ -2487,12 +2522,13 @@ TEST(LittleEndian, WithDataSkipAll) {
                                        testing::_, testing::_, testing::_))
       .Times(0);
 
-  std::ifstream stream("plyodine/test_data/ply_little_data.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_little_data.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(LittleEndian, WithDataError) {
-  RunReadErrorTest("plyodine/test_data/ply_little_data.ply");
+  RunReadErrorTest("__main__/plyodine/test_data/ply_little_data.ply");
 }
 
 TEST(LittleEndian, HandleFails) {
@@ -2558,7 +2594,8 @@ TEST(LittleEndian, HandleFails) {
                                          testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::Return(make_result(15u, index)));
 
-    std::ifstream stream("plyodine/test_data/ply_little_data.ply");
+    std::ifstream stream =
+        OpenRunfile("__main__/plyodine/test_data/ply_little_data.ply");
     EXPECT_EQ(reader.ReadFrom(stream).error(), "Failed");
   };
 
@@ -2618,12 +2655,14 @@ TEST(LittleEndian, WithUIntListSizes) {
               HandleUInt8List("vertex", 0, "l3", 3, 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_little_list_sizes.ply");
+  std::ifstream stream =
+      OpenRunfile("__main__/plyodine/test_data/ply_little_list_sizes.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(LittleEndian, WithUIntListSizesError) {
-  RunReadErrorTest("plyodine/test_data/ply_little_list_sizes.ply", 1000u);
+  RunReadErrorTest("__main__/plyodine/test_data/ply_little_list_sizes.ply",
+                   1000u);
 }
 
 TEST(LittleEndian, WithIntListSizes) {
@@ -2664,13 +2703,14 @@ TEST(LittleEndian, WithIntListSizes) {
               HandleUInt8List("vertex", 0, "l3", 3, 0, ValuesAre(values)))
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream("plyodine/test_data/ply_little_list_sizes_signed.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_little_list_sizes_signed.ply");
   EXPECT_TRUE(reader.ReadFrom(stream));
 }
 
 TEST(LittleEndian, WithIntListSizesError) {
-  RunReadErrorTest("plyodine/test_data/ply_little_signed_list_sizes.ply",
-                   1000u);
+  RunReadErrorTest(
+      "__main__/plyodine/test_data/ply_little_signed_list_sizes.ply", 1000u);
 }
 
 TEST(LittleEndian, WithNegativeInt8ListSize) {
@@ -2684,8 +2724,8 @@ TEST(LittleEndian, WithNegativeInt8ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_little_list_sizes_negative_int8.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_little_list_sizes_negative_int8.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -2702,8 +2742,8 @@ TEST(LittleEndian, WithNegativeInt16ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_little_list_sizes_negative_int16.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_little_list_sizes_negative_int16.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
@@ -2720,8 +2760,8 @@ TEST(LittleEndian, WithNegativeInt32ListSize) {
       .Times(1)
       .WillOnce(testing::Return(std::expected<void, std::string>()));
 
-  std::ifstream stream(
-      "plyodine/test_data/ply_little_list_sizes_negative_int32.ply");
+  std::ifstream stream = OpenRunfile(
+      "__main__/plyodine/test_data/ply_little_list_sizes_negative_int32.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ("The input contained a property list with a negative size",
             result.error());
