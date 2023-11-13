@@ -13,7 +13,8 @@ using bazel::tools::cpp::runfiles::Runfiles;
 
 std::ifstream OpenRunfile(const std::string& path) {
   std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest());
-  return std::ifstream(runfiles->Rlocation(path));
+  return std::ifstream(runfiles->Rlocation(path),
+                       std::ios::in | std::ios::binary);
 }
 
 struct Property final
@@ -293,7 +294,7 @@ std::map<std::string, std::map<std::string, Property>> BuildListSizeTestData() {
 
 TEST(Validate, StartFails) {
   TestWriter writer({}, {}, {}, true);
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(writer.WriteTo(output).error(), "start");
   EXPECT_EQ(writer.WriteToASCII(output).error(), "start");
   EXPECT_EQ(writer.WriteToBigEndian(output).error(), "start");
@@ -301,7 +302,7 @@ TEST(Validate, StartFails) {
 }
 
 TEST(Validate, BadElementNames) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {{"", {}}}).error(),
             "Names of properties and elements may not be empty");
   EXPECT_EQ(
@@ -310,7 +311,7 @@ TEST(Validate, BadElementNames) {
 }
 
 TEST(Validate, BadPropertyNames) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {{"element", {{"", {}}}}}).error(),
             "Names of properties and elements may not be empty");
   EXPECT_EQ(
@@ -319,7 +320,7 @@ TEST(Validate, BadPropertyNames) {
 }
 
 TEST(Validate, BadComment) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).error(),
             "A comment may not contain line feed or carriage return");
   EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).error(),
@@ -327,7 +328,7 @@ TEST(Validate, BadComment) {
 }
 
 TEST(Validate, BadObjInfo) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).error(),
             "An obj_info may not contain line feed or carriage return");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).error(),
@@ -343,7 +344,7 @@ TEST(Validate, ListTooBig) {
                     static_cast<size_t>(1u));
     std::vector<std::span<const float>> list({entries});
 
-    std::stringstream output;
+    std::stringstream output(std::ios::out | std::ios::binary);
     EXPECT_EQ(
         WriteToASCII(output, {{"element", {{"node0", {list}}}}}).error(),
         "The list was too big to be represented with the selected size type");
@@ -351,7 +352,7 @@ TEST(Validate, ListTooBig) {
 }
 
 TEST(ASCII, Empty) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToASCII(output, {}));
 
   std::ifstream input =
@@ -365,7 +366,7 @@ TEST(ASCII, NonFinite) {
   std::map<std::string, std::map<std::string, Property>> data;
   data["vertex"]["a"] = a;
 
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(
       WriteToASCII(output, data).error(),
       "Only finite floating point values may be serialized to an ASCII output");
@@ -377,7 +378,7 @@ TEST(ASCII, NonFiniteList) {
   std::map<std::string, std::map<std::string, Property>> data;
   data["vertex"]["a"] = al;
 
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(
       WriteToASCII(output, data).error(),
       "Only finite floating point values may be serialized to an ASCII output");
@@ -386,7 +387,7 @@ TEST(ASCII, NonFiniteList) {
 TEST(ASCII, TestData) {
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToASCII(output, BuildTestData(), comments, object_info));
 
   std::ifstream input =
@@ -396,7 +397,7 @@ TEST(ASCII, TestData) {
 }
 
 TEST(ASCII, ListSizes) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToASCII(output, BuildListSizeTestData()));
 
   std::ifstream input =
@@ -411,7 +412,7 @@ TEST(ASCII, LargeFP) {
   std::map<std::string, std::map<std::string, Property>> data;
   data["vertex"]["a"] = al;
 
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToASCII(output, data));
 
   std::ifstream input =
@@ -426,7 +427,7 @@ TEST(ASCII, SmallFP) {
   std::map<std::string, std::map<std::string, Property>> data;
   data["vertex"]["a"] = al;
 
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToASCII(output, data));
 
   std::ifstream input =
@@ -436,7 +437,7 @@ TEST(ASCII, SmallFP) {
 }
 
 TEST(BigEndian, Empty) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToBigEndian(output, {}));
 
   std::ifstream input =
@@ -448,7 +449,7 @@ TEST(BigEndian, Empty) {
 TEST(BigEndian, TestData) {
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToBigEndian(output, BuildTestData(), comments, object_info));
 
   std::ifstream input =
@@ -458,7 +459,7 @@ TEST(BigEndian, TestData) {
 }
 
 TEST(BigEndian, ListSizes) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToBigEndian(output, BuildListSizeTestData()));
 
   std::ifstream input =
@@ -468,7 +469,7 @@ TEST(BigEndian, ListSizes) {
 }
 
 TEST(LittleEndian, Empty) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToLittleEndian(output, {}));
 
   std::ifstream input =
@@ -480,7 +481,7 @@ TEST(LittleEndian, Empty) {
 TEST(LittleEndian, TestData) {
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(
       WriteToLittleEndian(output, BuildTestData(), comments, object_info));
 
@@ -491,7 +492,7 @@ TEST(LittleEndian, TestData) {
 }
 
 TEST(LittleEndian, ListSizes) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteToLittleEndian(output, BuildListSizeTestData()));
 
   std::ifstream input =
@@ -501,7 +502,7 @@ TEST(LittleEndian, ListSizes) {
 }
 
 TEST(Native, Empty) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteTo(output, {}));
 
   if constexpr (std::endian::native == std::endian::big) {
@@ -518,7 +519,7 @@ TEST(Native, Empty) {
 }
 
 TEST(Native, TestData) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
   ASSERT_TRUE(WriteTo(output, BuildTestData(), comments, object_info));
@@ -537,7 +538,7 @@ TEST(Native, TestData) {
 }
 
 TEST(Native, ListSizes) {
-  std::stringstream output;
+  std::stringstream output(std::ios::out | std::ios::binary);
   ASSERT_TRUE(WriteTo(output, BuildListSizeTestData()));
 
   if constexpr (std::endian::native == std::endian::big) {

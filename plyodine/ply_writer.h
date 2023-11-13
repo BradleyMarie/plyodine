@@ -15,9 +15,11 @@ namespace plyodine {
 class PlyWriter {
  public:
   // Writes a binary encoded output matching the system native endianness
+  // NOTE: Behavior is undefined if stream is not a binary stream
   std::expected<void, std::string> WriteTo(std::ostream& stream) const;
 
   // Most clients should prefer WriteTo over these
+  // NOTE: Behavior is undefined if stream is not a binary stream
   std::expected<void, std::string> WriteToASCII(std::ostream& stream) const;
   std::expected<void, std::string> WriteToBigEndian(std::ostream& stream) const;
   std::expected<void, std::string> WriteToLittleEndian(

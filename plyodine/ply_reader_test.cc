@@ -255,7 +255,8 @@ MATCHER_P(ValuesAre, values, "") {
 
 std::ifstream OpenRunfile(const std::string& path) {
   std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest());
-  return std::ifstream(runfiles->Rlocation(path));
+  return std::ifstream(runfiles->Rlocation(path),
+                       std::ios::in | std::ios::binary);
 }
 
 void ExpectError(std::istream& stream) {
@@ -331,7 +332,7 @@ void RunReadErrorTest(const std::string& file_name,
   for (size_t i = 0; i < base_string.size(); i++) {
     std::string string_copy = base_string;
     string_copy.resize(i);
-    std::stringstream stream(string_copy);
+    std::stringstream stream(string_copy, std::ios::in | std::ios::binary);
     ExpectError(stream);
   }
 }

@@ -33,6 +33,7 @@ struct PlyHeader final {
   std::vector<Element> elements;
 };
 
+// NOTE: Behavior is undefined if input is not a binary stream
 std::expected<PlyHeader, std::string> ReadPlyHeader(std::istream& input);
 
 }  // namespace plyodine

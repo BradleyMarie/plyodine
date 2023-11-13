@@ -10,7 +10,8 @@ using bazel::tools::cpp::runfiles::Runfiles;
 
 std::ifstream OpenRunfile(const std::string& path) {
   std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest());
-  return std::ifstream(runfiles->Rlocation(path));
+  return std::ifstream(runfiles->Rlocation(path),
+                       std::ios::in | std::ios::binary);
 }
 
 TEST(ReadPlyHeader, BadStream) {
@@ -22,14 +23,15 @@ TEST(ReadPlyHeader, BadStream) {
 TEST(ReadPlyHeader, BadMagicStringMac) {
   const std::string magic_string = "ply\r";
   for (size_t i = 0; i < magic_string.length(); i++) {
-    std::stringstream stream(magic_string.substr(0u, i));
+    std::stringstream stream(magic_string.substr(0u, i),
+                             std::ios::in | std::ios::binary);
     auto result = plyodine::ReadPlyHeader(stream);
     EXPECT_EQ(
         "The first line of the input must exactly contain the magic string",
         result.error());
   }
 
-  std::stringstream stream(magic_string);
+  std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
   auto result = plyodine::ReadPlyHeader(stream);
   EXPECT_EQ("The second line of the input must contain the format specifier",
             result.error());
@@ -38,14 +40,15 @@ TEST(ReadPlyHeader, BadMagicStringMac) {
 TEST(ReadPlyHeader, BadMagicStringUnix) {
   const std::string magic_string = "ply\n";
   for (size_t i = 0; i < magic_string.length(); i++) {
-    std::stringstream stream(magic_string.substr(0u, i));
+    std::stringstream stream(magic_string.substr(0u, i),
+                             std::ios::in | std::ios::binary);
     auto result = plyodine::ReadPlyHeader(stream);
     EXPECT_EQ(
         "The first line of the input must exactly contain the magic string",
         result.error());
   }
 
-  std::stringstream stream(magic_string);
+  std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
   auto result = plyodine::ReadPlyHeader(stream);
   EXPECT_EQ("The second line of the input must contain the format specifier",
             result.error());
@@ -54,14 +57,15 @@ TEST(ReadPlyHeader, BadMagicStringUnix) {
 TEST(ReadPlyHeader, BadMagicStringWindows) {
   const std::string magic_string = "ply\r\n";
   for (size_t i = 0; i < magic_string.length() - 1; i++) {
-    std::stringstream stream(magic_string.substr(0u, i));
+    std::stringstream stream(magic_string.substr(0u, i),
+                             std::ios::in | std::ios::binary);
     auto result = plyodine::ReadPlyHeader(stream);
     EXPECT_EQ(
         "The first line of the input must exactly contain the magic string",
         result.error());
   }
 
-  std::stringstream stream(magic_string);
+  std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
   auto result = plyodine::ReadPlyHeader(stream);
   EXPECT_EQ("The second line of the input must contain the format specifier",
             result.error());
@@ -100,7 +104,7 @@ TEST(ReadPlyHeader, TrailingSpaces) {
 }
 
 TEST(ReadPlyHeader, NoFileFormat) {
-  std::stringstream input("ply\nformat");
+  std::stringstream input("ply\nformat", std::ios::in | std::ios::binary);
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(
       "Format must be one of ascii, binary_big_endian, or binary_little_endian",
@@ -138,7 +142,7 @@ TEST(ReadPlyHeader, FormatBad) {
 }
 
 TEST(ReadPlyHeader, FormatNoVersion) {
-  std::stringstream input("ply\nformat ascii");
+  std::stringstream input("ply\nformat ascii", std::ios::in | std::ios::binary);
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Only PLY version 1.0 supported", result.error());
 }
@@ -158,7 +162,8 @@ TEST(ReadPlyHeader, FormatBadVersions) {
                                 "2.0", "2.00", ".",    ".0",  "0",
                                 "-1",  "-1.0", "0.0",  "1..0"};
   for (const auto& version : bad_versions) {
-    std::stringstream input("ply\nformat ascii " + version + "\nend_header");
+    std::stringstream input("ply\nformat ascii " + version + "\nend_header",
+                            std::ios::in | std::ios::binary);
     auto result = plyodine::ReadPlyHeader(input);
     EXPECT_EQ("Only PLY version 1.0 supported", result.error());
   }
@@ -247,7 +252,8 @@ TEST(ReadPlyHeader, PropertyTypes) {
   for (size_t i = 0; i < 8; i++) {
     std::stringstream input(
         "ply\nformat ascii 1.0\nelement vertex 1\nproperty " + types[i] +
-        " name\nend_header");
+            " name\nend_header",
+        std::ios::in | std::ios::binary);
     auto result = plyodine::ReadPlyHeader(input);
     EXPECT_EQ(parsed_types[i],
               result->elements.at(0).properties.at(0).data_type);
@@ -369,7 +375,8 @@ TEST(ReadPlyHeader, PropertyListTypes) {
     for (int j = 0; j < 8; j++) {
       std::stringstream input(
           "ply\nformat ascii 1.0\nelement vertex 1\nproperty list " + types[i] +
-          " " + types[j] + " name\nend_header");
+              " " + types[j] + " name\nend_header",
+          std::ios::in | std::ios::binary);
 
       auto result = plyodine::ReadPlyHeader(input);
       if (parsed_types[i] == plyodine::PlyHeader::Property::Type::FLOAT) {
@@ -544,7 +551,7 @@ TEST(ReadPlyHeader, InvalidCharacters) {
   for (size_t i = 4; i < base_string.size(); i++) {
     std::string string_copy = base_string;
     string_copy[i] = '\t';
-    std::stringstream stream(string_copy);
+    std::stringstream stream(string_copy, std::ios::in | std::ios::binary);
     auto result = plyodine::ReadPlyHeader(stream);
     EXPECT_EQ("The input contained an invalid character", result.error());
   }

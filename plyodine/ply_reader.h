@@ -14,6 +14,7 @@ namespace plyodine {
 
 class PlyReader {
  public:
+  // NOTE: Behavior is undefined if stream is not a binary stream
   std::expected<void, std::string> ReadFrom(std::istream& stream);
 
  protected:
