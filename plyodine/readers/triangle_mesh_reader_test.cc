@@ -319,20 +319,6 @@ TEST(TriangleMeshReader, OutOfRangeNormal) {
   }
 }
 
-TEST(TriangleMeshReader, ZeroLengthNormal) {
-  std::string input_string =
-      "ply\rformat ascii 1.0\relement vertex 1\rproperty double x\rproperty "
-      "double y\rproperty double z\rproperty double nx\rproperty "
-      "double ny\rproperty double nz\relement face 0\rproperty list uchar "
-      "uchar vertex_indices\rend_header\r0.0 0.0 0.0 0.0 0.0 0.0";
-
-  std::stringstream input(input_string);
-  TestTriangleMeshReader<float, float, float, uint32_t> reader;
-
-  EXPECT_EQ(reader.ReadFrom(input).error(),
-            "Input contained a zero length surface normal");
-}
-
 TEST(TriangleMeshReader, UVs) {
   std::string position[] = {
       "1.0", "1000000000000000000000000000000000000000000000000000000000.0"};

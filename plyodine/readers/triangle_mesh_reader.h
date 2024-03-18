@@ -29,13 +29,7 @@ class TriangleMeshReader : public PlyReader {
     current_vertex_index_ += 1u;
 
     if (current_vertex_index_ == handle_vertex_index_) {
-      if (normals_ && normals_storage_[0] == 0.0 &&
-          normals_storage_[1] == 0.0 && normals_storage_[2] == 0.0) {
-        return std::unexpected("Input contained a zero length surface normal");
-      }
-
       AddVertex(xyz_, normals_, uvs_);
-
       current_vertex_index_ = 0u;
     }
 
