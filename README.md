@@ -1,7 +1,7 @@
 # PLYodine
 
 [![Test Status](https://github.com/BradleyMarie/plyodine/actions/workflows/c-cpp.yml/badge.svg?branch=main)](https://github.com/BradleyMarie/plyodine/actions/workflows/c-cpp.yml)
-![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/BradleyMarie/plyodine/blob/main/LICENSE)
 
 A zero-dependency library with high test coverage for C++23 for reading from and
 writing to PLY mesh files. An overview and definition of the file format is
