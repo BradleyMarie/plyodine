@@ -31,19 +31,16 @@ import PLYodine into your workspace by adding a snippet like the following into
 your `MODULE.bazel` file.
 
 ```
-http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "plyodine",
-    sha256 = "80c6bbe307d23eefe04a87f4dfd6b00c4ddc66ad23da1dcfb2143e504ed43015",
-    strip_prefix = "plyodine-8fcd221e86b47c4263a622cf94e77116cdd59d9b",
-    url = "https://github.com/BradleyMarie/plyodine/archive/8fcd221e86b47c4263a622cf94e77116cdd59d9b.zip",
+bazel_dep(name = "plyodine")
+git_override(
+    module_name = "plyodine",
+    remote = "https://github.com/bradleymarie/plyodine.git",
+    commit = "7323685df340b61df0e8a6d4427ae31d2eb2273b",
 )
 ```
 
-Note: You should update `url` and `strip_prefix` to point to the latest commit
-on the main branch and should also update `sha256` with the checksum from that
-snapshot.
+Note: You should update `commit` to reference the to the latest commit on the
+main branch.
 
 PLYodine code is structured with the core modules residing in the `plyodine`
 directory. `ply_reader` contains the parent `PlyReader` class, `ply_writer`
