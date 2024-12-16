@@ -45,5 +45,8 @@ bazel-out
 bazel-plyodine
 bazel-testlogs
 
+# Bazel lockfile
+MODULE.bazel.lock
+
 # VS Code
 .vscode/

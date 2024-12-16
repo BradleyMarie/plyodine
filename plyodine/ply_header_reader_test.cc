@@ -15,7 +15,7 @@ std::ifstream OpenRunfile(const std::string& path) {
 }
 
 TEST(ReadPlyHeader, BadStream) {
-  std::ifstream input = OpenRunfile("__main__/notarealfile.ply");
+  std::ifstream input = OpenRunfile("_main/notarealfile.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Bad stream passed", result.error());
 }
@@ -73,21 +73,21 @@ TEST(ReadPlyHeader, BadMagicStringWindows) {
 
 TEST(ReadPlyHeader, MismatchedLineEndings) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_mismatched_endings.ply");
+      OpenRunfile("_main/plyodine/test_data/header_mismatched_endings.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("The input contained mismatched line endings", result.error());
 }
 
 TEST(ReadPlyHeader, LeadingSpaces) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_spaces_leading.ply");
+      OpenRunfile("_main/plyodine/test_data/header_spaces_leading.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("ASCII lines may not begin with a space", result.error());
 }
 
 TEST(ReadPlyHeader, MultipleSpaces) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_spaces_multiple.ply");
+      OpenRunfile("_main/plyodine/test_data/header_spaces_multiple.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(
       "Non-comment ASCII lines may only contain a single space between tokens "
@@ -97,7 +97,7 @@ TEST(ReadPlyHeader, MultipleSpaces) {
 
 TEST(ReadPlyHeader, TrailingSpaces) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_spaces_trailing.ply");
+      OpenRunfile("_main/plyodine/test_data/header_spaces_trailing.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Non-comment ASCII lines may not contain trailing spaces",
             result.error());
@@ -113,28 +113,28 @@ TEST(ReadPlyHeader, NoFileFormat) {
 
 TEST(ReadPlyHeader, FormatASCII) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_format_ascii.ply");
+      OpenRunfile("_main/plyodine/test_data/header_format_ascii.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(plyodine::PlyHeader::ASCII, result->format);
 }
 
 TEST(ReadPlyHeader, FormatBigEndian) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_format_big_endian.ply");
+      OpenRunfile("_main/plyodine/test_data/header_format_big_endian.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(plyodine::PlyHeader::BINARY_BIG_ENDIAN, result->format);
 }
 
 TEST(ReadPlyHeader, FormatLittleEndian) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_format_little_endian.ply");
+      "_main/plyodine/test_data/header_format_little_endian.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(plyodine::PlyHeader::BINARY_LITTLE_ENDIAN, result->format);
 }
 
 TEST(ReadPlyHeader, FormatBad) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_format_bad.ply");
+      OpenRunfile("_main/plyodine/test_data/header_format_bad.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(
       "Format must be one of ascii, binary_big_endian, or binary_little_endian",
@@ -171,56 +171,56 @@ TEST(ReadPlyHeader, FormatBadVersions) {
 
 TEST(ReadPlyHeader, FormatTooLong) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_format_too_long.ply");
+      OpenRunfile("_main/plyodine/test_data/header_format_too_long.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("The format specifier contained too many tokens", result.error());
 }
 
 TEST(ReadPlyHeader, ElementNoName) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_element_name_none.ply");
+      OpenRunfile("_main/plyodine/test_data/header_element_name_none.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too few prameters to element", result.error());
 }
 
 TEST(ReadPlyHeader, ElementNameRepeated) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_element_name_repeated.ply");
+      "_main/plyodine/test_data/header_element_name_repeated.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Two elements have the same name", result.error());
 }
 
 TEST(ReadPlyHeader, ElementCountNone) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_element_count_none.ply");
+      OpenRunfile("_main/plyodine/test_data/header_element_count_none.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too few prameters to element", result.error());
 }
 
 TEST(ReadPlyHeader, ElementCountBad) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_element_count_bad.ply");
+      OpenRunfile("_main/plyodine/test_data/header_element_count_bad.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Failed to parse element count", result.error());
 }
 
 TEST(ReadPlyHeader, ElementCountNegative) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_element_count_negative.ply");
+      "_main/plyodine/test_data/header_element_count_negative.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Failed to parse element count", result.error());
 }
 
 TEST(ReadPlyHeader, ElementCountTooLarge) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_element_count_too_large.ply");
+      "_main/plyodine/test_data/header_element_count_too_large.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Out of range element count", result.error());
 }
 
 TEST(ReadPlyHeader, ElementCountTooMany) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_element_too_many.ply");
+      OpenRunfile("_main/plyodine/test_data/header_element_too_many.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too many prameters to element", result.error());
 }
@@ -263,14 +263,14 @@ TEST(ReadPlyHeader, PropertyTypes) {
 
 TEST(ReadPlyHeader, PropertyNameNone) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_property_name_none.ply");
+      OpenRunfile("_main/plyodine/test_data/header_property_name_none.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too few prameters to property", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyNameDuplicated) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_name_duplicated.ply");
+      "_main/plyodine/test_data/header_property_name_duplicated.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("An element contains two properties with the same name",
             result.error());
@@ -278,35 +278,35 @@ TEST(ReadPlyHeader, PropertyNameDuplicated) {
 
 TEST(ReadPlyHeader, PropertyTypeNone) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_property_type_none.ply");
+      OpenRunfile("_main/plyodine/test_data/header_property_type_none.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too few prameters to property", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyTypeBad) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_property_type_bad.ply");
+      OpenRunfile("_main/plyodine/test_data/header_property_type_bad.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("A property is of an invalid type", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyTooMany) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_property_too_many.ply");
+      OpenRunfile("_main/plyodine/test_data/header_property_too_many.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too many prameters to property", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyListNameNone) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_list_name_none.ply");
+      "_main/plyodine/test_data/header_property_list_name_none.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too few prameters to property", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyListNameDuplicated) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_list_name_duplicated.ply");
+      "_main/plyodine/test_data/header_property_list_name_duplicated.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("An element contains two properties with the same name",
             result.error());
@@ -314,35 +314,35 @@ TEST(ReadPlyHeader, PropertyListNameDuplicated) {
 
 TEST(ReadPlyHeader, PropertyListDataTypeNone) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_list_data_type_none.ply");
+      "_main/plyodine/test_data/header_property_list_data_type_none.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too few prameters to property", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyListDataTypeBad) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_list_data_type_bad.ply");
+      "_main/plyodine/test_data/header_property_list_data_type_bad.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("A property is of an invalid type", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyListListTypeNone) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_list_list_type_none.ply");
+      "_main/plyodine/test_data/header_property_list_list_type_none.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too few prameters to property", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyListListTypeBad) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_list_list_type_bad.ply");
+      "_main/plyodine/test_data/header_property_list_list_type_bad.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("A property is of an invalid type", result.error());
 }
 
 TEST(ReadPlyHeader, PropertyListTooMany) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_property_list_too_many.ply");
+      "_main/plyodine/test_data/header_property_list_too_many.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("Too many prameters to property", result.error());
 }
@@ -398,7 +398,7 @@ TEST(ReadPlyHeader, PropertyListTypes) {
 
 TEST(ReadPlyHeader, LooseProperty) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_loose_property.ply");
+      OpenRunfile("_main/plyodine/test_data/header_loose_property.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("A property could not be associated with an element",
             result.error());
@@ -406,35 +406,35 @@ TEST(ReadPlyHeader, LooseProperty) {
 
 TEST(ReadPlyHeader, CommentAllowsSpaces) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_comment_allows_spaces.ply");
+      "_main/plyodine/test_data/header_comment_allows_spaces.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(" comment with multiple  spaces  ", result->comments.at(0));
 }
 
 TEST(ReadPlyHeader, CommentEmpty) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_comment_empty.ply");
+      OpenRunfile("_main/plyodine/test_data/header_comment_empty.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_TRUE(result->comments.at(0).empty());
 }
 
 TEST(ReadPlyHeader, ObjInfoAllowsSpaces) {
   std::ifstream input = OpenRunfile(
-      "__main__/plyodine/test_data/header_obj_info_allows_spaces.ply");
+      "_main/plyodine/test_data/header_obj_info_allows_spaces.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(" comment with multiple  spaces  ", result->object_info.at(0));
 }
 
 TEST(ReadPlyHeader, ObjInfoEmpty) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_obj_info_empty.ply");
+      OpenRunfile("_main/plyodine/test_data/header_obj_info_empty.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_TRUE(result->object_info.at(0).empty());
 }
 
 TEST(ReadPlyHeader, EndTooMany) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_end_too_many.ply");
+      OpenRunfile("_main/plyodine/test_data/header_end_too_many.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ(
       "The last line of the header may only contain the end_header keyword",
@@ -443,23 +443,23 @@ TEST(ReadPlyHeader, EndTooMany) {
 
 TEST(ReadPlyHeader, EmptyLine) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_empty_line.ply");
+      OpenRunfile("_main/plyodine/test_data/header_empty_line.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("The input contained an invalid header", result.error());
 }
 
 TEST(ReadPlyHeader, InvalidKeyword) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_invalid_keyword.ply");
+      OpenRunfile("_main/plyodine/test_data/header_invalid_keyword.ply");
   auto result = plyodine::ReadPlyHeader(input);
   EXPECT_EQ("The input contained an invalid header", result.error());
 }
 
 TEST(ReadPlyHeader, Valid) {
   std::string files[] = {
-      "__main__/plyodine/test_data/header_valid_mac.ply",
-      "__main__/plyodine/test_data/header_valid_unix.ply",
-      "__main__/plyodine/test_data/header_valid_windows.ply"};
+      "_main/plyodine/test_data/header_valid_mac.ply",
+      "_main/plyodine/test_data/header_valid_unix.ply",
+      "_main/plyodine/test_data/header_valid_windows.ply"};
   std::string line_endings[] = {"\r", "\n", "\r\n"};
 
   for (size_t i = 0; i < 3; i++) {
@@ -540,7 +540,7 @@ TEST(ReadPlyHeader, Valid) {
 
 TEST(ReadPlyHeader, InvalidCharacters) {
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/header_valid_unix.ply");
+      OpenRunfile("_main/plyodine/test_data/header_valid_unix.ply");
 
   char c;
   std::string base_string;

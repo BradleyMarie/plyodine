@@ -16,6 +16,6 @@ cc_test(
     srcs = ["in_memory_writer_test.cc"],
     deps = [
         ":in_memory_writer",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )

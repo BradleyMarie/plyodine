@@ -356,7 +356,7 @@ TEST(ASCII, Empty) {
   ASSERT_TRUE(WriteToASCII(output, {}));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_ascii_empty.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_empty.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -391,7 +391,7 @@ TEST(ASCII, TestData) {
   ASSERT_TRUE(WriteToASCII(output, BuildTestData(), comments, object_info));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_ascii_data.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -401,7 +401,7 @@ TEST(ASCII, ListSizes) {
   ASSERT_TRUE(WriteToASCII(output, BuildListSizeTestData()));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_ascii_list_sizes.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_list_sizes.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -416,7 +416,7 @@ TEST(ASCII, LargeFP) {
   ASSERT_TRUE(WriteToASCII(output, data));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_ascii_large_fp.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_large_fp.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -431,7 +431,7 @@ TEST(ASCII, SmallFP) {
   ASSERT_TRUE(WriteToASCII(output, data));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_ascii_small_fp.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_small_fp.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -441,7 +441,7 @@ TEST(BigEndian, Empty) {
   ASSERT_TRUE(WriteToBigEndian(output, {}));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_big_empty.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_big_empty.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -453,7 +453,7 @@ TEST(BigEndian, TestData) {
   ASSERT_TRUE(WriteToBigEndian(output, BuildTestData(), comments, object_info));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_big_data.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_big_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -463,7 +463,7 @@ TEST(BigEndian, ListSizes) {
   ASSERT_TRUE(WriteToBigEndian(output, BuildListSizeTestData()));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_big_list_sizes.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_big_list_sizes.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -473,7 +473,7 @@ TEST(LittleEndian, Empty) {
   ASSERT_TRUE(WriteToLittleEndian(output, {}));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_little_empty.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_little_empty.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -486,7 +486,7 @@ TEST(LittleEndian, TestData) {
       WriteToLittleEndian(output, BuildTestData(), comments, object_info));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_little_data.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_little_data.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -496,7 +496,7 @@ TEST(LittleEndian, ListSizes) {
   ASSERT_TRUE(WriteToLittleEndian(output, BuildListSizeTestData()));
 
   std::ifstream input =
-      OpenRunfile("__main__/plyodine/test_data/ply_little_list_sizes.ply");
+      OpenRunfile("_main/plyodine/test_data/ply_little_list_sizes.ply");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
@@ -507,12 +507,12 @@ TEST(Native, Empty) {
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input =
-        OpenRunfile("__main__/plyodine/test_data/ply_big_empty.ply");
+        OpenRunfile("_main/plyodine/test_data/ply_big_empty.ply");
     std::string expected(std::istreambuf_iterator<char>(input), {});
     EXPECT_EQ(expected, output.str());
   } else {
     std::ifstream input =
-        OpenRunfile("__main__/plyodine/test_data/ply_little_empty.ply");
+        OpenRunfile("_main/plyodine/test_data/ply_little_empty.ply");
     std::string expected(std::istreambuf_iterator<char>(input), {});
     EXPECT_EQ(expected, output.str());
   }
@@ -526,12 +526,12 @@ TEST(Native, TestData) {
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input =
-        OpenRunfile("__main__/plyodine/test_data/ply_big_data.ply");
+        OpenRunfile("_main/plyodine/test_data/ply_big_data.ply");
     std::string expected(std::istreambuf_iterator<char>(input), {});
     EXPECT_EQ(expected, output.str());
   } else {
     std::ifstream input =
-        OpenRunfile("__main__/plyodine/test_data/ply_little_data.ply");
+        OpenRunfile("_main/plyodine/test_data/ply_little_data.ply");
     std::string expected(std::istreambuf_iterator<char>(input), {});
     EXPECT_EQ(expected, output.str());
   }
@@ -543,12 +543,12 @@ TEST(Native, ListSizes) {
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input =
-        OpenRunfile("__main__/plyodine/test_data/ply_big_list_sizes.ply");
+        OpenRunfile("_main/plyodine/test_data/ply_big_list_sizes.ply");
     std::string expected(std::istreambuf_iterator<char>(input), {});
     EXPECT_EQ(expected, output.str());
   } else {
     std::ifstream input =
-        OpenRunfile("__main__/plyodine/test_data/ply_little_list_sizes.ply");
+        OpenRunfile("_main/plyodine/test_data/ply_little_list_sizes.ply");
     std::string expected(std::istreambuf_iterator<char>(input), {});
     EXPECT_EQ(expected, output.str());
   }

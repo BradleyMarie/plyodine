@@ -15,6 +15,6 @@ cc_test(
     srcs = ["triangle_mesh_reader_test.cc"],
     deps = [
         ":triangle_mesh_reader",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
