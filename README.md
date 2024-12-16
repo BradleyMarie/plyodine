@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/BradleyMarie/plyodine/blob/main/LICENSE)
 
 A zero-dependency library with high test coverage for C++23 for reading from and
-writing to PLY mesh files. An overview and definition of the file format is
+writing to PLY mesh streams. An overview and definition of the format is
 available on the Library of Congress
 [website](https://www.loc.gov/preservation/digital/formats/fdd/fdd000501.shtml).
 This format is often used in the computer vision and graphics communities for
@@ -12,9 +12,9 @@ its flexibility and simplicity. Famously, PLY is used to distribute the 3D
 models in the
 [Stanford 3D Scanning Repository](http://graphics.stanford.edu/data/3Dscanrep/).
 
-PLYodine supports reading from and writing to PLY files in binary big-endian,
+PLYodine supports reading from and writing to PLY streams in binary big-endian,
 binary little-endian, and ASCII modes. PLYodine uses stream based readers and
-writers meaning that they can both support files larger than can fit into
+writers meaning that they can both support streams larger than can fit into
 memory.
 
 While PLYodine does not aim to deliver the absolute highest performance, it does
@@ -28,9 +28,11 @@ models.
 
 PLYodine uses Bazel as its build system. If you are using Bazel as well, you can
 import PLYodine into your workspace by adding a snippet like the following into
-your `WORKSPACE` file.
+your `MODULE.bazel` file.
 
 ```
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "plyodine",
     sha256 = "80c6bbe307d23eefe04a87f4dfd6b00c4ddc66ad23da1dcfb2143e504ed43015",
@@ -46,7 +48,7 @@ snapshot.
 PLYodine code is structured with the core modules residing in the `plyodine`
 directory. `ply_reader` contains the parent `PlyReader` class, `ply_writer`
 contains the parent `PlyWriter` class, and `ply_header_reader` contains a
-library for reading PLY file headers (and is also an internal dependency of
+library for reading PLY headers (and is also an internal dependency of
 `ply_reader`). There is no dependency between `ply_reader` and `ply_writer`.
 
 The `PlyReader` and `PlyWriter` class are designed for extension and expose a
@@ -59,7 +61,7 @@ property is determined implicitly based on the type of the callback provided.
 While the APIs are broadly similar between `PlyReader` and `PlyWriter`, there is
 a bit of additional subtlety to keep in mind when implementing a `PlyWriter`.
 First, in `Start`, the derived class is also responsible for filling out the map
-indicating how many instances of each element should exist in the file. If this
+indicating how many instances of each element should exist in the input. If this
 is not done, PLYodine assumes a value of zero. Second, implementers must also
 implement the `GetPropertyListSizeType` which gets called by `PlyWriter` after
 `Start` to determine the index type to use for each property lists contained
@@ -71,16 +73,16 @@ span.
 
 Also inside the `plyodine` directory resides the `readers` and `writers`
 directories. These directories contain pre-implemented readers and writers for
-PLY files that contain more limited APIs than the base `PlyReader` and
+PLY streams that contain more limited APIs than the base `PlyReader` and
 `PlyWriter` classes are thus easier to work with.
 
 Currently, `readers` only contains `triangle_mesh_reader` which can handle PLY
-files that contain 3D vertices (with optional surface normals and texture
+input that contain 3D vertices (with optional surface normals and texture
 coordinates) and faces formed by lists of vertex indices arranged into triangle
 fans.
 
 Additionally, `writers` also contains just a single implementation,
-`in_memory_writer`, which generates a PLY file from values that are fully
+`in_memory_writer`, which generates a PLY output from values that are fully
 present in memory.
 
 ## Examples
@@ -105,15 +107,15 @@ API changes.
 
 ## A note on reading PLY files
 
-PLYodine currently is very strict with what it will accept as a valid PLY file
-(especially when it comes to parsing ASCII files). If you have a PLY file that
-is not quite perfect that is being rejected by PLYodine, to some extent this is
-working as intended.
+PLYodine currently is very strict with what it will accept as a valid PLY input
+(especially when it comes to parsing ASCII-formatted input). If you are
+attempting to read a PLY input that is not quite perfect that is being rejected
+by PLYodine, to some extent this is working as intended.
 
-However, with PLY being as loosely standardized as it is, if you encounter some
-significant class of files that will not open in PLYodine and will open with
-other libraries and applications please document the issue and file an issue or
-create a pull request.
+However, with PLY being as loosely standardized as it is, if you encounter a
+significant corpus of PLY files that will not open with PLYodine but will open
+with other libraries or applications please file an issue (and ideally create a
+pull request that resolves it).
 
 Also, if possible, prefer working with binary PLY files where there is less
 ambiguity about what deviations from the standard are allowable during parsing.
