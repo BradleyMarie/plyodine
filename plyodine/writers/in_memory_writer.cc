@@ -3,6 +3,7 @@
 #include <any>
 #include <cstdint>
 #include <expected>
+#include <limits>
 #include <map>
 #include <ostream>
 #include <span>
