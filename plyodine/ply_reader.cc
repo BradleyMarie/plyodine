@@ -3,16 +3,28 @@
 #include <bit>
 #include <cassert>
 #include <charconv>
-#include <limits>
+#include <cstdint>
+#include <istream>
+#include <map>
 #include <memory>
+#include <span>
 #include <sstream>
+#include <string>
+#include <string_view>
+#include <system_error>
 #include <tuple>
 #include <type_traits>
+#include <variant>
+#include <vector>
 
+#include "plyodine/error_code.h"
+#include "plyodine/error_codes.h"
 #include "plyodine/ply_header_reader.h"
 
 namespace plyodine {
 namespace {
+
+using ::plyodine::internal::MakeErrorCode;
 
 typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<int16_t>, std::vector<uint16_t>,
@@ -21,14 +33,7 @@ typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::stringstream, std::string, bool>
     Context;
 
-std::string NegativeListSize() {
-  return "The input contained a property list with a negative size";
-}
-
-std::string UnexpectedEOF() { return "Unexpected EOF"; }
-
-std::expected<void, std::string> ReadNextLine(std::istream& input,
-                                              Context& context) {
+std::error_code ReadNextLine(std::istream& input, Context& context) {
   auto line_ending = std::get<std::string_view>(context);
   auto& line = std::get<std::stringstream>(context);
 
@@ -42,7 +47,8 @@ std::expected<void, std::string> ReadNextLine(std::istream& input,
 
       while (!line_ending.empty() && input.get(c)) {
         if (c != line_ending[0]) {
-          return std::unexpected("The input contained mismatched line endings");
+          return MakeErrorCode(
+              ErrorCode::READER_CONTAINS_MISMATCHED_LINE_ENDINGS);
         }
         line_ending.remove_prefix(1);
       }
@@ -51,7 +57,7 @@ std::expected<void, std::string> ReadNextLine(std::istream& input,
     }
 
     if (c != ' ' && !std::isgraph(c)) {
-      return std::unexpected("The input contained an invalid character");
+      return MakeErrorCode(ErrorCode::READER_CONTAINS_INVALID_CHARACTER);
     }
 
     line.put(c);
@@ -59,10 +65,10 @@ std::expected<void, std::string> ReadNextLine(std::istream& input,
 
   std::get<bool>(context) = input.eof();
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
-std::expected<void, std::string> ReadNextToken(Context& context) {
+std::error_code ReadNextToken(Context& context) {
   auto& input = std::get<std::stringstream>(context);
   auto& token = std::get<std::string>(context);
   bool last_line = std::get<bool>(context);
@@ -80,40 +86,37 @@ std::expected<void, std::string> ReadNextToken(Context& context) {
 
   if (!c) {
     if (last_line) {
-      return std::unexpected(UnexpectedEOF());
+      return MakeErrorCode(ErrorCode::READER_UNEXPECTED_EOF);
     }
 
-    return std::unexpected(
-        "The input contained an element with too few tokens");
+    return MakeErrorCode(ErrorCode::READER_ELEMENT_TOO_FEW_TOKENS);
   }
 
   if (token.empty()) {
-    return std::unexpected("The input contained an empty token");
+    return MakeErrorCode(ErrorCode::READER_ELEMENT_CONTAINS_EXTRA_WHITESPACE);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
-std::expected<void, std::string> CheckForUnusedTokens(Context& context) {
+std::error_code CheckForUnusedTokens(Context& context) {
   auto& line = std::get<std::stringstream>(context);
 
   char c;
   while (line.get(c)) {
     if (std::isgraph(c)) {
-      return std::unexpected(
-          "The input contained an element with unused tokens");
+      return MakeErrorCode(ErrorCode::READER_ELEMENT_CONTAINS_EXTRA_TOKENS);
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::integral SizeType, bool IsListSize, typename T>
-std::expected<void, std::string> DeserializeASCII(std::istream& input,
-                                                  Context& context, T* value) {
-  auto success = ReadNextToken(context);
-  if (!success) {
-    return std::unexpected(success.error());
+std::error_code DeserializeASCII(std::istream& input, Context& context,
+                                 T* value) {
+  if (std::error_code error = ReadNextToken(context); error) {
+    return error;
   }
 
   auto& token = std::get<std::string>(context);
@@ -122,36 +125,32 @@ std::expected<void, std::string> DeserializeASCII(std::istream& input,
       std::from_chars(token.data(), token.data() + token.size(), *value);
   if (parsing_result.ec == std::errc::result_out_of_range) {
     if constexpr (IsListSize) {
-      return std::unexpected(
-          "The input contained a property list size that was out of range");
+      return MakeErrorCode(ErrorCode::READER_ELEMENT_LIST_SIZE_OUT_OF_RANGE);
     }
-    return std::unexpected(
-        "The input contained a property entry that was out of range");
+    return MakeErrorCode(ErrorCode::READER_ELEMENT_PROPERTY_OUT_OF_RANGE);
   } else if (parsing_result.ec != std::errc{}) {
     if constexpr (IsListSize) {
-      return std::unexpected(
-          "The input contained an unparsable property list size");
+      return MakeErrorCode(ErrorCode::READER_ELEMENT_LIST_SIZE_PARSING_FAILED);
     }
-    return std::unexpected("The input contained an unparsable property entry");
+    return MakeErrorCode(ErrorCode::READER_ELEMENT_PROPERTY_PARSING_FAILED);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::integral SizeType, bool IsListSize, typename T>
-std::expected<void, std::string> DeserializeASCII(std::istream& input,
-                                                  Context& context,
-                                                  std::span<const T>* value) {
+std::error_code DeserializeASCII(std::istream& input, Context& context,
+                                 std::span<const T>* value) {
   SizeType list_size;
-  auto list_size_error =
-      DeserializeASCII<SizeType, true>(input, context, &list_size);
-  if (!list_size_error) {
-    return list_size_error;
+  if (std::error_code error =
+          DeserializeASCII<SizeType, true>(input, context, &list_size);
+      error) {
+    return error;
   }
 
   if constexpr (std::is_signed<SizeType>::value) {
     if (list_size < 0) {
-      return std::unexpected(NegativeListSize());
+      return MakeErrorCode(ErrorCode::READER_NEGATIVE_LIST_SIZE);
     }
   }
 
@@ -160,10 +159,10 @@ std::expected<void, std::string> DeserializeASCII(std::istream& input,
 
   for (SizeType i = 0; i < list_size; i++) {
     T entry;
-    auto value_error =
-        DeserializeASCII<SizeType, false>(input, context, &entry);
-    if (!value_error) {
-      return value_error;
+    if (std::error_code error =
+            DeserializeASCII<SizeType, false>(input, context, &entry);
+        error) {
+      return error;
     }
 
     result.push_back(entry);
@@ -171,32 +170,32 @@ std::expected<void, std::string> DeserializeASCII(std::istream& input,
 
   *value = std::span<const T>(result);
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::endian Endianness, std::integral SizeType, std::integral T>
-std::expected<void, std::string> DeserializeBinary(std::istream& input,
-                                                   Context& context, T* value) {
+std::error_code DeserializeBinary(std::istream& input, Context& context,
+                                  T* value) {
   input.read(reinterpret_cast<char*>(value), sizeof(*value));
   if (!input) {
-    return std::unexpected(UnexpectedEOF());
+    return MakeErrorCode(ErrorCode::READER_UNEXPECTED_EOF);
   }
 
   if (Endianness != std::endian::native) {
     *value = std::byteswap(*value);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::endian Endianness, std::integral SizeType, std::floating_point T>
-std::expected<void, std::string> DeserializeBinary(std::istream& input,
-                                                   Context& context, T* value) {
+std::error_code DeserializeBinary(std::istream& input, Context& context,
+                                  T* value) {
   std::conditional_t<std::is_same<T, float>::value, uint32_t, uintmax_t> read;
 
   input.read(reinterpret_cast<char*>(&read), sizeof(read));
   if (!input) {
-    return std::unexpected(UnexpectedEOF());
+    return MakeErrorCode(ErrorCode::READER_UNEXPECTED_EOF);
   }
 
   if (Endianness != std::endian::native) {
@@ -205,23 +204,22 @@ std::expected<void, std::string> DeserializeBinary(std::istream& input,
 
   *value = std::bit_cast<T>(read);
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::endian Endianness, std::integral SizeType, typename T>
-std::expected<void, std::string> DeserializeBinary(std::istream& input,
-                                                   Context& context,
-                                                   std::span<const T>* value) {
+std::error_code DeserializeBinary(std::istream& input, Context& context,
+                                  std::span<const T>* value) {
   SizeType list_size;
-  auto list_size_error =
-      DeserializeBinary<Endianness, SizeType>(input, context, &list_size);
-  if (!list_size_error) {
-    return list_size_error;
+  if (std::error_code error =
+          DeserializeBinary<Endianness, SizeType>(input, context, &list_size);
+      error) {
+    return error;
   }
 
   if constexpr (std::is_signed<SizeType>::value) {
     if (list_size < 0) {
-      return std::unexpected(NegativeListSize());
+      return MakeErrorCode(ErrorCode::READER_NEGATIVE_LIST_SIZE);
     }
   }
 
@@ -230,10 +228,10 @@ std::expected<void, std::string> DeserializeBinary(std::istream& input,
 
   for (SizeType i = 0; i < list_size; i++) {
     T entry;
-    auto value_error =
-        DeserializeBinary<Endianness, SizeType>(input, context, &entry);
-    if (!value_error) {
-      return value_error;
+    if (std::error_code error =
+            DeserializeBinary<Endianness, SizeType>(input, context, &entry);
+        error) {
+      return error;
     }
 
     result.push_back(entry);
@@ -241,21 +239,22 @@ std::expected<void, std::string> DeserializeBinary(std::istream& input,
 
   *value = std::span<const T>(result);
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 class PropertyReaderBase {
  public:
-  virtual std::expected<void, std::string> Read(uintmax_t instance) = 0;
+  virtual std::error_code Read(uintmax_t instance) = 0;
 };
 
 template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
 class PropertyReader final : public PropertyReaderBase {
  public:
   PropertyReader(std::istream& input, PlyReader& ply_reader,
-                 std::expected<void, std::string> (PlyReader::*callback)(
-                     const std::string&, size_t, const std::string&, size_t,
-                     uintmax_t, T),
+                 std::error_code (PlyReader::*callback)(const std::string&,
+                                                        size_t,
+                                                        const std::string&,
+                                                        size_t, uintmax_t, T),
                  const std::string& element_name, size_t element_index,
                  const std::string& property_name, size_t property_index,
                  size_t actual_property_index, size_t num_properties,
@@ -271,13 +270,14 @@ class PropertyReader final : public PropertyReaderBase {
         num_properties_(num_properties),
         context_(context) {}
 
-  std::expected<void, std::string> Read(uintmax_t instance) override;
+  std::error_code Read(uintmax_t instance) override;
 
  private:
   std::istream& input_;
   PlyReader& ply_reader_;
-  std::expected<void, std::string> (PlyReader::*callback_)(
-      const std::string&, size_t, const std::string&, size_t, uintmax_t, T);
+  std::error_code (PlyReader::*callback_)(const std::string&, size_t,
+                                          const std::string&, size_t, uintmax_t,
+                                          T);
   const std::string& element_name_;
   size_t element_index_;
   const std::string& property_name_;
@@ -288,58 +288,60 @@ class PropertyReader final : public PropertyReaderBase {
 };
 
 template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
-std::expected<void, std::string>
-PropertyReader<Ascii, Endianness, SizeType, T>::Read(uintmax_t instance) {
+std::error_code PropertyReader<Ascii, Endianness, SizeType, T>::Read(
+    uintmax_t instance) {
   if constexpr (Ascii) {
     if (actual_property_index_ == 0) {
-      auto read_line = ReadNextLine(input_, context_);
-      if (!read_line) {
-        return read_line;
+      if (std::error_code error = ReadNextLine(input_, context_); error) {
+        return error;
       }
     }
   }
 
   T result;
 
-  std::expected<void, std::string> error;
   if constexpr (Ascii) {
-    error = DeserializeASCII<SizeType, false>(input_, context_, &result);
+    if (std::error_code error =
+            DeserializeASCII<SizeType, false>(input_, context_, &result);
+        error) {
+      return error;
+    }
   } else {
-    error = DeserializeBinary<Endianness, SizeType>(input_, context_, &result);
-  }
-
-  if (!error) {
-    return error;
+    if (std::error_code error =
+            DeserializeBinary<Endianness, SizeType>(input_, context_, &result);
+        error) {
+      return error;
+    }
   }
 
   if (callback_ == nullptr) {
-    return std::expected<void, std::string>();
+    return std::error_code();
   }
 
-  auto callback_success =
-      (ply_reader_.*callback_)(element_name_, element_index_, property_name_,
-                               property_index_, instance, result);
-  if (!callback_success) {
-    return callback_success;
+  if (std::error_code error = (ply_reader_.*callback_)(
+          element_name_, element_index_, property_name_, property_index_,
+          instance, result);
+      error) {
+    return error;
   }
 
   if constexpr (Ascii) {
     if (actual_property_index_ + 1 == num_properties_) {
-      auto unused_tokens_error = CheckForUnusedTokens(context_);
-      if (!unused_tokens_error) {
-        return unused_tokens_error;
+      if (std::error_code error = CheckForUnusedTokens(context_); error) {
+        return error;
       }
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <bool Ascii, std::endian Endianness, typename T>
 std::unique_ptr<PropertyReaderBase> BuildPropertyReader(
     std::istream& input, PlyReader& ply_reader,
-    std::expected<void, std::string> (PlyReader::*callback)(
-        const std::string&, size_t, const std::string&, size_t, uintmax_t, T),
+    std::error_code (PlyReader::*callback)(const std::string&, size_t,
+                                           const std::string&, size_t,
+                                           uintmax_t, T),
     const std::string& element_name, size_t element_index,
     const std::string& property_name, size_t property_index,
     size_t actual_property_index, size_t num_properties,
@@ -432,10 +434,10 @@ BuildPropertyReaders(
 
 }  // namespace
 
-std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
+std::error_code PlyReader::ReadFrom(std::istream& input) {
   auto header = ReadPlyHeader(input);
   if (!header) {
-    return std::unexpected(header.error());
+    return header.error();
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
@@ -509,10 +511,10 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   }
 
   auto callbacks = empty_callbacks;
-  auto started = Start(num_element_instances, callbacks, header->comments,
-                       header->object_info);
-  if (!started) {
-    return std::unexpected(started.error());
+  if (std::error_code error = Start(num_element_instances, callbacks,
+                                    header->comments, header->object_info);
+      error) {
+    return error;
   }
 
   size_t element_index = 0;
@@ -612,20 +614,19 @@ std::expected<void, std::string> PlyReader::ReadFrom(std::istream& input) {
   for (const auto& element : wrapped_callbacks) {
     for (uintmax_t instance = 0; instance < element.first; instance++) {
       for (const auto& property_reader : element.second) {
-        auto result = property_reader->Read(instance);
-        if (!result) {
-          return result;
+        if (std::error_code error = property_reader->Read(instance); error) {
+          return error;
         }
       }
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 // Static assertions to ensure float types are properly sized
-static_assert(std::numeric_limits<double>::is_iec559);
-static_assert(std::numeric_limits<float>::is_iec559);
+static_assert(sizeof(double) == 8);
+static_assert(sizeof(float) == 4);
 
 // Static assertions to ensure system does not use mixed endianness
 static_assert(std::endian::native == std::endian::little ||

@@ -1,10 +1,39 @@
 #include "plyodine/writers/in_memory_writer.h"
 
-#include <algorithm>
-#include <limits>
-#include <optional>
+#include <any>
+#include <cstdint>
+#include <expected>
+#include <map>
+#include <ostream>
+#include <span>
+#include <string>
+#include <system_error>
+#include <type_traits>
+#include <variant>
+#include <vector>
 
 namespace plyodine {
+namespace {
+
+static class ErrorCategory final : public std::error_category {
+  const char* name() const noexcept override {
+    return "plyodine::InMemoryWriter";
+  }
+
+  std::string message(int condition) const override {
+    InMemoryWriter::ErrorCodes error_code{condition};
+    switch (error_code) {
+      case InMemoryWriter::ErrorCodes::UNBALANCED_PROPERTIES:
+        return "All properties of an element must have the same size";
+      case InMemoryWriter::ErrorCodes::PROPERTY_LIST_TOO_LONG:
+        return "Property lists can contain no more than 4294967295 entries";
+    }
+
+    return "Unknown Error";
+  }
+} kErrorCategory;
+
+}  // namespace
 
 void InMemoryWriter::AddComment(const std::string& comment) {
   comments_.push_back(comment);
@@ -403,7 +432,7 @@ struct overloaded : Ts... {
   using Ts::operator()...;
 };
 
-std::expected<void, std::string> InMemoryWriter::Start(
+std::error_code InMemoryWriter::Start(
     std::map<std::string, uintmax_t>& num_element_instances,
     std::map<std::string, std::map<std::string, Callback>>& callbacks,
     std::vector<std::string>& comments,
@@ -417,8 +446,9 @@ std::expected<void, std::string> InMemoryWriter::Start(
 
       if (num_elements.has_value()) {
         if (*num_elements != property_num_elements) {
-          return std::unexpected(
-              "All properties of an element must have the same size");
+          return std::error_code(
+              static_cast<int>(ErrorCodes::UNBALANCED_PROPERTIES),
+              kErrorCategory);
         }
       } else {
         num_elements = property_num_elements;
@@ -578,10 +608,10 @@ std::expected<void, std::string> InMemoryWriter::Start(
   object_info.insert(object_info.end(), object_info_.begin(),
                      object_info_.end());
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
-std::expected<PlyWriter::ListSizeType, std::string>
+std::expected<PlyWriter::ListSizeType, std::error_code>
 InMemoryWriter::GetPropertyListSizeType(const std::string& element_name,
                                         size_t element_index,
                                         const std::string& property_name,
@@ -610,8 +640,8 @@ InMemoryWriter::GetPropertyListSizeType(const std::string& element_name,
     return PlyWriter::ListSizeType::UINT32;
   }
 
-  return std::unexpected(
-      "Property lists can contain no more than 4294967295 entries");
+  return std::unexpected(std::error_code(
+      static_cast<int>(ErrorCodes::PROPERTY_LIST_TOO_LONG), kErrorCategory));
 }
 
 }  // namespace plyodine

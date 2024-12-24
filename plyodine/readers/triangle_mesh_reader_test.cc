@@ -1,17 +1,25 @@
 #include "plyodine/readers/triangle_mesh_reader.h"
 
 #include <array>
+#include <cstdint>
 #include <sstream>
+#include <string>
+#include <type_traits>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 
+namespace plyodine {
+namespace {
+
+using ::testing::ElementsAre;
+
 template <std::floating_point LocationType, std::floating_point NormalType,
           std::floating_point UVType, std::integral FaceIndexType>
 class TestTriangleMeshReader final
-    : public plyodine::TriangleMeshReader<LocationType, NormalType, UVType,
-                                          FaceIndexType> {
+    : public TriangleMeshReader<LocationType, NormalType, UVType,
+                                FaceIndexType> {
  public:
   void Start() override {
     positions.clear();
@@ -48,7 +56,7 @@ TEST(TriangleMeshReader, Empty) {
   std::stringstream input("ply\rformat ascii 1.0\rend_header\r");
 
   TestTriangleMeshReader<float, float, float, uint32_t> reader;
-  EXPECT_EQ(reader.ReadFrom(input).error(),
+  EXPECT_EQ(reader.ReadFrom(input).message(),
             "Element vertex must have properties x, y, and z");
 }
 
@@ -74,7 +82,7 @@ TEST(TriangleMeshReader, PositionBadType) {
           "ply\rformat ascii 1.0\relement vertex 1\rproperty " + type + " " +
           name + "\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "The type of properties x, y, and z, on vertex elements must "
                 "be either float or double");
     }
@@ -94,7 +102,7 @@ TEST(TriangleMeshReader, PositionMissing) {
     input_string += "end_header\r";
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
-    EXPECT_EQ(reader.ReadFrom(input).error(),
+    EXPECT_EQ(reader.ReadFrom(input).message(),
               "Element vertex must have properties x, y, and z");
   }
 }
@@ -122,7 +130,7 @@ TEST(TriangleMeshReader, NormalBadType) {
           name + "\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
       EXPECT_EQ(
-          reader.ReadFrom(input).error(),
+          reader.ReadFrom(input).message(),
           "The type of properties nx, ny, and nz, on vertex elements must "
           "be either float or double");
     }
@@ -153,7 +161,7 @@ TEST(TriangleMeshReader, UVBadType) {
           name + "\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
       EXPECT_EQ(
-          reader.ReadFrom(input).error(),
+          reader.ReadFrom(input).message(),
           "The type of properties texture_s, texture_t, texture_u, texture_v, "
           "s, t, u, and v on vertex elements must be either float or double");
     }
@@ -171,7 +179,7 @@ TEST(TriangleMeshReader, VertexIndicesBadType) {
           "ply\rformat ascii 1.0\relement face 1\rproperty " + type + " " +
           name + "\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "The type of property vertex_indices on face elements must be "
                 "an integral list type");
     }
@@ -183,7 +191,7 @@ TEST(TriangleMeshReader, VertexIndicesMissing) {
       "ply\rformat ascii 1.0\relement vertex 1\rproperty float x\rproperty "
       "float y\rproperty float z\rend_header\r");
   TestTriangleMeshReader<float, float, float, uint32_t> reader;
-  EXPECT_EQ(reader.ReadFrom(input).error(),
+  EXPECT_EQ(reader.ReadFrom(input).message(),
             "Element face must have property vertex_indices");
 }
 
@@ -226,7 +234,7 @@ TEST(TriangleMeshReader, PropertyTypes) {
                         vertex_index + "end_header\r");
                     TestTriangleMeshReader<float, float, float, uint32_t>
                         reader;
-                    EXPECT_TRUE(reader.ReadFrom(input));
+                    EXPECT_EQ(0, reader.ReadFrom(input).value());
                     EXPECT_TRUE(reader.positions.empty());
                     EXPECT_TRUE(reader.normals.empty());
                     EXPECT_TRUE(reader.uvs.empty());
@@ -268,13 +276,13 @@ TEST(TriangleMeshReader, OutOfRangePosition) {
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
     if (i == 0) {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for x");
     } else if (i == 1) {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for y");
     } else {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for z");
     }
   }
@@ -307,13 +315,13 @@ TEST(TriangleMeshReader, OutOfRangeNormal) {
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
     if (i == 0) {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for nx");
     } else if (i == 1) {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for ny");
     } else {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for nz");
     }
   }
@@ -346,10 +354,10 @@ TEST(TriangleMeshReader, UVs) {
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
     if (i == 0) {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for u");
     } else {
-      EXPECT_EQ(reader.ReadFrom(input).error(),
+      EXPECT_EQ(reader.ReadFrom(input).message(),
                 "Input contained a non-finite value for v");
     }
   }
@@ -377,7 +385,7 @@ TEST(TriangleMeshReader, VertexIndexTooLow) {
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-    EXPECT_EQ(reader.ReadFrom(input).error(),
+    EXPECT_EQ(reader.ReadFrom(input).message(),
               "A vertex index was out of range");
   }
 }
@@ -404,7 +412,7 @@ TEST(TriangleMeshReader, VertexIndexMoreThanVertices) {
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-    EXPECT_EQ(reader.ReadFrom(input).error(),
+    EXPECT_EQ(reader.ReadFrom(input).message(),
               "A vertex index was out of range");
   }
 }
@@ -436,7 +444,7 @@ TEST(TriangleMeshReader, VertexIndexTooBigForIndexType) {
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, int8_t> reader;
 
-    EXPECT_EQ(reader.ReadFrom(input).error(),
+    EXPECT_EQ(reader.ReadFrom(input).message(),
               "A vertex index was out of range");
   }
 }
@@ -451,16 +459,16 @@ TEST(TriangleMeshReader, ValidPositionsOnly) {
   std::stringstream input(input_string);
   TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-  ASSERT_TRUE(reader.ReadFrom(input));
+  ASSERT_EQ(0, reader.ReadFrom(input).value());
   ASSERT_EQ(reader.positions.size(), 3u);
-  EXPECT_THAT(reader.positions[0], testing::ElementsAre(0.0, 0.0, 0.0));
-  EXPECT_THAT(reader.positions[1], testing::ElementsAre(1.0, 0.0, 0.0));
-  EXPECT_THAT(reader.positions[2], testing::ElementsAre(0.0, 1.0, 0.0));
+  EXPECT_THAT(reader.positions[0], ElementsAre(0.0, 0.0, 0.0));
+  EXPECT_THAT(reader.positions[1], ElementsAre(1.0, 0.0, 0.0));
+  EXPECT_THAT(reader.positions[2], ElementsAre(0.0, 1.0, 0.0));
   EXPECT_TRUE(reader.normals.empty());
   EXPECT_TRUE(reader.uvs.empty());
   ASSERT_EQ(reader.faces.size(), 2u);
-  EXPECT_THAT(reader.faces[0], testing::ElementsAre(0u, 1u, 2u));
-  EXPECT_THAT(reader.faces[1], testing::ElementsAre(0u, 2u, 1u));
+  EXPECT_THAT(reader.faces[0], ElementsAre(0u, 1u, 2u));
+  EXPECT_THAT(reader.faces[1], ElementsAre(0u, 2u, 1u));
 }
 
 TEST(TriangleMeshReader, Valid) {
@@ -475,20 +483,23 @@ TEST(TriangleMeshReader, Valid) {
   std::stringstream input(input_string);
   TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-  ASSERT_TRUE(reader.ReadFrom(input));
+  ASSERT_EQ(0, reader.ReadFrom(input).value());
   ASSERT_EQ(reader.positions.size(), 3u);
-  EXPECT_THAT(reader.positions[0], testing::ElementsAre(0.0, 0.0, 3.0));
-  EXPECT_THAT(reader.positions[1], testing::ElementsAre(1.0, 0.0, 0.0));
-  EXPECT_THAT(reader.positions[2], testing::ElementsAre(0.0, 1.0, 0.0));
+  EXPECT_THAT(reader.positions[0], ElementsAre(0.0, 0.0, 3.0));
+  EXPECT_THAT(reader.positions[1], ElementsAre(1.0, 0.0, 0.0));
+  EXPECT_THAT(reader.positions[2], ElementsAre(0.0, 1.0, 0.0));
   ASSERT_EQ(reader.normals.size(), 3u);
-  EXPECT_THAT(reader.normals[0], testing::ElementsAre(1.0, 2.0, 3.0));
-  EXPECT_THAT(reader.normals[1], testing::ElementsAre(1.0, 0.0, 0.0));
-  EXPECT_THAT(reader.normals[2], testing::ElementsAre(1.0, 0.0, 0.0));
+  EXPECT_THAT(reader.normals[0], ElementsAre(1.0, 2.0, 3.0));
+  EXPECT_THAT(reader.normals[1], ElementsAre(1.0, 0.0, 0.0));
+  EXPECT_THAT(reader.normals[2], ElementsAre(1.0, 0.0, 0.0));
   ASSERT_EQ(reader.uvs.size(), 3u);
-  EXPECT_THAT(reader.uvs[0], testing::ElementsAre(0.5, 0.25));
-  EXPECT_THAT(reader.uvs[1], testing::ElementsAre(0.0, 0.0));
-  EXPECT_THAT(reader.uvs[2], testing::ElementsAre(0.0, 0.0));
+  EXPECT_THAT(reader.uvs[0], ElementsAre(0.5, 0.25));
+  EXPECT_THAT(reader.uvs[1], ElementsAre(0.0, 0.0));
+  EXPECT_THAT(reader.uvs[2], ElementsAre(0.0, 0.0));
   ASSERT_EQ(reader.faces.size(), 2u);
-  EXPECT_THAT(reader.faces[0], testing::ElementsAre(0u, 1u, 2u));
-  EXPECT_THAT(reader.faces[1], testing::ElementsAre(0u, 2u, 1u));
+  EXPECT_THAT(reader.faces[0], ElementsAre(0u, 1u, 2u));
+  EXPECT_THAT(reader.faces[1], ElementsAre(0u, 2u, 1u));
 }
+
+}  // namespace
+}  // namespace plyodine

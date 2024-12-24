@@ -5,18 +5,32 @@
 #include <bit>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
+#include <expected>
 #include <functional>
 #include <iomanip>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
+#include <span>
 #include <sstream>
+#include <string>
 #include <string_view>
+#include <system_error>
 #include <type_traits>
+#include <variant>
 #include <vector>
+
+#include "plyodine/error_code.h"
+#include "plyodine/error_codes.h"
 
 namespace plyodine {
 namespace {
+
+using ::plyodine::internal::MakeErrorCode;
+using ::plyodine::internal::MakeUnexpected;
 
 typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<int16_t>, std::vector<uint16_t>,
@@ -24,31 +38,18 @@ typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<float>, std::vector<double>, std::stringstream>
     Context;
 
-std::string FloatingPointError() {
-  return "Only finite floating point values may be serialized to an ASCII "
-         "output";
-}
-
-std::string ListSizeError() {
-  return "The list was too big to be represented with the selected size type";
-}
-
-std::string WriteFailure() { return "Write failure"; }
-
-std::expected<void, std::string> ValidateName(const std::string& name) {
+std::error_code ValidateName(const std::string& name) {
   if (name.empty()) {
-    return std::unexpected("Names of properties and elements may not be empty");
+    return MakeErrorCode(ErrorCode::WRITER_EMPTY_NAME_SPECIFIED);
   }
 
   for (char c : name) {
     if (!std::isgraph(c)) {
-      return std::unexpected(
-          "Names of properties and elements may only contain graphic "
-          "characters");
+      return MakeErrorCode(ErrorCode::WRITER_NAME_CONTAINED_INVALID_CHARACTERS);
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 bool ValidateComment(const std::string& comment) {
@@ -62,21 +63,21 @@ bool ValidateComment(const std::string& comment) {
 }
 
 template <std::integral SizeType, std::integral T>
-std::expected<void, std::string> SerializeASCII(std::ostream& output,
-                                                Context& context, T value) {
+std::error_code SerializeASCII(std::ostream& output, Context& context,
+                               T value) {
   output << +value;
   if (!output) {
-    return std::unexpected(WriteFailure());
+    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::integral SizeType, std::floating_point T>
-std::expected<void, std::string> SerializeASCII(std::ostream& output,
-                                                Context& context, T value) {
+std::error_code SerializeASCII(std::ostream& output, Context& context,
+                               T value) {
   if (!std::isfinite(value)) {
-    return std::unexpected(FloatingPointError());
+    return MakeErrorCode(ErrorCode::WRITER_ASCII_FLOAT_NOT_FINITE);
   }
 
   std::stringstream& storage = std::get<std::stringstream>(context);
@@ -99,59 +100,57 @@ std::expected<void, std::string> SerializeASCII(std::ostream& output,
 
   output << result;
   if (!output) {
-    return std::unexpected(WriteFailure());
+    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::integral SizeType, typename T>
-std::expected<void, std::string> SerializeASCII(std::ostream& output,
-                                                Context& context,
-                                                std::span<const T> values) {
+std::error_code SerializeASCII(std::ostream& output, Context& context,
+                               std::span<const T> values) {
   if (std::numeric_limits<SizeType>::max() < values.size()) {
-    return std::unexpected(ListSizeError());
+    return MakeErrorCode(ErrorCode::WRITER_LIST_INDEX_TOO_SMALL);
   }
 
-  auto list_size_success = SerializeASCII<SizeType, SizeType>(
-      output, context, static_cast<SizeType>(values.size()));
-  if (!list_size_success) {
-    return list_size_success;
+  if (std::error_code error = SerializeASCII<SizeType, SizeType>(
+          output, context, static_cast<SizeType>(values.size()));
+      error) {
+    return error;
   }
 
   for (const auto& entry : values) {
     output << ' ';
     if (!output) {
-      return std::unexpected(WriteFailure());
+      return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
     }
 
-    auto entry_success = SerializeASCII<SizeType>(output, context, entry);
-    if (!entry_success) {
-      return entry_success;
+    if (std::error_code error =
+            SerializeASCII<SizeType>(output, context, entry);
+        error) {
+      return error;
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::endian Endianness, std::integral SizeType, std::integral T>
-std::expected<void, std::string> SerializeBinary(std::ostream& output,
-                                                 T value) {
+std::error_code SerializeBinary(std::ostream& output, T value) {
   if (Endianness != std::endian::native) {
     value = std::byteswap(value);
   }
 
   output.write(reinterpret_cast<char*>(&value), sizeof(value));
   if (!output) {
-    return std::unexpected(WriteFailure());
+    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::endian Endianness, std::integral SizeType, std::floating_point T>
-std::expected<void, std::string> SerializeBinary(std::ostream& output,
-                                                 T value) {
+std::error_code SerializeBinary(std::ostream& output, T value) {
   auto entry = std::bit_cast<
       std::conditional_t<std::is_same<T, float>::value, uint32_t, uintmax_t>>(
       value);
@@ -162,39 +161,40 @@ std::expected<void, std::string> SerializeBinary(std::ostream& output,
 
   output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
   if (!output) {
-    return std::unexpected(WriteFailure());
+    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <std::endian Endianness, std::integral SizeType, typename T>
-std::expected<void, std::string> SerializeBinary(std::ostream& output,
-                                                 std::span<const T> values) {
+std::error_code SerializeBinary(std::ostream& output,
+                                std::span<const T> values) {
   if (std::numeric_limits<SizeType>::max() < values.size()) {
-    return std::unexpected(ListSizeError());
+    return MakeErrorCode(ErrorCode::WRITER_LIST_INDEX_TOO_SMALL);
   }
 
-  auto list_size_success = SerializeBinary<Endianness, SizeType, SizeType>(
-      output, static_cast<SizeType>(values.size()));
-  if (!list_size_success) {
-    return list_size_success;
+  if (std::error_code error = SerializeBinary<Endianness, SizeType, SizeType>(
+          output, static_cast<SizeType>(values.size()));
+      error) {
+    return error;
   }
 
   for (const auto& entry : values) {
-    auto entry_success = SerializeBinary<Endianness, SizeType>(output, entry);
-    if (!entry_success) {
-      return entry_success;
+    if (std::error_code error =
+            SerializeBinary<Endianness, SizeType>(output, entry);
+        error) {
+      return error;
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <typename T>
-std::expected<T, std::string> CallCallback(
+std::expected<T, std::error_code> CallCallback(
     const PlyWriter& ply_writer,
-    std::expected<T, std::string> (PlyWriter::*callback)(
+    std::expected<T, std::error_code> (PlyWriter::*callback)(
         const std::string&, size_t, const std::string&, size_t, uintmax_t)
         const,
     const std::string& element_name, size_t element_index,
@@ -205,9 +205,9 @@ std::expected<T, std::string> CallCallback(
 }
 
 template <typename T>
-std::expected<std::span<const T>, std::string> CallCallback(
+std::expected<std::span<const T>, std::error_code> CallCallback(
     const PlyWriter& ply_writer,
-    std::expected<std::span<const T>, std::string> (PlyWriter::*callback)(
+    std::expected<std::span<const T>, std::error_code> (PlyWriter::*callback)(
         const std::string&, size_t, const std::string&, size_t, uintmax_t,
         std::vector<T>&) const,
     const std::string& element_name, size_t element_index,
@@ -239,7 +239,7 @@ void PropertyListString(std::ostream& output, size_t list_type,
 
 class PropertyWriterBase {
  public:
-  virtual std::expected<void, std::string> Write(uintmax_t instance) = 0;
+  virtual std::error_code Write(uintmax_t instance) = 0;
 };
 
 template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
@@ -258,7 +258,7 @@ class PropertyWriter final : public PropertyWriterBase {
         property_index_(property_index),
         context_(context) {}
 
-  std::expected<void, std::string> Write(uintmax_t instance) override;
+  std::error_code Write(uintmax_t instance) override;
 
  private:
   std::ostream& output_;
@@ -274,50 +274,52 @@ class PropertyWriter final : public PropertyWriterBase {
 };
 
 template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
-std::expected<void, std::string>
-PropertyWriter<Ascii, Endianness, SizeType, T>::Write(uintmax_t instance) {
+std::error_code PropertyWriter<Ascii, Endianness, SizeType, T>::Write(
+    uintmax_t instance) {
   auto result =
       CallCallback(ply_writer_, callback_, element_name_, element_index_,
                    property_name_, property_index_, instance, context_);
   if (!result) {
-    return std::unexpected(result.error());
+    return result.error();
   }
 
-  std::expected<void, std::string> write_status;
   if constexpr (Ascii) {
-    write_status = SerializeASCII<SizeType>(output_, context_, *result);
+    if (std::error_code error =
+            SerializeASCII<SizeType>(output_, context_, *result);
+        error) {
+      return error;
+    }
   } else {
-    write_status = SerializeBinary<Endianness, SizeType>(output_, *result);
-  }
-
-  if (!write_status) {
-    return write_status;
+    if (std::error_code error =
+            SerializeBinary<Endianness, SizeType>(output_, *result);
+        error) {
+      return error;
+    }
   }
 
   if (!output_) {
-    return std::unexpected(WriteFailure());
+    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 template <bool Ascii, std::endian Endianness, typename T>
-std::expected<std::unique_ptr<PropertyWriterBase>, std::string>
+std::expected<std::unique_ptr<PropertyWriterBase>, std::error_code>
 BuildPropertyWriter(std::ostream& output, const PlyWriter& ply_writer,
                     T callback, const std::string& element_name,
                     size_t element_index, const std::string& property_name,
                     size_t property_index, Context& context,
                     size_t value_type_index,
-                    std::function<std::expected<size_t, std::string>(
+                    std::function<std::expected<size_t, std::error_code>(
                         const std::string&, size_t, const std::string&, size_t)>
                         get_property_list_size_type) {
   using R = std::decay_t<decltype(*CallCallback(
       ply_writer, callback, element_name, element_index, property_name,
       property_index, 0u, context))>;
 
-  auto property_name_valid = ValidateName(property_name);
-  if (!property_name_valid) {
-    return std::unexpected(property_name_valid.error());
+  if (std::error_code error = ValidateName(property_name); error) {
+    return std::unexpected(error);
   }
 
   std::optional<size_t> maybe_list_size_type;
@@ -336,7 +338,7 @@ BuildPropertyWriter(std::ostream& output, const PlyWriter& ply_writer,
   }
 
   if (!output) {
-    return std::unexpected(WriteFailure());
+    return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
   }
 
   if constexpr (std::is_class<R>::value) {
@@ -361,9 +363,9 @@ BuildPropertyWriter(std::ostream& output, const PlyWriter& ply_writer,
 template <bool Ascii, std::endian Endianness, typename T>
 std::expected<std::vector<std::pair<
                   uintmax_t, std::vector<std::unique_ptr<PropertyWriterBase>>>>,
-              std::string>
+              std::error_code>
 WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
-            const std::function<std::expected<size_t, std::string>(
+            const std::function<std::expected<size_t, std::error_code>(
                 const std::string&, size_t, const std::string&, size_t)>&
                 get_property_list_size_type,
             const char* format,
@@ -373,30 +375,28 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
             const std::vector<std::string>& object_info, Context& context) {
   output << "ply\rformat " << format << " 1.0\r";
   if (!output) {
-    return std::unexpected(WriteFailure());
+    return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
   }
 
   for (const auto& comment : comments) {
     if (!ValidateComment(comment)) {
-      return std::unexpected(
-          "A comment may not contain line feed or carriage return");
+      return MakeUnexpected(ErrorCode::WRITER_COMMENT_CONTAINS_NEWLINE);
     }
 
     output << "comment " << comment << "\r";
     if (!output) {
-      return std::unexpected(WriteFailure());
+      return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
     }
   }
 
   for (const auto& info : object_info) {
     if (!ValidateComment(info)) {
-      return std::unexpected(
-          "An obj_info may not contain line feed or carriage return");
+      return MakeUnexpected(ErrorCode::WRITER_OBJ_INFO_CONTAINS_NEWLINE);
     }
 
     output << "obj_info " << info << "\r";
     if (!output) {
-      return std::unexpected(WriteFailure());
+      return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
     }
   }
 
@@ -404,15 +404,14 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
       std::pair<uintmax_t, std::vector<std::unique_ptr<PropertyWriterBase>>>>
       actual_callbacks;
   for (const auto& element : callbacks) {
-    auto element_name_valid = ValidateName(element.first);
-    if (!element_name_valid) {
-      return std::unexpected(element_name_valid.error());
+    if (std::error_code error = ValidateName(element.first); error) {
+      return std::unexpected(error);
     }
 
     output << "element " << element.first << " "
            << num_element_instances[element.first] << "\r";
     if (!output) {
-      return std::unexpected(WriteFailure());
+      return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
     }
 
     std::vector<std::unique_ptr<PropertyWriterBase>> row;
@@ -437,16 +436,16 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
 
   output << "end_header\r";
   if (!output) {
-    return std::unexpected(WriteFailure());
+    return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
   }
 
   return actual_callbacks;
 }
 
 template <std::endian Endianness, typename T>
-std::expected<void, std::string> WriteToBinaryImpl(
+std::error_code WriteToBinaryImpl(
     std::ostream& output, const PlyWriter& ply_writer,
-    const std::function<std::expected<size_t, std::string>(
+    const std::function<std::expected<size_t, std::error_code>(
         const std::string&, size_t, const std::string&, size_t)>&
         get_property_list_size_type,
     std::map<std::string, uintmax_t>& num_element_instances,
@@ -465,27 +464,25 @@ std::expected<void, std::string> WriteToBinaryImpl(
       output, ply_writer, get_property_list_size_type, format,
       num_element_instances, callbacks, comments, object_info, context);
   if (!actual_callbacks) {
-    return std::unexpected(actual_callbacks.error());
+    return actual_callbacks.error();
   }
 
   for (const auto& element : *actual_callbacks) {
     for (uintmax_t instance = 0; instance < element.first; instance++) {
       for (const auto& property_writer : element.second) {
-        auto result = property_writer->Write(instance);
-        if (!result) {
-          return std::unexpected(result.error());
+        if (std::error_code error = property_writer->Write(instance); error) {
+          return error;
         }
       }
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
 }  // namespace
 
-std::expected<void, std::string> PlyWriter::WriteTo(
-    std::ostream& stream) const {
+std::error_code PlyWriter::WriteTo(std::ostream& stream) const {
   if constexpr (std::endian::native == std::endian::big) {
     return WriteToBigEndian(stream);
   } else {
@@ -493,15 +490,19 @@ std::expected<void, std::string> PlyWriter::WriteTo(
   }
 }
 
-std::expected<void, std::string> PlyWriter::WriteToASCII(
-    std::ostream& stream) const {
+std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
+  if (stream.fail()) {
+    return MakeErrorCode(ErrorCode::BAD_STREAM);
+  }
+
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  auto result = Start(num_element_instances, callbacks, comments, object_info);
-  if (!result) {
-    return result;
+  if (std::error_code error =
+          Start(num_element_instances, callbacks, comments, object_info);
+      error) {
+    return error;
   }
 
   Context context;
@@ -509,7 +510,7 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
       stream, *this,
       [&](const std::string& element_name, size_t element_index,
           const std::string& property_name,
-          size_t property_index) -> std::expected<size_t, std::string> {
+          size_t property_index) -> std::expected<size_t, std::error_code> {
         auto result = this->GetPropertyListSizeType(
             element_name, element_index, property_name, property_index);
         if (!result) {
@@ -520,7 +521,7 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
       "ascii", num_element_instances, callbacks, comments, object_info,
       context);
   if (!actual_callbacks) {
-    return std::unexpected(actual_callbacks.error());
+    return actual_callbacks.error();
   }
 
   for (const auto& element : *actual_callbacks) {
@@ -530,44 +531,47 @@ std::expected<void, std::string> PlyWriter::WriteToASCII(
         if (!first) {
           stream << ' ';
           if (!stream) {
-            return std::unexpected(WriteFailure());
+            return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
           }
         }
 
         first = false;
 
-        auto result = property_writer->Write(instance);
-        if (!result) {
-          return std::unexpected(result.error());
+        if (std::error_code error = property_writer->Write(instance); error) {
+          return error;
         }
       }
 
       stream << '\r';
       if (!stream) {
-        return std::unexpected(WriteFailure());
+        return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
       }
     }
   }
 
-  return std::expected<void, std::string>();
+  return std::error_code();
 }
 
-std::expected<void, std::string> PlyWriter::WriteToBigEndian(
-    std::ostream& stream) const {
+std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
+  if (stream.fail()) {
+    return MakeErrorCode(ErrorCode::BAD_STREAM);
+  }
+
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  auto result = Start(num_element_instances, callbacks, comments, object_info);
-  if (!result) {
-    return result;
+  if (std::error_code error =
+          Start(num_element_instances, callbacks, comments, object_info);
+      error) {
+    return error;
   }
 
   return WriteToBinaryImpl<std::endian::big>(
       stream, *this,
       [&](const std::string& element_name, size_t element_index,
           const std::string& property_name,
-          size_t property_index) -> std::expected<size_t, std::string> {
+          size_t property_index) -> std::expected<size_t, std::error_code> {
         auto result = this->GetPropertyListSizeType(
             element_name, element_index, property_name, property_index);
         if (!result) {
@@ -578,22 +582,26 @@ std::expected<void, std::string> PlyWriter::WriteToBigEndian(
       num_element_instances, callbacks, comments, object_info);
 }
 
-std::expected<void, std::string> PlyWriter::WriteToLittleEndian(
-    std::ostream& stream) const {
+std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
+  if (stream.fail()) {
+    return MakeErrorCode(ErrorCode::BAD_STREAM);
+  }
+
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, Callback>> callbacks;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  auto result = Start(num_element_instances, callbacks, comments, object_info);
-  if (!result) {
-    return result;
+  if (std::error_code error =
+          Start(num_element_instances, callbacks, comments, object_info);
+      error) {
+    return error;
   }
 
   return WriteToBinaryImpl<std::endian::little>(
       stream, *this,
       [&](const std::string& element_name, size_t element_index,
           const std::string& property_name,
-          size_t property_index) -> std::expected<size_t, std::string> {
+          size_t property_index) -> std::expected<size_t, std::error_code> {
         auto result = this->GetPropertyListSizeType(
             element_name, element_index, property_name, property_index);
         if (!result) {

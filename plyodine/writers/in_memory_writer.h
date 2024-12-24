@@ -2,7 +2,16 @@
 #define _PLYODINE_WRITERS_IN_MEMORY_WRITER_
 
 #include <any>
+#include <cstdint>
+#include <expected>
+#include <map>
+#include <ostream>
+#include <span>
+#include <string>
+#include <system_error>
 #include <type_traits>
+#include <variant>
+#include <vector>
 
 #include "plyodine/ply_writer.h"
 
@@ -10,6 +19,11 @@ namespace plyodine {
 
 class InMemoryWriter final : public PlyWriter {
  public:
+  enum class ErrorCodes : int {
+    UNBALANCED_PROPERTIES = 1,
+    PROPERTY_LIST_TOO_LONG = 2,
+  };
+
   void AddComment(const std::string& comment);
 
   void AddObjectInfo(const std::string& object_info);
@@ -215,15 +229,16 @@ class InMemoryWriter final : public PlyWriter {
                        std::vector<std::vector<double>>&& values);
 
  protected:
-  std::expected<void, std::string> Start(
+  std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
       std::map<std::string, std::map<std::string, Callback>>& callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override;
 
-  std::expected<PlyWriter::ListSizeType, std::string> GetPropertyListSizeType(
-      const std::string& element_name, size_t element_index,
-      const std::string& property_name, size_t property_index) const override;
+  std::expected<PlyWriter::ListSizeType, std::error_code>
+  GetPropertyListSizeType(const std::string& element_name, size_t element_index,
+                          const std::string& property_name,
+                          size_t property_index) const override;
 
  private:
   void ReindexProperties() {
@@ -334,18 +349,17 @@ class InMemoryWriter final : public PlyWriter {
   }
 
   template <typename T>
-  std::expected<T, std::string> ScalarCallback(const std::string& element_name,
-                                               size_t element_index,
-                                               const std::string& property_name,
-                                               size_t property_index,
-                                               uintmax_t instance) const {
+  std::expected<T, std::error_code> ScalarCallback(
+      const std::string& element_name, size_t element_index,
+      const std::string& property_name, size_t property_index,
+      uintmax_t instance) const {
     return std::get<std::span<const T>>(
         *indexed_properties_.at(element_index)
              .at(property_index))[static_cast<size_t>(instance)];
   }
 
   template <typename T>
-  std::expected<std::span<const T>, std::string> SpanCallback(
+  std::expected<std::span<const T>, std::error_code> SpanCallback(
       const std::string& element_name, size_t element_index,
       const std::string& property_name, size_t property_index,
       uintmax_t instance, std::vector<T>& storage) const {
@@ -355,7 +369,7 @@ class InMemoryWriter final : public PlyWriter {
   }
 
   template <typename T>
-  std::expected<std::span<const T>, std::string> VectorCallback(
+  std::expected<std::span<const T>, std::error_code> VectorCallback(
       const std::string& element_name, size_t element_index,
       const std::string& property_name, size_t property_index,
       uintmax_t instance, std::vector<T>& storage) const {

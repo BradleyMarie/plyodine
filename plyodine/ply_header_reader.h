@@ -6,6 +6,7 @@
 #include <istream>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace plyodine {
@@ -34,7 +35,7 @@ struct PlyHeader final {
 };
 
 // NOTE: Behavior is undefined if input is not a binary stream
-std::expected<PlyHeader, std::string> ReadPlyHeader(std::istream& input);
+std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& input);
 
 }  // namespace plyodine
 

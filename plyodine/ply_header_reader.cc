@@ -2,14 +2,26 @@
 
 #include <bit>
 #include <charconv>
+#include <cstdint>
+#include <expected>
+#include <istream>
 #include <limits>
+#include <optional>
+#include <string>
+#include <system_error>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+
+#include "plyodine/error_code.h"
+#include "plyodine/error_codes.h"
 
 namespace plyodine {
 namespace {
 
-std::expected<std::string_view, std::string> ReadNextLine(
+using ::plyodine::internal::MakeUnexpected;
+
+std::expected<std::string_view, std::error_code> ReadNextLine(
     std::istream& input, std::string& storage, std::string_view line_ending) {
   storage.clear();
 
@@ -18,7 +30,8 @@ std::expected<std::string_view, std::string> ReadNextLine(
     if (c == '\r' || c == '\n') {
       do {
         if (c != line_ending[0]) {
-          return std::unexpected("The input contained mismatched line endings");
+          return MakeUnexpected(
+              ErrorCode::HEADER_CONTAINS_MISMATCHED_LINE_ENDINGS);
         }
         line_ending.remove_prefix(1);
       } while (!line_ending.empty() && input.get(c));
@@ -26,7 +39,7 @@ std::expected<std::string_view, std::string> ReadNextLine(
     }
 
     if (c != ' ' && !std::isgraph(c)) {
-      return std::unexpected("The input contained an invalid character");
+      return MakeUnexpected(ErrorCode::HEADER_CONTAINS_INVALID_CHARACTER);
     }
 
     storage.push_back(c);
@@ -35,22 +48,19 @@ std::expected<std::string_view, std::string> ReadNextLine(
   return storage;
 }
 
-std::expected<std::optional<std::string_view>, std::string> ReadNextTokenOnLine(
-    std::string_view& line) {
+std::expected<std::optional<std::string_view>, std::error_code>
+ReadNextTokenOnLine(std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
   }
 
   size_t prefix_length = line.find_first_not_of(' ');
   if (prefix_length == std::string_view::npos) {
-    return std::unexpected(
-        "Non-comment ASCII lines may not contain trailing spaces");
+    return MakeUnexpected(ErrorCode::HEADER_LINE_ENDS_WITH_WHITESPACE);
   }
 
   if (prefix_length > 1) {
-    return std::unexpected(
-        "Non-comment ASCII lines may only contain a single "
-        "space between tokens tokens");
+    return MakeUnexpected(ErrorCode::HEADER_LINE_CONTAINS_EXTRA_WHITESPACE);
   }
 
   line.remove_prefix(prefix_length);
@@ -66,25 +76,25 @@ std::expected<std::optional<std::string_view>, std::string> ReadNextTokenOnLine(
   return result;
 }
 
-std::expected<std::optional<std::string_view>, std::string>
+std::expected<std::optional<std::string_view>, std::error_code>
 ReadFirstTokenOnLine(std::string_view& line) {
   if (line.empty()) {
     return std::nullopt;
   }
 
   if (line[0] == ' ') {
-    return std::unexpected("ASCII lines may not begin with a space");
+    return MakeUnexpected(ErrorCode::HEADER_LINE_STARTS_WITH_WHITESPACE);
   }
 
   return ReadNextTokenOnLine(line);
 }
 
-std::expected<std::string, std::string> ParseMagicString(std::istream& input) {
+std::expected<std::string, std::error_code> ParseMagicString(
+    std::istream& input) {
   char c;
   if (!input.get(c) || c != 'p' || !input.get(c) || c != 'l' || !input.get(c) ||
       c != 'y' || !input.get(c) || (c != '\r' && c != '\n')) {
-    return std::unexpected(
-        "The first line of the input must exactly contain the magic string");
+    return MakeUnexpected(ErrorCode::HEADER_MISSING_MAGIC_STRING);
   }
 
   // The original documentation describing the PLY format mandates the use of
@@ -141,7 +151,7 @@ bool CheckVersion(std::string_view version) {
   return true;
 }
 
-std::expected<PlyHeader::Format, std::string> ParseFormat(
+std::expected<PlyHeader::Format, std::error_code> ParseFormat(
     std::istream& input, std::string& storage, const std::string& line_ending) {
   auto line = ReadNextLine(input, storage, line_ending);
   if (!line) {
@@ -154,8 +164,7 @@ std::expected<PlyHeader::Format, std::string> ParseFormat(
   }
 
   if (!first_token->has_value() || *first_token != "format") {
-    return std::unexpected(
-        "The second line of the input must contain the format specifier");
+    return MakeUnexpected(ErrorCode::HEADER_MISSING_FORMAT_SPECIFIER);
   }
 
   auto second_token = ReadNextTokenOnLine(*line);
@@ -173,9 +182,7 @@ std::expected<PlyHeader::Format, std::string> ParseFormat(
              *second_token == "binary_little_endian") {
     format = PlyHeader::BINARY_LITTLE_ENDIAN;
   } else {
-    return std::unexpected(
-        "Format must be one of ascii, binary_big_endian, "
-        "or binary_little_endian");
+    return MakeUnexpected(ErrorCode::HEADER_SPECIFIED_INVALID_FORMAT);
   }
 
   auto third_token = ReadNextTokenOnLine(*line);
@@ -184,7 +191,7 @@ std::expected<PlyHeader::Format, std::string> ParseFormat(
   }
 
   if (!third_token->has_value() || !CheckVersion(**third_token)) {
-    return std::unexpected("Only PLY version 1.0 supported");
+    return MakeUnexpected(ErrorCode::HEADER_SPECIFIED_UNSUPPORTED_VERSION);
   }
 
   auto next_token = ReadNextTokenOnLine(*line);
@@ -193,17 +200,13 @@ std::expected<PlyHeader::Format, std::string> ParseFormat(
   }
 
   if (next_token->has_value()) {
-    return std::unexpected("The format specifier contained too many tokens");
+    return MakeUnexpected(ErrorCode::HEADER_FORMAT_SPECIFIER_TOO_LONG);
   }
 
   return format;
 }
 
-std::string TooFewElementParamsError() {
-  return "Too few prameters to element";
-}
-
-std::expected<std::pair<std::string, uintmax_t>, std::string> ParseElement(
+std::expected<std::pair<std::string, uintmax_t>, std::error_code> ParseElement(
     std::string_view line,
     const std::unordered_set<std::string>& element_names) {
   auto name = ReadNextTokenOnLine(line);
@@ -212,12 +215,12 @@ std::expected<std::pair<std::string, uintmax_t>, std::string> ParseElement(
   }
 
   if (!name->has_value()) {
-    return std::unexpected(TooFewElementParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_ELEMENT_SPECIFIER_TOO_SHORT);
   }
 
   std::string str_name(**name);
   if (element_names.contains(str_name)) {
-    return std::unexpected("Two elements have the same name");
+    return MakeUnexpected(ErrorCode::HEADER_ELEMENT_SPECIFIED_DUPLICATE_NAME);
   }
 
   auto num_in_file = ReadNextTokenOnLine(line);
@@ -226,7 +229,7 @@ std::expected<std::pair<std::string, uintmax_t>, std::string> ParseElement(
   }
 
   if (!num_in_file->has_value()) {
-    return std::unexpected(TooFewElementParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_ELEMENT_SPECIFIER_TOO_SHORT);
   }
 
   uintmax_t parsed_num_in_file;
@@ -234,9 +237,9 @@ std::expected<std::pair<std::string, uintmax_t>, std::string> ParseElement(
       (*num_in_file)->data(), (*num_in_file)->data() + (*num_in_file)->size(),
       parsed_num_in_file);
   if (parsing_result.ec == std::errc::result_out_of_range) {
-    return std::unexpected("Out of range element count");
+    return MakeUnexpected(ErrorCode::HEADER_ELEMENT_COUNT_OUT_OF_RANGE);
   } else if (parsing_result.ec != std::errc{}) {
-    return std::unexpected("Failed to parse element count");
+    return MakeUnexpected(ErrorCode::HEADER_ELEMENT_COUNT_PARSING_FAILED);
   }
 
   auto next_token = ReadNextTokenOnLine(line);
@@ -245,13 +248,13 @@ std::expected<std::pair<std::string, uintmax_t>, std::string> ParseElement(
   }
 
   if (next_token->has_value()) {
-    return std::unexpected("Too many prameters to element");
+    return MakeUnexpected(ErrorCode::HEADER_ELEMENT_SPECIFIER_TOO_LONG);
   }
 
   return std::make_pair(std::move(str_name), parsed_num_in_file);
 }
 
-std::expected<PlyHeader::Property::Type, std::string> ParseType(
+std::expected<PlyHeader::Property::Type, std::error_code> ParseType(
     std::string_view type_name) {
   static const std::unordered_map<std::string_view, PlyHeader::Property::Type>
       type_map = {{"char", PlyHeader::Property::INT8},
@@ -272,25 +275,13 @@ std::expected<PlyHeader::Property::Type, std::string> ParseType(
                   {"float64", PlyHeader::Property::DOUBLE}};
   auto iter = type_map.find(type_name);
   if (iter == type_map.end()) {
-    return std::unexpected("A property is of an invalid type");
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIED_INVALID_TYPE);
   }
 
   return iter->second;
 }
 
-std::string TooFewPropertyParamsError() {
-  return "Too few prameters to property";
-}
-
-std::string TooManyPropertyParamsError() {
-  return "Too many prameters to property";
-}
-
-std::string DuplicatePropertyNameError() {
-  return "An element contains two properties with the same name";
-}
-
-std::expected<PlyHeader::Property, std::string> ParsePropertyList(
+std::expected<PlyHeader::Property, std::error_code> ParsePropertyList(
     std::string_view line,
     const std::unordered_set<std::string>& property_names) {
   auto first_token = ReadNextTokenOnLine(line);
@@ -299,7 +290,7 @@ std::expected<PlyHeader::Property, std::string> ParsePropertyList(
   }
 
   if (!first_token->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIER_TOO_SHORT);
   }
 
   auto list_type = ParseType(**first_token);
@@ -308,13 +299,12 @@ std::expected<PlyHeader::Property, std::string> ParsePropertyList(
   }
 
   if (*list_type == PlyHeader::Property::FLOAT) {
-    return std::unexpected(
-        "A property list cannot have float as its list type");
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIED_LIST_TYPE_FLOAT);
   }
 
   if (*list_type == PlyHeader::Property::DOUBLE) {
-    return std::unexpected(
-        "A property list cannot have double as its list type");
+    return MakeUnexpected(
+        ErrorCode::HEADER_PROPERTY_SPECIFIED_LIST_TYPE_DOUBLE);
   }
 
   auto second_token = ReadNextTokenOnLine(line);
@@ -323,7 +313,7 @@ std::expected<PlyHeader::Property, std::string> ParsePropertyList(
   }
 
   if (!second_token->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIER_TOO_SHORT);
   }
 
   auto data_type = ParseType(**second_token);
@@ -337,12 +327,12 @@ std::expected<PlyHeader::Property, std::string> ParsePropertyList(
   }
 
   if (!name->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIER_TOO_SHORT);
   }
 
   std::string str_name(**name);
   if (property_names.contains(str_name)) {
-    return std::unexpected(DuplicatePropertyNameError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIED_DUPLICATE_NAME);
   }
 
   auto next_token = ReadNextTokenOnLine(line);
@@ -351,13 +341,13 @@ std::expected<PlyHeader::Property, std::string> ParsePropertyList(
   }
 
   if (next_token->has_value()) {
-    return std::unexpected(TooManyPropertyParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIER_TOO_LONG);
   }
 
   return PlyHeader::Property{std::move(str_name), *data_type, *list_type};
 }
 
-std::expected<PlyHeader::Property, std::string> ParseProperty(
+std::expected<PlyHeader::Property, std::error_code> ParseProperty(
     std::string_view line,
     const std::unordered_set<std::string>& property_names) {
   auto first_token = ReadNextTokenOnLine(line);
@@ -366,7 +356,7 @@ std::expected<PlyHeader::Property, std::string> ParseProperty(
   }
 
   if (!first_token->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIER_TOO_SHORT);
   }
 
   if (*first_token == "list") {
@@ -384,12 +374,12 @@ std::expected<PlyHeader::Property, std::string> ParseProperty(
   }
 
   if (!name->has_value()) {
-    return std::unexpected(TooFewPropertyParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIER_TOO_SHORT);
   }
 
   std::string str_name(**name);
   if (property_names.contains(str_name)) {
-    return std::unexpected(DuplicatePropertyNameError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIED_DUPLICATE_NAME);
   }
 
   auto next_token = ReadNextTokenOnLine(line);
@@ -398,7 +388,7 @@ std::expected<PlyHeader::Property, std::string> ParseProperty(
   }
 
   if (next_token->has_value()) {
-    return std::unexpected(TooManyPropertyParamsError());
+    return MakeUnexpected(ErrorCode::HEADER_PROPERTY_SPECIFIER_TOO_LONG);
   }
 
   return PlyHeader::Property{std::move(str_name), *data_type};
@@ -406,9 +396,9 @@ std::expected<PlyHeader::Property, std::string> ParseProperty(
 
 }  // namespace
 
-std::expected<PlyHeader, std::string> ReadPlyHeader(std::istream& input) {
+std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& input) {
   if (input.fail()) {
-    return std::unexpected("Bad stream passed");
+    return MakeUnexpected(ErrorCode::BAD_STREAM);
   }
 
   auto line_ending = ParseMagicString(input);
@@ -441,8 +431,7 @@ std::expected<PlyHeader, std::string> ReadPlyHeader(std::istream& input) {
 
     if (first_token->has_value() && *first_token == "property") {
       if (elements.empty()) {
-        return std::unexpected(
-            "A property could not be associated with an element");
+        return MakeUnexpected(ErrorCode::HEADER_NAKED_PROPERTY);
       }
 
       auto& element_property_names = property_names[elements.back().name];
@@ -492,15 +481,13 @@ std::expected<PlyHeader, std::string> ReadPlyHeader(std::istream& input) {
       }
 
       if (next_token->has_value()) {
-        return std::unexpected(
-            "The last line of the header may only contain "
-            "the end_header keyword");
+        return MakeUnexpected(ErrorCode::HEADER_END_INVALID);
       }
 
       break;
     }
 
-    return std::unexpected("The input contained an invalid header");
+    return MakeUnexpected(ErrorCode::HEADER_UNRECOGNIZED_KEYWORD);
   }
 
   return PlyHeader{*format,

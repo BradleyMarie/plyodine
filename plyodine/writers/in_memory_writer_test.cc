@@ -1,27 +1,36 @@
 #include "plyodine/writers/in_memory_writer.h"
 
 #include <bit>
+#include <cstdint>
+#include <iterator>
 #include <limits>
+#include <span>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+
+namespace plyodine {
+namespace {
+
+using ::testing::StartsWith;
 
 TEST(List, UInt8) {
   std::vector<uint8_t> values(std::numeric_limits<uint8_t>::max(),
                               std::numeric_limits<uint8_t>::max());
   std::vector<std::span<const uint8_t>> l0 = {{values.begin(), values.end()}};
 
-  plyodine::InMemoryWriter writer;
+  InMemoryWriter writer;
   writer.AddPropertyList("vertex", "l0", l0);
 
   std::stringstream output;
-  ASSERT_TRUE(writer.WriteToASCII(output));
+  ASSERT_EQ(0, writer.WriteToASCII(output).value());
 
-  EXPECT_THAT(
-      output.str(),
-      testing::StartsWith("ply\rformat ascii 1.0\relement vertex 1\rproperty "
-                          "list uchar uchar l0\rend_header\r"));
+  EXPECT_THAT(output.str(),
+              StartsWith("ply\rformat ascii 1.0\relement vertex 1\rproperty "
+                         "list uchar uchar l0\rend_header\r"));
 }
 
 TEST(List, UInt16) {
@@ -29,16 +38,15 @@ TEST(List, UInt16) {
                               std::numeric_limits<uint8_t>::max());
   std::vector<std::span<const uint8_t>> l0 = {{values.begin(), values.end()}};
 
-  plyodine::InMemoryWriter writer;
+  InMemoryWriter writer;
   writer.AddPropertyList("vertex", "l0", l0);
 
   std::stringstream output;
-  ASSERT_TRUE(writer.WriteToASCII(output));
+  ASSERT_EQ(0, writer.WriteToASCII(output).value());
 
-  EXPECT_THAT(
-      output.str(),
-      testing::StartsWith("ply\rformat ascii 1.0\relement vertex 1\rproperty "
-                          "list ushort uchar l0\rend_header\r"));
+  EXPECT_THAT(output.str(),
+              StartsWith("ply\rformat ascii 1.0\relement vertex 1\rproperty "
+                         "list ushort uchar l0\rend_header\r"));
 }
 
 TEST(List, UInt32) {
@@ -46,16 +54,15 @@ TEST(List, UInt32) {
                               std::numeric_limits<uint8_t>::max());
   std::vector<std::span<const uint8_t>> l0 = {{values.begin(), values.end()}};
 
-  plyodine::InMemoryWriter writer;
+  InMemoryWriter writer;
   writer.AddPropertyList("vertex", "l0", l0);
 
   std::stringstream output;
-  ASSERT_TRUE(writer.WriteToASCII(output));
+  ASSERT_EQ(0, writer.WriteToASCII(output).value());
 
-  EXPECT_THAT(
-      output.str(),
-      testing::StartsWith("ply\rformat ascii 1.0\relement vertex 1\rproperty "
-                          "list uint uchar l0\rend_header\r"));
+  EXPECT_THAT(output.str(),
+              StartsWith("ply\rformat ascii 1.0\relement vertex 1\rproperty "
+                         "list uint uchar l0\rend_header\r"));
 }
 
 TEST(List, TooLargeError) {
@@ -65,11 +72,11 @@ TEST(List, TooLargeError) {
                                 std::numeric_limits<uint8_t>::max());
     std::vector<std::span<const uint8_t>> l0 = {{values.begin(), values.end()}};
 
-    plyodine::InMemoryWriter writer;
+    InMemoryWriter writer;
     writer.AddPropertyListShallow("vertex", "l0", l0);
 
     std::stringstream output;
-    EXPECT_EQ(writer.WriteToASCII(output).error(),
+    EXPECT_EQ(writer.WriteToASCII(output).message(),
               "Property lists can contain no more than 4294967295 entries");
   }
 }
@@ -78,12 +85,12 @@ TEST(Properties, DifferentSizes) {
   std::vector<int> l0 = {1, 2};
   std::vector<int> l1 = {1, 2, 3};
 
-  plyodine::InMemoryWriter writer;
+  InMemoryWriter writer;
   writer.AddProperty("vertex", "l0", l0);
   writer.AddProperty("vertex", "l1", l1);
 
   std::stringstream output;
-  EXPECT_EQ(writer.WriteToASCII(output).error(),
+  EXPECT_EQ(writer.WriteToASCII(output).message(),
             "All properties of an element must have the same size");
 }
 
@@ -105,7 +112,7 @@ TEST(ASCII, WithData) {
   std::vector<std::vector<float>> gl = {{g}};
   std::vector<std::vector<double>> hl = {{h}};
 
-  plyodine::InMemoryWriter writer;
+  InMemoryWriter writer;
   writer.AddPropertyShallow("vertex", "a", a);
   writer.AddProperty("vertex", "b", b);
   writer.AddProperty("vertex", "c", std::move(c));
@@ -130,7 +137,7 @@ TEST(ASCII, WithData) {
   writer.AddObjectInfo("obj info 2");
 
   std::stringstream output;
-  ASSERT_TRUE(writer.WriteToASCII(output));
+  ASSERT_EQ(0, writer.WriteToASCII(output).value());
 
   std::stringstream input(
       "ply\r"
@@ -166,3 +173,6 @@ TEST(ASCII, WithData) {
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
 }
+
+}  // namespace
+}  // namespace plyodine

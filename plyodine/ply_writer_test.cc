@@ -1,15 +1,27 @@
 #include "plyodine/ply_writer.h"
 
+#include <algorithm>
 #include <bit>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <limits>
+#include <memory>
+#include <span>
 #include <sstream>
+#include <string>
+#include <system_error>
+#include <type_traits>
+#include <variant>
 
 #include "googletest/include/gtest/gtest.h"
 #include "tools/cpp/runfiles/runfiles.h"
 
-using bazel::tools::cpp::runfiles::Runfiles;
+namespace plyodine {
+namespace {
+
+using ::bazel::tools::cpp::runfiles::Runfiles;
 
 std::ifstream OpenRunfile(const std::string& path) {
   std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest());
@@ -43,7 +55,7 @@ struct Property final
   }
 };
 
-class TestWriter final : public plyodine::PlyWriter {
+class TestWriter final : public PlyWriter {
  public:
   TestWriter(
       const std::map<std::string, std::map<std::string, Property>>& properties,
@@ -54,13 +66,13 @@ class TestWriter final : public plyodine::PlyWriter {
         object_info_(object_info),
         start_fails_(start_fails) {}
 
-  std::expected<void, std::string> Start(
+  std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
       std::map<std::string, std::map<std::string, Callback>>& callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override {
     if (start_fails_) {
-      return std::unexpected("start");
+      return std::error_code(1, std::generic_category());
     }
 
     for (const auto& element : properties_) {
@@ -141,10 +153,10 @@ class TestWriter final : public plyodine::PlyWriter {
     object_info.insert(object_info.end(), object_info_.begin(),
                        object_info_.end());
 
-    return std::expected<void, std::string>();
+    return std::error_code();
   }
 
-  std::expected<ListSizeType, std::string> GetPropertyListSizeType(
+  std::expected<ListSizeType, std::error_code> GetPropertyListSizeType(
       const std::string& element_name, size_t element_index,
       const std::string& property_name, size_t property_index) const override {
     size_t max_size = std::visit(
@@ -173,17 +185,17 @@ class TestWriter final : public plyodine::PlyWriter {
 
  private:
   template <typename T>
-  std::expected<T, std::string> Callback(const std::string& element_name,
-                                         size_t element_index,
-                                         const std::string& property_name,
-                                         size_t property_index,
-                                         uintmax_t instance) const {
+  std::expected<T, std::error_code> Callback(const std::string& element_name,
+                                             size_t element_index,
+                                             const std::string& property_name,
+                                             size_t property_index,
+                                             uintmax_t instance) const {
     return std::get<std::span<const T>>(
         properties_.at(element_name).at(property_name))[instance];
   }
 
   template <typename T>
-  std::expected<std::span<const T>, std::string> ListCallback(
+  std::expected<std::span<const T>, std::error_code> ListCallback(
       const std::string& element_name, size_t element_index,
       const std::string& property_name, size_t property_index,
       uintmax_t instance, std::vector<T>& storage) const {
@@ -197,7 +209,7 @@ class TestWriter final : public plyodine::PlyWriter {
   bool start_fails_;
 };
 
-std::expected<void, std::string> WriteTo(
+std::error_code WriteTo(
     std::ostream& stream,
     const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
@@ -206,7 +218,7 @@ std::expected<void, std::string> WriteTo(
   return writer.WriteTo(stream);
 }
 
-std::expected<void, std::string> WriteToASCII(
+std::error_code WriteToASCII(
     std::ostream& stream,
     const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
@@ -215,7 +227,7 @@ std::expected<void, std::string> WriteToASCII(
   return writer.WriteToASCII(stream);
 }
 
-std::expected<void, std::string> WriteToBigEndian(
+std::error_code WriteToBigEndian(
     std::ostream& stream,
     const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
@@ -224,7 +236,7 @@ std::expected<void, std::string> WriteToBigEndian(
   return writer.WriteToBigEndian(stream);
 }
 
-std::expected<void, std::string> WriteToLittleEndian(
+std::error_code WriteToLittleEndian(
     std::ostream& stream,
     const std::map<std::string, std::map<std::string, Property>>& properties,
     std::span<const std::string> comments = {},
@@ -295,43 +307,43 @@ std::map<std::string, std::map<std::string, Property>> BuildListSizeTestData() {
 TEST(Validate, StartFails) {
   TestWriter writer({}, {}, {}, true);
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(writer.WriteTo(output).error(), "start");
-  EXPECT_EQ(writer.WriteToASCII(output).error(), "start");
-  EXPECT_EQ(writer.WriteToBigEndian(output).error(), "start");
-  EXPECT_EQ(writer.WriteToLittleEndian(output).error(), "start");
+  EXPECT_EQ(writer.WriteTo(output).value(), 1);
+  EXPECT_EQ(writer.WriteToASCII(output).value(), 1);
+  EXPECT_EQ(writer.WriteToBigEndian(output).value(), 1);
+  EXPECT_EQ(writer.WriteToLittleEndian(output).value(), 1);
 }
 
 TEST(Validate, BadElementNames) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(WriteToASCII(output, {{"", {}}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {{"", {}}}).message(),
             "Names of properties and elements may not be empty");
   EXPECT_EQ(
-      WriteToASCII(output, {{" ", {}}}).error(),
+      WriteToASCII(output, {{" ", {}}}).message(),
       "Names of properties and elements may only contain graphic characters");
 }
 
 TEST(Validate, BadPropertyNames) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(WriteToASCII(output, {{"element", {{"", {}}}}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {{"element", {{"", {}}}}}).message(),
             "Names of properties and elements may not be empty");
   EXPECT_EQ(
-      WriteToASCII(output, {{"element", {{" ", {}}}}}).error(),
+      WriteToASCII(output, {{"element", {{" ", {}}}}}).message(),
       "Names of properties and elements may only contain graphic characters");
 }
 
 TEST(Validate, BadComment) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).message(),
             "A comment may not contain line feed or carriage return");
-  EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).message(),
             "A comment may not contain line feed or carriage return");
 }
 
 TEST(Validate, BadObjInfo) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).message(),
             "An obj_info may not contain line feed or carriage return");
-  EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).error(),
+  EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).message(),
             "An obj_info may not contain line feed or carriage return");
 }
 
@@ -346,14 +358,14 @@ TEST(Validate, ListTooBig) {
 
     std::stringstream output(std::ios::out | std::ios::binary);
     EXPECT_EQ(
-        WriteToASCII(output, {{"element", {{"node0", {list}}}}}).error(),
+        WriteToASCII(output, {{"element", {{"node0", {list}}}}}).message(),
         "The list was too big to be represented with the selected size type");
   }
 }
 
 TEST(ASCII, Empty) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToASCII(output, {}));
+  ASSERT_EQ(WriteToASCII(output, {}).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_empty.ply");
@@ -368,7 +380,7 @@ TEST(ASCII, NonFinite) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(
-      WriteToASCII(output, data).error(),
+      WriteToASCII(output, data).message(),
       "Only finite floating point values may be serialized to an ASCII output");
 }
 
@@ -380,7 +392,7 @@ TEST(ASCII, NonFiniteList) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(
-      WriteToASCII(output, data).error(),
+      WriteToASCII(output, data).message(),
       "Only finite floating point values may be serialized to an ASCII output");
 }
 
@@ -388,7 +400,8 @@ TEST(ASCII, TestData) {
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToASCII(output, BuildTestData(), comments, object_info));
+  ASSERT_EQ(
+      WriteToASCII(output, BuildTestData(), comments, object_info).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
@@ -398,7 +411,7 @@ TEST(ASCII, TestData) {
 
 TEST(ASCII, ListSizes) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToASCII(output, BuildListSizeTestData()));
+  ASSERT_EQ(WriteToASCII(output, BuildListSizeTestData()).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_list_sizes.ply");
@@ -413,7 +426,7 @@ TEST(ASCII, LargeFP) {
   data["vertex"]["a"] = al;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToASCII(output, data));
+  ASSERT_EQ(WriteToASCII(output, data).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_large_fp.ply");
@@ -428,7 +441,7 @@ TEST(ASCII, SmallFP) {
   data["vertex"]["a"] = al;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToASCII(output, data));
+  ASSERT_EQ(WriteToASCII(output, data).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_small_fp.ply");
@@ -438,7 +451,7 @@ TEST(ASCII, SmallFP) {
 
 TEST(BigEndian, Empty) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToBigEndian(output, {}));
+  ASSERT_EQ(WriteToBigEndian(output, {}).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_big_empty.ply");
@@ -450,7 +463,9 @@ TEST(BigEndian, TestData) {
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToBigEndian(output, BuildTestData(), comments, object_info));
+  ASSERT_EQ(
+      WriteToBigEndian(output, BuildTestData(), comments, object_info).value(),
+      0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_big_data.ply");
@@ -460,7 +475,7 @@ TEST(BigEndian, TestData) {
 
 TEST(BigEndian, ListSizes) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToBigEndian(output, BuildListSizeTestData()));
+  ASSERT_EQ(WriteToBigEndian(output, BuildListSizeTestData()).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_big_list_sizes.ply");
@@ -470,7 +485,7 @@ TEST(BigEndian, ListSizes) {
 
 TEST(LittleEndian, Empty) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToLittleEndian(output, {}));
+  ASSERT_EQ(WriteToLittleEndian(output, {}).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_little_empty.ply");
@@ -482,8 +497,9 @@ TEST(LittleEndian, TestData) {
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(
-      WriteToLittleEndian(output, BuildTestData(), comments, object_info));
+  ASSERT_EQ(WriteToLittleEndian(output, BuildTestData(), comments, object_info)
+                .value(),
+            0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_little_data.ply");
@@ -493,7 +509,7 @@ TEST(LittleEndian, TestData) {
 
 TEST(LittleEndian, ListSizes) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteToLittleEndian(output, BuildListSizeTestData()));
+  ASSERT_EQ(WriteToLittleEndian(output, BuildListSizeTestData()).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_little_list_sizes.ply");
@@ -503,7 +519,7 @@ TEST(LittleEndian, ListSizes) {
 
 TEST(Native, Empty) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteTo(output, {}));
+  ASSERT_EQ(WriteTo(output, {}).value(), 0);
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input =
@@ -522,7 +538,7 @@ TEST(Native, TestData) {
   std::stringstream output(std::ios::out | std::ios::binary);
   std::string comments[] = {{"comment 1"}, {"comment 2"}};
   std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
-  ASSERT_TRUE(WriteTo(output, BuildTestData(), comments, object_info));
+  ASSERT_EQ(WriteTo(output, BuildTestData(), comments, object_info).value(), 0);
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input =
@@ -539,7 +555,7 @@ TEST(Native, TestData) {
 
 TEST(Native, ListSizes) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_TRUE(WriteTo(output, BuildListSizeTestData()));
+  ASSERT_EQ(WriteTo(output, BuildListSizeTestData()).value(), 0);
 
   if constexpr (std::endian::native == std::endian::big) {
     std::ifstream input =
@@ -553,3 +569,6 @@ TEST(Native, ListSizes) {
     EXPECT_EQ(expected, output.str());
   }
 }
+
+}  // namespace
+}  // namespace plyodine

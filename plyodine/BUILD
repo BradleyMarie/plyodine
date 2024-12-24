@@ -3,9 +3,26 @@ load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "error_code",
+    srcs = ["error_code.cc"],
+    hdrs = ["error_code.h"],
+    visibility = ["//visibility:private"],
+    deps = [":error_codes"],
+)
+
+cc_library(
+    name = "error_codes",
+    hdrs = ["error_codes.h"],
+)
+
+cc_library(
     name = "ply_header_reader",
     srcs = ["ply_header_reader.cc"],
     hdrs = ["ply_header_reader.h"],
+    deps = [
+        ":error_code",
+        ":error_codes",
+    ],
 )
 
 cc_test(
@@ -64,6 +81,8 @@ cc_library(
     srcs = ["ply_reader.cc"],
     hdrs = ["ply_reader.h"],
     deps = [
+        ":error_code",
+        ":error_codes",
         ":ply_header_reader",
     ],
 )
@@ -140,6 +159,10 @@ cc_library(
     name = "ply_writer",
     srcs = ["ply_writer.cc"],
     hdrs = ["ply_writer.h"],
+    deps = [
+        ":error_code",
+        ":error_codes",
+    ],
 )
 
 cc_test(
