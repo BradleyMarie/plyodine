@@ -35,12 +35,12 @@ static class ErrorCategory final : public std::error_category {
 
 }  // namespace
 
-void InMemoryWriter::AddComment(const std::string& comment) {
-  comments_.push_back(comment);
+void InMemoryWriter::AddComment(std::string comment) {
+  comments_.push_back(std::move(comment));
 }
 
-void InMemoryWriter::AddObjectInfo(const std::string& object_info) {
-  object_info_.push_back(object_info);
+void InMemoryWriter::AddObjectInfo(std::string object_info) {
+  object_info_.push_back(std::move(object_info));
 }
 
 void InMemoryWriter::AddPropertyShallow(const std::string& element_name,

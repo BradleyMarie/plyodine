@@ -24,9 +24,9 @@ class InMemoryWriter final : public PlyWriter {
     PROPERTY_LIST_TOO_LONG = 2,
   };
 
-  void AddComment(const std::string& comment);
+  void AddComment(std::string comment);
 
-  void AddObjectInfo(const std::string& object_info);
+  void AddObjectInfo(std::string object_info);
 
   void AddPropertyShallow(const std::string& element_name,
                           const std::string& property_name,
