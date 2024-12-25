@@ -25,6 +25,7 @@ namespace plyodine {
 namespace {
 
 using ::plyodine::internal::MakeErrorCode;
+using ::plyodine::internal::MakeUnexpected;
 
 typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<int16_t>, std::vector<uint16_t>,
@@ -113,133 +114,127 @@ std::error_code CheckForUnusedTokens(Context& context) {
 }
 
 template <std::integral SizeType, bool IsListSize, typename T>
-std::error_code DeserializeASCII(std::istream& input, Context& context,
-                                 T* value) {
+std::expected<T, std::error_code> DeserializeASCII(std::istream& input,
+                                                   Context& context) {
   if (std::error_code error = ReadNextToken(context); error) {
-    return error;
+    return std::unexpected(error);
   }
 
   auto& token = std::get<std::string>(context);
 
+  T value;
   auto parsing_result =
-      std::from_chars(token.data(), token.data() + token.size(), *value);
+      std::from_chars(token.data(), token.data() + token.size(), value);
   if (parsing_result.ec == std::errc::result_out_of_range) {
     if constexpr (IsListSize) {
-      return MakeErrorCode(ErrorCode::READER_ELEMENT_LIST_SIZE_OUT_OF_RANGE);
+      return MakeUnexpected(ErrorCode::READER_ELEMENT_LIST_SIZE_OUT_OF_RANGE);
     }
-    return MakeErrorCode(ErrorCode::READER_ELEMENT_PROPERTY_OUT_OF_RANGE);
+    return MakeUnexpected(ErrorCode::READER_ELEMENT_PROPERTY_OUT_OF_RANGE);
   } else if (parsing_result.ec != std::errc{}) {
     if constexpr (IsListSize) {
-      return MakeErrorCode(ErrorCode::READER_ELEMENT_LIST_SIZE_PARSING_FAILED);
+      return MakeUnexpected(ErrorCode::READER_ELEMENT_LIST_SIZE_PARSING_FAILED);
     }
-    return MakeErrorCode(ErrorCode::READER_ELEMENT_PROPERTY_PARSING_FAILED);
+    return MakeUnexpected(ErrorCode::READER_ELEMENT_PROPERTY_PARSING_FAILED);
   }
 
-  return std::error_code();
+  return value;
 }
 
 template <std::integral SizeType, bool IsListSize, typename T>
-std::error_code DeserializeASCII(std::istream& input, Context& context,
-                                 std::span<const T>* value) {
-  SizeType list_size;
-  if (std::error_code error =
-          DeserializeASCII<SizeType, true>(input, context, &list_size);
-      error) {
-    return error;
+  requires std::is_class<T>::value
+std::expected<T, std::error_code> DeserializeASCII(std::istream& input,
+                                                   Context& context) {
+  auto list_size = DeserializeASCII<SizeType, true, SizeType>(input, context);
+  if (!list_size) {
+    return std::unexpected(list_size.error());
   }
 
   if constexpr (std::is_signed<SizeType>::value) {
-    if (list_size < 0) {
-      return MakeErrorCode(ErrorCode::READER_NEGATIVE_LIST_SIZE);
+    if (*list_size < 0) {
+      return MakeUnexpected(ErrorCode::READER_NEGATIVE_LIST_SIZE);
     }
   }
 
-  auto& result = std::get<std::vector<T>>(context);
+  auto& result = std::get<std::vector<typename T::value_type>>(context);
   result.clear();
 
-  for (SizeType i = 0; i < list_size; i++) {
-    T entry;
-    if (std::error_code error =
-            DeserializeASCII<SizeType, false>(input, context, &entry);
-        error) {
-      return error;
+  for (SizeType i = 0; i < *list_size; i++) {
+    auto entry = DeserializeASCII<SizeType, false, typename T::value_type>(
+        input, context);
+    if (!entry) {
+      return std::unexpected(entry.error());
     }
 
-    result.push_back(entry);
+    result.push_back(*entry);
   }
 
-  *value = std::span<const T>(result);
-
-  return std::error_code();
+  return result;
 }
 
 template <std::endian Endianness, std::integral SizeType, std::integral T>
-std::error_code DeserializeBinary(std::istream& input, Context& context,
-                                  T* value) {
-  input.read(reinterpret_cast<char*>(value), sizeof(*value));
+std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
+                                                    Context& context) {
+  T result;
+  input.read(reinterpret_cast<char*>(&result), sizeof(T));
   if (!input) {
-    return MakeErrorCode(ErrorCode::READER_UNEXPECTED_EOF);
+    return MakeUnexpected(ErrorCode::READER_UNEXPECTED_EOF);
   }
 
   if (Endianness != std::endian::native) {
-    *value = std::byteswap(*value);
+    result = std::byteswap(result);
   }
 
-  return std::error_code();
+  return result;
 }
 
 template <std::endian Endianness, std::integral SizeType, std::floating_point T>
-std::error_code DeserializeBinary(std::istream& input, Context& context,
-                                  T* value) {
-  std::conditional_t<std::is_same<T, float>::value, uint32_t, uintmax_t> read;
+std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
+                                                    Context& context) {
+  std::conditional_t<std::is_same<T, float>::value, uint32_t, uint64_t> read;
 
   input.read(reinterpret_cast<char*>(&read), sizeof(read));
   if (!input) {
-    return MakeErrorCode(ErrorCode::READER_UNEXPECTED_EOF);
+    return MakeUnexpected(ErrorCode::READER_UNEXPECTED_EOF);
   }
 
   if (Endianness != std::endian::native) {
     read = std::byteswap(read);
   }
 
-  *value = std::bit_cast<T>(read);
-
-  return std::error_code();
+  return std::bit_cast<T>(read);
 }
 
 template <std::endian Endianness, std::integral SizeType, typename T>
-std::error_code DeserializeBinary(std::istream& input, Context& context,
-                                  std::span<const T>* value) {
-  SizeType list_size;
-  if (std::error_code error =
-          DeserializeBinary<Endianness, SizeType>(input, context, &list_size);
-      error) {
-    return error;
+  requires std::is_class<T>::value
+std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
+                                                    Context& context) {
+  auto list_size =
+      DeserializeBinary<Endianness, SizeType, SizeType>(input, context);
+  if (!list_size) {
+    return std::unexpected(list_size.error());
   }
 
   if constexpr (std::is_signed<SizeType>::value) {
-    if (list_size < 0) {
-      return MakeErrorCode(ErrorCode::READER_NEGATIVE_LIST_SIZE);
+    if (*list_size < 0) {
+      return MakeUnexpected(ErrorCode::READER_NEGATIVE_LIST_SIZE);
     }
   }
 
-  auto& result = std::get<std::vector<T>>(context);
+  auto& result = std::get<std::vector<typename T::value_type>>(context);
   result.clear();
 
-  for (SizeType i = 0; i < list_size; i++) {
-    T entry;
-    if (std::error_code error =
-            DeserializeBinary<Endianness, SizeType>(input, context, &entry);
-        error) {
-      return error;
+  for (SizeType i = 0; i < *list_size; i++) {
+    auto entry =
+        DeserializeBinary<Endianness, SizeType, typename T::value_type>(
+            input, context);
+    if (!entry) {
+      return std::unexpected(entry.error());
     }
 
-    result.push_back(entry);
+    result.push_back(*entry);
   }
 
-  *value = std::span<const T>(result);
-
-  return std::error_code();
+  return result;
 }
 
 class PropertyReaderBase {
@@ -298,20 +293,15 @@ std::error_code PropertyReader<Ascii, Endianness, SizeType, T>::Read(
     }
   }
 
-  T result;
-
+  std::expected<T, std::error_code> result;
   if constexpr (Ascii) {
-    if (std::error_code error =
-            DeserializeASCII<SizeType, false>(input_, context_, &result);
-        error) {
-      return error;
-    }
+    result = DeserializeASCII<SizeType, false, T>(input_, context_);
   } else {
-    if (std::error_code error =
-            DeserializeBinary<Endianness, SizeType>(input_, context_, &result);
-        error) {
-      return error;
-    }
+    result = DeserializeBinary<Endianness, SizeType, T>(input_, context_);
+  }
+
+  if (!result) {
+    return result.error();
   }
 
   if (callback_ == nullptr) {
@@ -320,7 +310,7 @@ std::error_code PropertyReader<Ascii, Endianness, SizeType, T>::Read(
 
   if (std::error_code error = (ply_reader_.*callback_)(
           element_name_, element_index_, property_name_, property_index_,
-          instance, result);
+          instance, *result);
       error) {
     return error;
   }
