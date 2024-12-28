@@ -24,7 +24,16 @@ namespace plyodine {
 template <std::floating_point LocationType, std::floating_point NormalType,
           std::floating_point UVType, std::integral FaceIndexType>
 class TriangleMeshReader : public PlyReader {
- public:
+ protected:
+  virtual void Start() = 0;
+
+  virtual void AddVertex(const std::array<LocationType, 3> &position,
+                         const std::array<NormalType, 3> *maybe_normal,
+                         const std::array<UVType, 2> *maybe_uv) = 0;
+
+  virtual void AddFace(const std::array<FaceIndexType, 3> &face) = 0;
+
+ private:
   enum class ErrorCode : int {
     INVALID_VERTEX_TYPE = 1,
     INVALID_VERTEX_INDEX_TYPE = 2,
@@ -43,16 +52,6 @@ class TriangleMeshReader : public PlyReader {
     VERTEX_INDEX_OUT_OF_RANGE = 16,
   };
 
- protected:
-  virtual void Start() = 0;
-
-  virtual void AddVertex(const std::array<LocationType, 3> &position,
-                         const std::array<NormalType, 3> *maybe_normal,
-                         const std::array<UVType, 2> *maybe_uv) = 0;
-
-  virtual void AddFace(const std::array<FaceIndexType, 3> &face) = 0;
-
- private:
   static class ErrorCategory final : public std::error_category {
     const char *name() const noexcept override {
       return "plyodine::TriangleMeshReader";

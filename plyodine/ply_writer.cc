@@ -23,14 +23,70 @@
 #include <variant>
 #include <vector>
 
-#include "plyodine/error_code.h"
-#include "plyodine/error_codes.h"
+namespace {
+
+enum class ErrorCode : int {
+  BAD_STREAM = 1,
+  WRITE_ERROR = 2,
+  COMMENT_CONTAINS_NEWLINE = 3,
+  OBJ_INFO_CONTAINS_NEWLINE = 4,
+  EMPTY_NAME_SPECIFIED = 5,
+  NAME_CONTAINED_INVALID_CHARACTERS = 6,
+  LIST_INDEX_TOO_SMALL = 7,
+  ASCII_FLOAT_NOT_FINITE = 8,
+};
+
+static class ErrorCategory final : public std::error_category {
+  const char* name() const noexcept override;
+  std::string message(int condition) const override;
+} kErrorCategory;
+
+const char* ErrorCategory::name() const noexcept {
+  return "plyodine::PlyWriter";
+}
+
+std::string ErrorCategory::message(int condition) const {
+  ErrorCode error_code{condition};
+  switch (error_code) {
+    case ErrorCode::BAD_STREAM:
+      return "Bad stream passed";
+    case ErrorCode::WRITE_ERROR:
+      return "Write failure";
+    case ErrorCode::COMMENT_CONTAINS_NEWLINE:
+      return "A comment may not contain line feed or carriage return";
+    case ErrorCode::OBJ_INFO_CONTAINS_NEWLINE:
+      return "An obj_info may not contain line feed or carriage return";
+    case ErrorCode::EMPTY_NAME_SPECIFIED:
+      return "Names of properties and elements may not be empty";
+    case ErrorCode::NAME_CONTAINED_INVALID_CHARACTERS:
+      return "Names of properties and elements may only contain graphic "
+             "characters";
+    case ErrorCode::LIST_INDEX_TOO_SMALL:
+      return "The list was too big to be represented with the selected size "
+             "type";
+    case ErrorCode::ASCII_FLOAT_NOT_FINITE:
+      return "Only finite floating point values may be serialized to an ASCII "
+             "output";
+  };
+
+  return "Unknown Error";
+}
+
+std::error_code make_error_code(ErrorCode code) {
+  return std::error_code(static_cast<int>(code), kErrorCategory);
+}
+
+}  // namespace
+
+namespace std {
+
+template <>
+struct is_error_code_enum<ErrorCode> : true_type {};
+
+}  // namespace std
 
 namespace plyodine {
 namespace {
-
-using ::plyodine::internal::MakeErrorCode;
-using ::plyodine::internal::MakeUnexpected;
 
 typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<int16_t>, std::vector<uint16_t>,
@@ -40,12 +96,12 @@ typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
 
 std::error_code ValidateName(const std::string& name) {
   if (name.empty()) {
-    return MakeErrorCode(ErrorCode::WRITER_EMPTY_NAME_SPECIFIED);
+    return ErrorCode::EMPTY_NAME_SPECIFIED;
   }
 
   for (char c : name) {
     if (!std::isgraph(c)) {
-      return MakeErrorCode(ErrorCode::WRITER_NAME_CONTAINED_INVALID_CHARACTERS);
+      return ErrorCode::NAME_CONTAINED_INVALID_CHARACTERS;
     }
   }
 
@@ -67,7 +123,7 @@ std::error_code SerializeASCII(std::ostream& output, Context& context,
                                T value) {
   output << +value;
   if (!output) {
-    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+    return ErrorCode::WRITE_ERROR;
   }
 
   return std::error_code();
@@ -77,7 +133,7 @@ template <std::integral SizeType, std::floating_point T>
 std::error_code SerializeASCII(std::ostream& output, Context& context,
                                T value) {
   if (!std::isfinite(value)) {
-    return MakeErrorCode(ErrorCode::WRITER_ASCII_FLOAT_NOT_FINITE);
+    return ErrorCode::ASCII_FLOAT_NOT_FINITE;
   }
 
   std::stringstream& storage = std::get<std::stringstream>(context);
@@ -100,7 +156,7 @@ std::error_code SerializeASCII(std::ostream& output, Context& context,
 
   output << result;
   if (!output) {
-    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+    return ErrorCode::WRITE_ERROR;
   }
 
   return std::error_code();
@@ -110,7 +166,7 @@ template <std::integral SizeType, typename T>
 std::error_code SerializeASCII(std::ostream& output, Context& context,
                                std::span<const T> values) {
   if (std::numeric_limits<SizeType>::max() < values.size()) {
-    return MakeErrorCode(ErrorCode::WRITER_LIST_INDEX_TOO_SMALL);
+    return ErrorCode::LIST_INDEX_TOO_SMALL;
   }
 
   if (std::error_code error = SerializeASCII<SizeType, SizeType>(
@@ -122,7 +178,7 @@ std::error_code SerializeASCII(std::ostream& output, Context& context,
   for (const auto& entry : values) {
     output << ' ';
     if (!output) {
-      return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+      return ErrorCode::WRITE_ERROR;
     }
 
     if (std::error_code error =
@@ -143,7 +199,7 @@ std::error_code SerializeBinary(std::ostream& output, T value) {
 
   output.write(reinterpret_cast<char*>(&value), sizeof(value));
   if (!output) {
-    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+    return ErrorCode::WRITE_ERROR;
   }
 
   return std::error_code();
@@ -161,7 +217,7 @@ std::error_code SerializeBinary(std::ostream& output, T value) {
 
   output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
   if (!output) {
-    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+    return ErrorCode::WRITE_ERROR;
   }
 
   return std::error_code();
@@ -171,7 +227,7 @@ template <std::endian Endianness, std::integral SizeType, typename T>
 std::error_code SerializeBinary(std::ostream& output,
                                 std::span<const T> values) {
   if (std::numeric_limits<SizeType>::max() < values.size()) {
-    return MakeErrorCode(ErrorCode::WRITER_LIST_INDEX_TOO_SMALL);
+    return ErrorCode::LIST_INDEX_TOO_SMALL;
   }
 
   if (std::error_code error = SerializeBinary<Endianness, SizeType, SizeType>(
@@ -298,7 +354,7 @@ std::error_code PropertyWriter<Ascii, Endianness, SizeType, T>::Write(
   }
 
   if (!output_) {
-    return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+    return ErrorCode::WRITE_ERROR;
   }
 
   return std::error_code();
@@ -338,7 +394,7 @@ BuildPropertyWriter(std::ostream& output, const PlyWriter& ply_writer,
   }
 
   if (!output) {
-    return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
+    return std::unexpected(ErrorCode::WRITE_ERROR);
   }
 
   if constexpr (std::is_class<R>::value) {
@@ -375,28 +431,28 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
             const std::vector<std::string>& object_info, Context& context) {
   output << "ply\rformat " << format << " 1.0\r";
   if (!output) {
-    return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
+    return std::unexpected(ErrorCode::WRITE_ERROR);
   }
 
   for (const auto& comment : comments) {
     if (!ValidateComment(comment)) {
-      return MakeUnexpected(ErrorCode::WRITER_COMMENT_CONTAINS_NEWLINE);
+      return std::unexpected(ErrorCode::COMMENT_CONTAINS_NEWLINE);
     }
 
     output << "comment " << comment << "\r";
     if (!output) {
-      return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
+      return std::unexpected(ErrorCode::WRITE_ERROR);
     }
   }
 
   for (const auto& info : object_info) {
     if (!ValidateComment(info)) {
-      return MakeUnexpected(ErrorCode::WRITER_OBJ_INFO_CONTAINS_NEWLINE);
+      return std::unexpected(ErrorCode::OBJ_INFO_CONTAINS_NEWLINE);
     }
 
     output << "obj_info " << info << "\r";
     if (!output) {
-      return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
+      return std::unexpected(ErrorCode::WRITE_ERROR);
     }
   }
 
@@ -411,7 +467,7 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
     output << "element " << element.first << " "
            << num_element_instances[element.first] << "\r";
     if (!output) {
-      return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
+      return std::unexpected(ErrorCode::WRITE_ERROR);
     }
 
     std::vector<std::unique_ptr<PropertyWriterBase>> row;
@@ -436,7 +492,7 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
 
   output << "end_header\r";
   if (!output) {
-    return MakeUnexpected(ErrorCode::WRITER_WRITE_ERROR);
+    return std::unexpected(ErrorCode::WRITE_ERROR);
   }
 
   return actual_callbacks;
@@ -492,7 +548,7 @@ std::error_code PlyWriter::WriteTo(std::ostream& stream) const {
 
 std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
   if (stream.fail()) {
-    return MakeErrorCode(ErrorCode::BAD_STREAM);
+    return ErrorCode::BAD_STREAM;
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
@@ -531,7 +587,7 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
         if (!first) {
           stream << ' ';
           if (!stream) {
-            return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+            return ErrorCode::WRITE_ERROR;
           }
         }
 
@@ -544,7 +600,7 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
 
       stream << '\r';
       if (!stream) {
-        return MakeErrorCode(ErrorCode::WRITER_WRITE_ERROR);
+        return ErrorCode::WRITE_ERROR;
       }
     }
   }
@@ -554,7 +610,7 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
 
 std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
   if (stream.fail()) {
-    return MakeErrorCode(ErrorCode::BAD_STREAM);
+    return ErrorCode::BAD_STREAM;
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
@@ -584,7 +640,7 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
 
 std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
   if (stream.fail()) {
-    return MakeErrorCode(ErrorCode::BAD_STREAM);
+    return ErrorCode::BAD_STREAM;
   }
 
   std::map<std::string, uintmax_t> num_element_instances;

@@ -19,11 +19,6 @@ namespace plyodine {
 
 class InMemoryWriter final : public PlyWriter {
  public:
-  enum class ErrorCodes : int {
-    UNBALANCED_PROPERTIES = 1,
-    PROPERTY_LIST_TOO_LONG = 2,
-  };
-
   void AddComment(std::string comment);
 
   void AddObjectInfo(std::string object_info);

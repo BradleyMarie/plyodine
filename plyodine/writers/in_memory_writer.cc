@@ -14,8 +14,12 @@
 #include <variant>
 #include <vector>
 
-namespace plyodine {
 namespace {
+
+enum class ErrorCode : int {
+  UNBALANCED_PROPERTIES = 1,
+  PROPERTY_LIST_TOO_LONG = 2,
+};
 
 static class ErrorCategory final : public std::error_category {
   const char* name() const noexcept override {
@@ -23,11 +27,11 @@ static class ErrorCategory final : public std::error_category {
   }
 
   std::string message(int condition) const override {
-    InMemoryWriter::ErrorCodes error_code{condition};
+    ErrorCode error_code{condition};
     switch (error_code) {
-      case InMemoryWriter::ErrorCodes::UNBALANCED_PROPERTIES:
+      case ErrorCode::UNBALANCED_PROPERTIES:
         return "All properties of an element must have the same size";
-      case InMemoryWriter::ErrorCodes::PROPERTY_LIST_TOO_LONG:
+      case ErrorCode::PROPERTY_LIST_TOO_LONG:
         return "Property lists can contain no more than 4294967295 entries";
     }
 
@@ -35,7 +39,20 @@ static class ErrorCategory final : public std::error_category {
   }
 } kErrorCategory;
 
+std::error_code make_error_code(ErrorCode code) {
+  return std::error_code(static_cast<int>(code), kErrorCategory);
+}
+
 }  // namespace
+
+namespace std {
+
+template <>
+struct is_error_code_enum<ErrorCode> : true_type {};
+
+}  // namespace std
+
+namespace plyodine {
 
 void InMemoryWriter::AddComment(std::string comment) {
   comments_.push_back(std::move(comment));
@@ -448,9 +465,7 @@ std::error_code InMemoryWriter::Start(
 
       if (num_elements.has_value()) {
         if (*num_elements != property_num_elements) {
-          return std::error_code(
-              static_cast<int>(ErrorCodes::UNBALANCED_PROPERTIES),
-              kErrorCategory);
+          return ErrorCode::UNBALANCED_PROPERTIES;
         }
       } else {
         num_elements = property_num_elements;
@@ -642,8 +657,7 @@ InMemoryWriter::GetPropertyListSizeType(const std::string& element_name,
     return PlyWriter::ListSizeType::UINT32;
   }
 
-  return std::unexpected(std::error_code(
-      static_cast<int>(ErrorCodes::PROPERTY_LIST_TOO_LONG), kErrorCategory));
+  return std::unexpected(ErrorCode::PROPERTY_LIST_TOO_LONG);
 }
 
 }  // namespace plyodine

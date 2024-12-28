@@ -17,15 +17,82 @@
 #include <variant>
 #include <vector>
 
-#include "plyodine/error_code.h"
-#include "plyodine/error_codes.h"
 #include "plyodine/ply_header_reader.h"
+
+namespace {
+
+enum class ErrorCode : int {
+  BAD_STREAM = 1,
+  UNEXPECTED_EOF = 2,
+  CONTAINS_MISMATCHED_LINE_ENDINGS = 3,
+  CONTAINS_INVALID_CHARACTER = 4,
+  NEGATIVE_LIST_SIZE = 5,
+  ELEMENT_TOO_FEW_TOKENS = 6,
+  ELEMENT_CONTAINS_EXTRA_WHITESPACE = 7,
+  ELEMENT_CONTAINS_EXTRA_TOKENS = 8,
+  ELEMENT_LIST_SIZE_OUT_OF_RANGE = 9,
+  ELEMENT_PROPERTY_OUT_OF_RANGE = 10,
+  ELEMENT_LIST_SIZE_PARSING_FAILED = 11,
+  ELEMENT_PROPERTY_PARSING_FAILED = 12,
+};
+
+static class ErrorCategory final : public std::error_category {
+  const char* name() const noexcept override;
+  std::string message(int condition) const override;
+} kErrorCategory;
+
+const char* ErrorCategory::name() const noexcept {
+  return "plyodine::PlyReader";
+}
+
+std::string ErrorCategory::message(int condition) const {
+  ErrorCode error_code{condition};
+  switch (error_code) {
+    case ErrorCode::BAD_STREAM:
+      return "Bad stream passed";
+    case ErrorCode::UNEXPECTED_EOF:
+      return "Unexpected EOF";
+    case ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS:
+      return "The input contained mismatched line endings";
+    case ErrorCode::CONTAINS_INVALID_CHARACTER:
+      return "The input contained an invalid character";
+    case ErrorCode::NEGATIVE_LIST_SIZE:
+      return "The input contained a property list with a negative size";
+    case ErrorCode::ELEMENT_TOO_FEW_TOKENS:
+      return "The input contained an element with too few tokens";
+    case ErrorCode::ELEMENT_CONTAINS_EXTRA_WHITESPACE:
+      return "Non-comment ASCII lines may only contain a single space between "
+             "tokens";
+    case ErrorCode::ELEMENT_CONTAINS_EXTRA_TOKENS:
+      return "The input contained an element with unused tokens";
+    case ErrorCode::ELEMENT_LIST_SIZE_OUT_OF_RANGE:
+      return "The input contained a property list size that was out of range";
+    case ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE:
+      return "The input contained a property entry that was out of range";
+    case ErrorCode::ELEMENT_LIST_SIZE_PARSING_FAILED:
+      return "The input contained a property list size that failed to parse";
+    case ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED:
+      return "The input contained a property entry that failed to parse";
+  };
+
+  return "Unknown Error";
+}
+
+std::error_code make_error_code(ErrorCode code) {
+  return std::error_code(static_cast<int>(code), kErrorCategory);
+}
+
+}  // namespace
+
+namespace std {
+
+template <>
+struct is_error_code_enum<ErrorCode> : true_type {};
+
+}  // namespace std
 
 namespace plyodine {
 namespace {
-
-using ::plyodine::internal::MakeErrorCode;
-using ::plyodine::internal::MakeUnexpected;
 
 typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
                    std::vector<int16_t>, std::vector<uint16_t>,
@@ -48,8 +115,7 @@ std::error_code ReadNextLine(std::istream& input, Context& context) {
 
       while (!line_ending.empty() && input.get(c)) {
         if (c != line_ending[0]) {
-          return MakeErrorCode(
-              ErrorCode::READER_CONTAINS_MISMATCHED_LINE_ENDINGS);
+          return ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS;
         }
         line_ending.remove_prefix(1);
       }
@@ -58,7 +124,7 @@ std::error_code ReadNextLine(std::istream& input, Context& context) {
     }
 
     if (c != ' ' && !std::isgraph(c)) {
-      return MakeErrorCode(ErrorCode::READER_CONTAINS_INVALID_CHARACTER);
+      return ErrorCode::CONTAINS_INVALID_CHARACTER;
     }
 
     line.put(c);
@@ -87,14 +153,14 @@ std::error_code ReadNextToken(Context& context) {
 
   if (!c) {
     if (last_line) {
-      return MakeErrorCode(ErrorCode::READER_UNEXPECTED_EOF);
+      return ErrorCode::UNEXPECTED_EOF;
     }
 
-    return MakeErrorCode(ErrorCode::READER_ELEMENT_TOO_FEW_TOKENS);
+    return ErrorCode::ELEMENT_TOO_FEW_TOKENS;
   }
 
   if (token.empty()) {
-    return MakeErrorCode(ErrorCode::READER_ELEMENT_CONTAINS_EXTRA_WHITESPACE);
+    return ErrorCode::ELEMENT_CONTAINS_EXTRA_WHITESPACE;
   }
 
   return std::error_code();
@@ -106,7 +172,7 @@ std::error_code CheckForUnusedTokens(Context& context) {
   char c;
   while (line.get(c)) {
     if (std::isgraph(c)) {
-      return MakeErrorCode(ErrorCode::READER_ELEMENT_CONTAINS_EXTRA_TOKENS);
+      return ErrorCode::ELEMENT_CONTAINS_EXTRA_TOKENS;
     }
   }
 
@@ -127,14 +193,14 @@ std::expected<T, std::error_code> DeserializeASCII(std::istream& input,
       std::from_chars(token.data(), token.data() + token.size(), value);
   if (parsing_result.ec == std::errc::result_out_of_range) {
     if constexpr (IsListSize) {
-      return MakeUnexpected(ErrorCode::READER_ELEMENT_LIST_SIZE_OUT_OF_RANGE);
+      return std::unexpected(ErrorCode::ELEMENT_LIST_SIZE_OUT_OF_RANGE);
     }
-    return MakeUnexpected(ErrorCode::READER_ELEMENT_PROPERTY_OUT_OF_RANGE);
+    return std::unexpected(ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE);
   } else if (parsing_result.ec != std::errc{}) {
     if constexpr (IsListSize) {
-      return MakeUnexpected(ErrorCode::READER_ELEMENT_LIST_SIZE_PARSING_FAILED);
+      return std::unexpected(ErrorCode::ELEMENT_LIST_SIZE_PARSING_FAILED);
     }
-    return MakeUnexpected(ErrorCode::READER_ELEMENT_PROPERTY_PARSING_FAILED);
+    return std::unexpected(ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED);
   }
 
   return value;
@@ -151,7 +217,7 @@ std::expected<T, std::error_code> DeserializeASCII(std::istream& input,
 
   if constexpr (std::is_signed<SizeType>::value) {
     if (*list_size < 0) {
-      return MakeUnexpected(ErrorCode::READER_NEGATIVE_LIST_SIZE);
+      return std::unexpected(ErrorCode::NEGATIVE_LIST_SIZE);
     }
   }
 
@@ -177,7 +243,7 @@ std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
   T result;
   input.read(reinterpret_cast<char*>(&result), sizeof(T));
   if (!input) {
-    return MakeUnexpected(ErrorCode::READER_UNEXPECTED_EOF);
+    return std::unexpected(ErrorCode::UNEXPECTED_EOF);
   }
 
   if (Endianness != std::endian::native) {
@@ -194,7 +260,7 @@ std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
 
   input.read(reinterpret_cast<char*>(&read), sizeof(read));
   if (!input) {
-    return MakeUnexpected(ErrorCode::READER_UNEXPECTED_EOF);
+    return std::unexpected(ErrorCode::UNEXPECTED_EOF);
   }
 
   if (Endianness != std::endian::native) {
@@ -216,7 +282,7 @@ std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
 
   if constexpr (std::is_signed<SizeType>::value) {
     if (*list_size < 0) {
-      return MakeUnexpected(ErrorCode::READER_NEGATIVE_LIST_SIZE);
+      return std::unexpected(ErrorCode::NEGATIVE_LIST_SIZE);
     }
   }
 
