@@ -349,8 +349,8 @@ class InMemoryWriter final : public PlyWriter {
       const std::string& property_name, size_t property_index,
       uintmax_t instance) const {
     return std::get<std::span<const T>>(
-        *indexed_properties_.at(element_index)
-             .at(property_index))[static_cast<size_t>(instance)];
+        *indexed_properties_[element_index]
+                            [property_index])[static_cast<size_t>(instance)];
   }
 
   template <typename T>
@@ -359,8 +359,8 @@ class InMemoryWriter final : public PlyWriter {
       const std::string& property_name, size_t property_index,
       uintmax_t instance, std::vector<T>& storage) const {
     return std::get<std::span<const std::span<const T>>>(
-        *indexed_properties_.at(element_index)
-             .at(property_index))[static_cast<size_t>(instance)];
+        *indexed_properties_[element_index]
+                            [property_index])[static_cast<size_t>(instance)];
   }
 
   template <typename T>
@@ -369,8 +369,8 @@ class InMemoryWriter final : public PlyWriter {
       const std::string& property_name, size_t property_index,
       uintmax_t instance, std::vector<T>& storage) const {
     return std::get<std::span<const std::vector<T>>>(
-        *indexed_properties_.at(element_index)
-             .at(property_index))[static_cast<size_t>(instance)];
+        *indexed_properties_[element_index]
+                            [property_index])[static_cast<size_t>(instance)];
   }
 
   typedef std::variant<

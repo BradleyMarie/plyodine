@@ -281,7 +281,7 @@ static const std::array<std::string, 16> kTypeNames = {
 
 void PropertyString(std::ostream& output, size_t type,
                     const std::string& name) {
-  output << "property " << kTypeNames.at(type) << " " << name << "\r";
+  output << "property " << kTypeNames[type] << " " << name << "\r";
 }
 
 void PropertyListString(std::ostream& output, size_t list_type,
@@ -289,8 +289,8 @@ void PropertyListString(std::ostream& output, size_t list_type,
   static const std::array<std::string, 16> kListTypeNames = {"uchar", "ushort",
                                                              "uint"};
 
-  output << "property list " << kListTypeNames.at(list_type) << " "
-         << kTypeNames.at(data_type) << " " << name << "\r";
+  output << "property list " << kListTypeNames[list_type] << " "
+         << kTypeNames[data_type] << " " << name << "\r";
 }
 
 class PropertyWriterBase {
@@ -464,8 +464,9 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
       return std::unexpected(error);
     }
 
-    output << "element " << element.first << " "
-           << num_element_instances[element.first] << "\r";
+    uintmax_t num_instances = num_element_instances[element.first];
+
+    output << "element " << element.first << " " << num_instances << "\r";
     if (!output) {
       return std::unexpected(ErrorCode::WRITE_ERROR);
     }
@@ -486,8 +487,8 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
 
       row.emplace_back(std::move(*write_callback));
     }
-    actual_callbacks.emplace_back(num_element_instances.at(element.first),
-                                  std::move(row));
+
+    actual_callbacks.emplace_back(num_instances, std::move(row));
   }
 
   output << "end_header\r";

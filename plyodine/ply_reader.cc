@@ -464,14 +464,14 @@ BuildPropertyReaders(
   for (size_t actual_element_index = 0;
        actual_element_index < ordered_callbacks.size();
        actual_element_index++) {
-    const auto& element = ordered_callbacks.at(actual_element_index);
+    const auto& element = ordered_callbacks[actual_element_index];
     const auto& properties = std::get<2>(element);
 
     result.emplace_back(std::get<uintmax_t>(element),
                         std::vector<std::unique_ptr<PropertyReaderBase>>());
     for (size_t actual_property_index = 0;
          actual_property_index < properties.size(); actual_property_index++) {
-      const auto& property = properties.at(actual_property_index);
+      const auto& property = properties[actual_property_index];
 
       result.back().second.emplace_back(std::visit(
           [&](const auto& func_ptr) {
@@ -637,8 +637,9 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
             std::tuple<std::string, std::optional<PlyHeader::Property::Type>,
                        size_t, size_t, Callback>>());
     for (const auto& property : element.properties) {
-      const auto& numbered_property =
-          numbered_callbacks.at(element.name).at(property.name);
+      const auto& numbered_property = numbered_callbacks.find(element.name)
+                                          ->second.find(property.name)
+                                          ->second;
       auto& row = std::get<2>(ordered_callbacks.back());
       row.emplace_back(
           property.name, property.list_type, std::get<0>(numbered_property),

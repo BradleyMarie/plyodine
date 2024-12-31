@@ -449,7 +449,7 @@ class TriangleMeshReader : public PlyReader {
       return MakeError(ErrorCode::MISSING_VERTEX_DIMENSION);
     }
 
-    num_vertices_ = num_element_instances.at("vertex");
+    num_vertices_ = num_element_instances.find("vertex")->second;
 
     callbacks["vertex"]["x"] = **x;
     callbacks["vertex"]["y"] = **y;

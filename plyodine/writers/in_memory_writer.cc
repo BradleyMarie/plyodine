@@ -643,7 +643,7 @@ InMemoryWriter::GetPropertyListSizeType(const std::string& element_name,
         }
         return value;
       },
-      properties_.at(element_name).at(property_name));
+      properties_.find(element_name)->second.find(property_name)->second);
 
   if (max_size <= std::numeric_limits<uint8_t>::max()) {
     return PlyWriter::ListSizeType::UINT8;
