@@ -304,13 +304,28 @@ std::map<std::string, std::map<std::string, Property>> BuildListSizeTestData() {
   return result;
 }
 
+TEST(Validate, BadStream) {
+  TestWriter writer({}, {}, {}, true);
+  std::stringstream output(std::ios::out | std::ios::binary);
+  output.clear(std::ios::badbit);
+
+  EXPECT_EQ("Output stream must be in good state",
+            writer.WriteTo(output).message());
+  EXPECT_EQ("Output stream must be in good state",
+            writer.WriteToASCII(output).message());
+  EXPECT_EQ("Output stream must be in good state",
+            writer.WriteToBigEndian(output).message());
+  EXPECT_EQ("Output stream must be in good state",
+            writer.WriteToLittleEndian(output).message());
+}
+
 TEST(Validate, StartFails) {
   TestWriter writer({}, {}, {}, true);
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(writer.WriteTo(output).value(), 1);
-  EXPECT_EQ(writer.WriteToASCII(output).value(), 1);
-  EXPECT_EQ(writer.WriteToBigEndian(output).value(), 1);
-  EXPECT_EQ(writer.WriteToLittleEndian(output).value(), 1);
+  EXPECT_EQ(1, writer.WriteTo(output).value());
+  EXPECT_EQ(1, writer.WriteToASCII(output).value());
+  EXPECT_EQ(1, writer.WriteToBigEndian(output).value());
+  EXPECT_EQ(1, writer.WriteToLittleEndian(output).value());
 }
 
 TEST(Validate, BadElementNames) {

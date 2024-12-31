@@ -4,6 +4,7 @@
 #include <cassert>
 #include <charconv>
 #include <cstdint>
+#include <ios>
 #include <istream>
 #include <map>
 #include <memory>
@@ -49,7 +50,7 @@ std::string ErrorCategory::message(int condition) const {
   ErrorCode error_code{condition};
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
-      return "Bad stream passed";
+      return "Input stream must be in good state";
     case ErrorCode::UNEXPECTED_EOF:
       return "Unexpected EOF";
     case ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS:
@@ -128,6 +129,10 @@ std::error_code ReadNextLine(std::istream& input, Context& context) {
     }
 
     line.put(c);
+  }
+
+  if (input.fail() && !input.eof()) {
+    return std::io_errc::stream;
   }
 
   std::get<bool>(context) = input.eof();
@@ -242,8 +247,11 @@ std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
                                                     Context& context) {
   T result;
   input.read(reinterpret_cast<char*>(&result), sizeof(T));
-  if (!input) {
-    return std::unexpected(ErrorCode::UNEXPECTED_EOF);
+  if (input.fail()) {
+    if (input.eof()) {
+      return std::unexpected(ErrorCode::UNEXPECTED_EOF);
+    }
+    return std::unexpected(std::io_errc::stream);
   }
 
   if (Endianness != std::endian::native) {
@@ -259,8 +267,11 @@ std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
   std::conditional_t<std::is_same<T, float>::value, uint32_t, uint64_t> read;
 
   input.read(reinterpret_cast<char*>(&read), sizeof(read));
-  if (!input) {
-    return std::unexpected(ErrorCode::UNEXPECTED_EOF);
+  if (input.fail()) {
+    if (input.eof()) {
+      return std::unexpected(ErrorCode::UNEXPECTED_EOF);
+    }
+    return std::unexpected(std::io_errc::stream);
   }
 
   if (Endianness != std::endian::native) {
@@ -491,6 +502,10 @@ BuildPropertyReaders(
 }  // namespace
 
 std::error_code PlyReader::ReadFrom(std::istream& input) {
+  if (!input) {
+    return ErrorCode::BAD_STREAM;
+  }
+
   auto header = ReadPlyHeader(input);
   if (!header) {
     return header.error();

@@ -20,9 +20,10 @@ std::ifstream OpenRunfile(const std::string& path) {
 }
 
 TEST(ReadPlyHeader, BadStream) {
-  std::ifstream input = OpenRunfile("_main/notarealfile.ply");
+  std::stringstream input(std::ios::in | std::ios::binary);
+  input.clear(std::ios::badbit);
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Bad stream passed", result.error().message());
+  EXPECT_EQ("Input stream must be in good state", result.error().message());
 }
 
 TEST(ReadPlyHeader, BadMagicStringMac) {

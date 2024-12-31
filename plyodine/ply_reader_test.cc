@@ -329,6 +329,33 @@ void RunReadErrorTest(const std::string& file_name,
   }
 }
 
+TEST(Validate, BadStream) {
+  MockPlyReader reader;
+  EXPECT_CALL(reader, StartImpl(_, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleInt8(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleInt8List(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleUInt8(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleUInt8List(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleInt16(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleInt16List(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleUInt16(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleUInt16List(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleInt32(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleInt32List(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleUInt32(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleUInt32List(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleFloat(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleFloatList(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleDouble(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(reader, HandleDoubleList(_, _, _, _, _, _)).Times(0);
+
+  std::stringstream input(std::ios::in | std::ios::binary);
+  input.clear(std::ios::badbit);
+
+  EXPECT_EQ("Input stream must be in good state",
+            reader.ReadFrom(input).message());
+}
+
 TEST(Error, BadHeader) {
   MockPlyReader reader;
   EXPECT_CALL(reader, StartImpl(_, _, _)).Times(0);

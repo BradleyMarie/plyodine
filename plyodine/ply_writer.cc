@@ -9,6 +9,7 @@
 #include <expected>
 #include <functional>
 #include <iomanip>
+#include <ios>
 #include <limits>
 #include <map>
 #include <memory>
@@ -27,13 +28,12 @@ namespace {
 
 enum class ErrorCode : int {
   BAD_STREAM = 1,
-  WRITE_ERROR = 2,
-  COMMENT_CONTAINS_NEWLINE = 3,
-  OBJ_INFO_CONTAINS_NEWLINE = 4,
-  EMPTY_NAME_SPECIFIED = 5,
-  NAME_CONTAINED_INVALID_CHARACTERS = 6,
-  LIST_INDEX_TOO_SMALL = 7,
-  ASCII_FLOAT_NOT_FINITE = 8,
+  COMMENT_CONTAINS_NEWLINE = 2,
+  OBJ_INFO_CONTAINS_NEWLINE = 3,
+  EMPTY_NAME_SPECIFIED = 4,
+  NAME_CONTAINED_INVALID_CHARACTERS = 5,
+  LIST_INDEX_TOO_SMALL = 6,
+  ASCII_FLOAT_NOT_FINITE = 7,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -49,9 +49,7 @@ std::string ErrorCategory::message(int condition) const {
   ErrorCode error_code{condition};
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
-      return "Bad stream passed";
-    case ErrorCode::WRITE_ERROR:
-      return "Write failure";
+      return "Output stream must be in good state";
     case ErrorCode::COMMENT_CONTAINS_NEWLINE:
       return "A comment may not contain line feed or carriage return";
     case ErrorCode::OBJ_INFO_CONTAINS_NEWLINE:
@@ -123,7 +121,7 @@ std::error_code SerializeASCII(std::ostream& output, Context& context,
                                T value) {
   output << +value;
   if (!output) {
-    return ErrorCode::WRITE_ERROR;
+    return std::io_errc::stream;
   }
 
   return std::error_code();
@@ -154,9 +152,8 @@ std::error_code SerializeASCII(std::ostream& output, Context& context,
     }
   }
 
-  output << result;
-  if (!output) {
-    return ErrorCode::WRITE_ERROR;
+  if (!output.write(result.data(), result.size())) {
+    return std::io_errc::stream;
   }
 
   return std::error_code();
@@ -176,9 +173,8 @@ std::error_code SerializeASCII(std::ostream& output, Context& context,
   }
 
   for (const auto& entry : values) {
-    output << ' ';
-    if (!output) {
-      return ErrorCode::WRITE_ERROR;
+    if (!output.put(' ')) {
+      return std::io_errc::stream;
     }
 
     if (std::error_code error =
@@ -199,7 +195,7 @@ std::error_code SerializeBinary(std::ostream& output, T value) {
 
   output.write(reinterpret_cast<char*>(&value), sizeof(value));
   if (!output) {
-    return ErrorCode::WRITE_ERROR;
+    return std::io_errc::stream;
   }
 
   return std::error_code();
@@ -217,7 +213,7 @@ std::error_code SerializeBinary(std::ostream& output, T value) {
 
   output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
   if (!output) {
-    return ErrorCode::WRITE_ERROR;
+    return std::io_errc::stream;
   }
 
   return std::error_code();
@@ -278,18 +274,38 @@ std::expected<std::span<const T>, std::error_code> CallCallback(
 static constexpr std::array<std::string_view, 8> kTypeNames = {
     "char", "uchar", "short", "ushort", "int", "uint", "float", "double"};
 
-void PropertyString(std::ostream& output, size_t type,
-                    const std::string& name) {
-  output << "property " << kTypeNames[type >> 1u] << " " << name << "\r";
+std::error_code PropertyString(std::ostream& output, size_t type,
+                               const std::string& name) {
+  static constexpr std::string_view prefix = "property ";
+  const std::string_view& type_name = kTypeNames[type >> 1u];
+
+  if (!output.write(prefix.data(), prefix.size()) ||
+      !output.write(type_name.data(), type_name.size()) || !output.put(' ') ||
+      !output.write(name.data(), name.size()) || !output.put('\r')) {
+    return std::io_errc::stream;
+  }
+
+  return std::error_code();
 }
 
-void PropertyListString(std::ostream& output, size_t list_type,
-                        size_t data_type, const std::string& name) {
+std::error_code PropertyListString(std::ostream& output, size_t list_type,
+                                   size_t data_type, const std::string& name) {
+  static constexpr std::string_view prefix = "property list ";
   static constexpr std::array<std::string_view, 3> kListTypeNames = {
       "uchar", "ushort", "uint"};
+  const std::string_view& data_type_name = kTypeNames[data_type >> 1u];
+  const std::string_view& list_type_name = kListTypeNames[list_type];
 
-  output << "property list " << kListTypeNames[list_type] << " "
-         << kTypeNames[data_type >> 1u] << " " << name << "\r";
+  if (!output.write(prefix.data(), prefix.size()) ||
+          !output.write(list_type_name.data(), list_type_name.size()) ||
+          !output.put(' ') ||
+          !output.write(data_type_name.data(), data_type_name.size()) ||
+          !output.put(' '),
+      !output.write(name.data(), name.size()) || !output.put('\r')) {
+    return std::io_errc::stream;
+  }
+
+  return std::error_code();
 }
 
 class PropertyWriterBase {
@@ -352,10 +368,6 @@ std::error_code PropertyWriter<Ascii, Endianness, SizeType, T>::Write(
     }
   }
 
-  if (!output_) {
-    return ErrorCode::WRITE_ERROR;
-  }
-
   return std::error_code();
 }
 
@@ -385,15 +397,19 @@ BuildPropertyWriter(std::ostream& output, const PlyWriter& ply_writer,
       return std::unexpected(list_size_type.error());
     }
 
-    PropertyListString(output, *list_size_type, value_type_index,
-                       property_name);
+    if (std::error_code error = PropertyListString(
+            output, *list_size_type, value_type_index, property_name);
+        error) {
+      return std::unexpected(error);
+    }
+
     maybe_list_size_type = *list_size_type;
   } else {
-    PropertyString(output, value_type_index, property_name);
-  }
-
-  if (!output) {
-    return std::unexpected(ErrorCode::WRITE_ERROR);
+    if (std::error_code error =
+            PropertyString(output, value_type_index, property_name);
+        error) {
+      return std::unexpected(error);
+    }
   }
 
   if constexpr (std::is_class<R>::value) {
@@ -423,14 +439,22 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
             const std::function<std::expected<size_t, std::error_code>(
                 const std::string&, size_t, const std::string&, size_t)>&
                 get_property_list_size_type,
-            const char* format,
+            std::string_view format,
             std::map<std::string, uintmax_t>& num_element_instances,
             const std::map<std::string, std::map<std::string, T>>& callbacks,
             const std::vector<std::string>& comments,
             const std::vector<std::string>& object_info, Context& context) {
-  output << "ply\rformat " << format << " 1.0\r";
-  if (!output) {
-    return std::unexpected(ErrorCode::WRITE_ERROR);
+  static constexpr std::string_view header_prefix = "ply\rformat ";
+  static constexpr std::string_view version_suffix = " 1.0\r";
+  static constexpr std::string_view comment_prefix = "comment ";
+  static constexpr std::string_view obj_info_prefix = "obj_info ";
+  static constexpr std::string_view element_prefix = "element ";
+  static constexpr std::string_view header_suffix = "end_header\r";
+
+  if (!output.write(header_prefix.data(), header_prefix.size()) ||
+      !output.write(format.data(), format.size()) ||
+      !output.write(version_suffix.data(), version_suffix.size())) {
+    return std::unexpected(std::io_errc::stream);
   }
 
   for (const auto& comment : comments) {
@@ -438,9 +462,9 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
       return std::unexpected(ErrorCode::COMMENT_CONTAINS_NEWLINE);
     }
 
-    output << "comment " << comment << "\r";
-    if (!output) {
-      return std::unexpected(ErrorCode::WRITE_ERROR);
+    if (!output.write(comment_prefix.data(), comment_prefix.size()) ||
+        !output.write(comment.data(), comment.size()) || !output.put('\r')) {
+      return std::unexpected(std::io_errc::stream);
     }
   }
 
@@ -449,9 +473,9 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
       return std::unexpected(ErrorCode::OBJ_INFO_CONTAINS_NEWLINE);
     }
 
-    output << "obj_info " << info << "\r";
-    if (!output) {
-      return std::unexpected(ErrorCode::WRITE_ERROR);
+    if (!output.write(obj_info_prefix.data(), obj_info_prefix.size()) ||
+        !output.write(info.data(), info.size()) || !output.put('\r')) {
+      return std::unexpected(std::io_errc::stream);
     }
   }
 
@@ -465,9 +489,10 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
 
     uintmax_t num_instances = num_element_instances[element.first];
 
-    output << "element " << element.first << " " << num_instances << "\r";
-    if (!output) {
-      return std::unexpected(ErrorCode::WRITE_ERROR);
+    if (!output.write(element_prefix.data(), element_prefix.size()) ||
+        !output.write(element.first.data(), element.first.size()) ||
+        !output.put(' ') || !(output << num_instances) || !output.put('\r')) {
+      return std::unexpected(std::io_errc::stream);
     }
 
     std::vector<std::unique_ptr<PropertyWriterBase>> row;
@@ -490,9 +515,8 @@ WriteHeader(std::ostream& output, const PlyWriter& ply_writer,
     actual_callbacks.emplace_back(num_instances, std::move(row));
   }
 
-  output << "end_header\r";
-  if (!output) {
-    return std::unexpected(ErrorCode::WRITE_ERROR);
+  if (!output.write(header_suffix.data(), header_suffix.size())) {
+    return std::unexpected(std::io_errc::stream);
   }
 
   return actual_callbacks;
@@ -547,7 +571,7 @@ std::error_code PlyWriter::WriteTo(std::ostream& stream) const {
 }
 
 std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
-  if (stream.fail()) {
+  if (!stream) {
     return ErrorCode::BAD_STREAM;
   }
 
@@ -585,9 +609,8 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
       bool first = true;
       for (const auto& property_writer : element.second) {
         if (!first) {
-          stream << ' ';
-          if (!stream) {
-            return ErrorCode::WRITE_ERROR;
+          if (!stream.put(' ')) {
+            return std::io_errc::stream;
           }
         }
 
@@ -598,9 +621,8 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
         }
       }
 
-      stream << '\r';
-      if (!stream) {
-        return ErrorCode::WRITE_ERROR;
+      if (!stream.put('\r')) {
+        return std::io_errc::stream;
       }
     }
   }
@@ -609,7 +631,7 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
 }
 
 std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
-  if (stream.fail()) {
+  if (!stream) {
     return ErrorCode::BAD_STREAM;
   }
 
@@ -639,7 +661,7 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
 }
 
 std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
-  if (stream.fail()) {
+  if (!stream) {
     return ErrorCode::BAD_STREAM;
   }
 

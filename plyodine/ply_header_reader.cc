@@ -4,6 +4,7 @@
 #include <charconv>
 #include <cstdint>
 #include <expected>
+#include <ios>
 #include <istream>
 #include <limits>
 #include <optional>
@@ -56,7 +57,7 @@ std::string ErrorCategory::message(int condition) const {
   ErrorCode error_code{condition};
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
-      return "Bad stream passed";
+      return "Input stream must be in good state";
     case ErrorCode::MISSING_MAGIC_STRING:
       return "The first line of the input must exactly contain the magic "
              "string";
@@ -151,6 +152,10 @@ std::expected<std::string_view, std::error_code> ReadNextLine(
     }
 
     storage.push_back(c);
+  }
+
+  if (input.fail() && !input.eof()) {
+    return std::unexpected(std::io_errc::stream);
   }
 
   return storage;
@@ -504,7 +509,7 @@ std::expected<PlyHeader::Property, std::error_code> ParseProperty(
 }  // namespace
 
 std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& input) {
-  if (input.fail()) {
+  if (!input) {
     return std::unexpected(ErrorCode::BAD_STREAM);
   }
 
