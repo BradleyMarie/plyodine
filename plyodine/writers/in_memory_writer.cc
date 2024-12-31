@@ -17,8 +17,10 @@
 namespace {
 
 enum class ErrorCode : int {
+  MIN_VALUE = 1,
   UNBALANCED_PROPERTIES = 1,
   PROPERTY_LIST_TOO_LONG = 2,
+  MAX_VALUE = 2,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -36,6 +38,16 @@ static class ErrorCategory final : public std::error_category {
     }
 
     return "Unknown Error";
+  }
+
+  std::error_condition default_error_condition(
+      int value) const noexcept override {
+    if (value < static_cast<int>(ErrorCode::MIN_VALUE) ||
+        value > static_cast<int>(ErrorCode::MAX_VALUE)) {
+      return std::error_condition(value, *this);
+    }
+
+    return std::make_error_condition(std::errc::invalid_argument);
   }
 } kErrorCategory;
 

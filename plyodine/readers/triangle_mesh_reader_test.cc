@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <type_traits>
 #include <vector>
 
@@ -51,6 +52,23 @@ class TestTriangleMeshReader final
   std::vector<std::array<UVType, 2u>> uvs;
   std::vector<std::array<FaceIndexType, 3u>> faces;
 };
+
+TEST(TriangleMeshReader, DefaultErrorCondition) {
+  std::stringstream input("ply\rformat ascii 1.0\rend_header\r");
+
+  TestTriangleMeshReader<float, float, float, uint32_t> reader;
+  const std::error_category& error_catgegory =
+      reader.ReadFrom(input).category();
+
+  EXPECT_NE(error_catgegory.default_error_condition(0),
+            std::errc::invalid_argument);
+  for (int i = 1; i <= 16; i++) {
+    EXPECT_EQ(error_catgegory.default_error_condition(i),
+              std::errc::invalid_argument);
+  }
+  EXPECT_NE(error_catgegory.default_error_condition(17),
+            std::errc::invalid_argument);
+}
 
 TEST(TriangleMeshReader, Empty) {
   std::stringstream input("ply\rformat ascii 1.0\rend_header\r");

@@ -35,6 +35,7 @@ class TriangleMeshReader : public PlyReader {
 
  private:
   enum class ErrorCode : int {
+    MIN_VALUE = 1,
     INVALID_VERTEX_TYPE = 1,
     INVALID_VERTEX_INDEX_TYPE = 2,
     INVALID_NORMAL_TYPE = 3,
@@ -50,6 +51,7 @@ class TriangleMeshReader : public PlyReader {
     TEXTURE_U_NOT_FINITE = 14,
     TEXTURE_V_NOT_FINITE = 15,
     VERTEX_INDEX_OUT_OF_RANGE = 16,
+    MAX_VALUE = 16,
   };
 
   static class ErrorCategory final : public std::error_category {
@@ -98,6 +100,16 @@ class TriangleMeshReader : public PlyReader {
       }
 
       return "Unknown Error";
+    }
+
+    std::error_condition default_error_condition(
+        int value) const noexcept override {
+      if (value < static_cast<int>(ErrorCode::MIN_VALUE) ||
+          value > static_cast<int>(ErrorCode::MAX_VALUE)) {
+        return std::error_condition(value, *this);
+      }
+
+      return std::make_error_condition(std::errc::invalid_argument);
     }
   } error_category;
 

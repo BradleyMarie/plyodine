@@ -7,6 +7,7 @@
 #include <span>
 #include <sstream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -16,6 +17,28 @@ namespace plyodine {
 namespace {
 
 using ::testing::StartsWith;
+
+TEST(InMemoryWriter, DefaultErrorCondition) {
+  std::vector<int> l0 = {1, 2};
+  std::vector<int> l1 = {1, 2, 3};
+
+  InMemoryWriter writer;
+  writer.AddProperty("vertex", "l0", l0);
+  writer.AddProperty("vertex", "l1", l1);
+
+  std::stringstream output;
+  const std::error_category& error_catgegory =
+      writer.WriteToASCII(output).category();
+
+  EXPECT_NE(error_catgegory.default_error_condition(0),
+            std::errc::invalid_argument);
+  for (int i = 1; i <= 2; i++) {
+    EXPECT_EQ(error_catgegory.default_error_condition(i),
+              std::errc::invalid_argument);
+  }
+  EXPECT_NE(error_catgegory.default_error_condition(3),
+            std::errc::invalid_argument);
+}
 
 TEST(List, UInt8) {
   std::vector<uint8_t> values(std::numeric_limits<uint8_t>::max(),

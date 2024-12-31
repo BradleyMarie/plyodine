@@ -329,6 +329,24 @@ void RunReadErrorTest(const std::string& file_name,
   }
 }
 
+TEST(Validate, DefaultErrorCondition) {
+  MockPlyReader reader;
+  std::stringstream input(std::ios::in | std::ios::binary);
+  input.clear(std::ios::badbit);
+
+  const std::error_category& error_catgegory =
+      reader.ReadFrom(input).category();
+
+  EXPECT_NE(error_catgegory.default_error_condition(0),
+            std::errc::invalid_argument);
+  for (int i = 1; i <= 12; i++) {
+    EXPECT_EQ(error_catgegory.default_error_condition(i),
+              std::errc::invalid_argument);
+  }
+  EXPECT_NE(error_catgegory.default_error_condition(13),
+            std::errc::invalid_argument);
+}
+
 TEST(Validate, BadStream) {
   MockPlyReader reader;
   EXPECT_CALL(reader, StartImpl(_, _, _)).Times(0);

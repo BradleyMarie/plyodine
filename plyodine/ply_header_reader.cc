@@ -17,6 +17,7 @@
 namespace {
 
 enum class ErrorCode : int {
+  MIN_VALUE = 1,
   BAD_STREAM = 1,
   MISSING_MAGIC_STRING = 2,
   CONTAINS_MISMATCHED_LINE_ENDINGS = 3,
@@ -42,11 +43,14 @@ enum class ErrorCode : int {
   ELEMENT_SPECIFIER_TOO_LONG = 23,
   END_INVALID = 24,
   UNRECOGNIZED_KEYWORD = 25,
+  MAX_VALUE = 25,
 };
 
 static class ErrorCategory final : public std::error_category {
   const char* name() const noexcept override;
   std::string message(int condition) const override;
+  std::error_condition default_error_condition(
+      int value) const noexcept override;
 } kErrorCategory;
 
 const char* ErrorCategory::name() const noexcept {
@@ -113,6 +117,16 @@ std::string ErrorCategory::message(int condition) const {
   };
 
   return "Unknown Error";
+}
+
+std::error_condition ErrorCategory::default_error_condition(
+    int value) const noexcept {
+  if (value < static_cast<int>(ErrorCode::MIN_VALUE) ||
+      value > static_cast<int>(ErrorCode::MAX_VALUE)) {
+    return std::error_condition(value, *this);
+  }
+
+  return std::make_error_condition(std::errc::invalid_argument);
 }
 
 std::error_code make_error_code(ErrorCode code) {

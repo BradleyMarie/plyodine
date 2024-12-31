@@ -4,6 +4,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <system_error>
 
 #include "googletest/include/gtest/gtest.h"
 #include "tools/cpp/runfiles/runfiles.h"
@@ -17,6 +18,23 @@ std::ifstream OpenRunfile(const std::string& path) {
   std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest());
   return std::ifstream(runfiles->Rlocation(path),
                        std::ios::in | std::ios::binary);
+}
+
+TEST(ReadPlyHeader, DefaultErrorCondition) {
+  std::stringstream input(std::ios::in | std::ios::binary);
+  input.clear(std::ios::badbit);
+
+  auto result = ReadPlyHeader(input);
+  const std::error_category& error_catgegory = result.error().category();
+
+  EXPECT_NE(error_catgegory.default_error_condition(0),
+            std::errc::invalid_argument);
+  for (int i = 1; i <= 25; i++) {
+    EXPECT_EQ(error_catgegory.default_error_condition(i),
+              std::errc::invalid_argument);
+  }
+  EXPECT_NE(error_catgegory.default_error_condition(26),
+            std::errc::invalid_argument);
 }
 
 TEST(ReadPlyHeader, BadStream) {

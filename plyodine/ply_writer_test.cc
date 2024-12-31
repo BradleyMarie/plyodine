@@ -304,6 +304,23 @@ std::map<std::string, std::map<std::string, Property>> BuildListSizeTestData() {
   return result;
 }
 
+TEST(Validate, DefaultErrorCondition) {
+  TestWriter writer({}, {}, {}, true);
+  std::stringstream output(std::ios::out | std::ios::binary);
+  output.clear(std::ios::badbit);
+
+  const std::error_category& error_catgegory =
+      writer.WriteTo(output).category();
+  EXPECT_NE(error_catgegory.default_error_condition(0),
+            std::errc::invalid_argument);
+  for (int i = 1; i <= 7; i++) {
+    EXPECT_EQ(error_catgegory.default_error_condition(i),
+              std::errc::invalid_argument);
+  }
+  EXPECT_NE(error_catgegory.default_error_condition(8),
+            std::errc::invalid_argument);
+}
+
 TEST(Validate, BadStream) {
   TestWriter writer({}, {}, {}, true);
   std::stringstream output(std::ios::out | std::ios::binary);
