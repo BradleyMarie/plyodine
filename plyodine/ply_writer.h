@@ -122,7 +122,7 @@ class PlyWriter {
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const = 0;
 
-  enum class ListSizeType {
+  enum class ListSizeType : unsigned int {
     UINT8 = 0,
     UINT16 = 1,
     UINT32 = 2,

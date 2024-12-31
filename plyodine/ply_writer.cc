@@ -275,22 +275,21 @@ std::expected<std::span<const T>, std::error_code> CallCallback(
                                 property_index, instance, vector);
 }
 
-static const std::array<std::string, 16> kTypeNames = {
-    "char", "char", "uchar", "uchar", "short", "short", "ushort", "ushort",
-    "int",  "int",  "uint",  "uint",  "float", "float", "double", "double"};
+static constexpr std::array<std::string_view, 8> kTypeNames = {
+    "char", "uchar", "short", "ushort", "int", "uint", "float", "double"};
 
 void PropertyString(std::ostream& output, size_t type,
                     const std::string& name) {
-  output << "property " << kTypeNames[type] << " " << name << "\r";
+  output << "property " << kTypeNames[type >> 1u] << " " << name << "\r";
 }
 
 void PropertyListString(std::ostream& output, size_t list_type,
                         size_t data_type, const std::string& name) {
-  static const std::array<std::string, 16> kListTypeNames = {"uchar", "ushort",
-                                                             "uint"};
+  static constexpr std::array<std::string_view, 3> kListTypeNames = {
+      "uchar", "ushort", "uint"};
 
   output << "property list " << kListTypeNames[list_type] << " "
-         << kTypeNames[data_type] << " " << name << "\r";
+         << kTypeNames[data_type >> 1u] << " " << name << "\r";
 }
 
 class PropertyWriterBase {
@@ -573,7 +572,7 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
         if (!result) {
           return std::unexpected(result.error());
         }
-        return static_cast<size_t>(*result);
+        return static_cast<size_t>(std::min(*result, ListSizeType::UINT32));
       },
       "ascii", num_element_instances, callbacks, comments, object_info,
       context);
