@@ -60,19 +60,26 @@ class TestWriter final : public PlyWriter {
   TestWriter(
       const std::map<std::string, std::map<std::string, Property>>& properties,
       std::span<const std::string> comments,
-      std::span<const std::string> object_info, bool start_fails = false)
+      std::span<const std::string> object_info, bool start_fails = false,
+      bool insert_invalid_element = false)
       : properties_(properties),
         comments_(comments),
         object_info_(object_info),
-        start_fails_(start_fails) {}
+        start_fails_(start_fails),
+        insert_invalid_element_(insert_invalid_element) {}
 
   std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
-      std::map<std::string, std::map<std::string, ValueGenerator>>& callbacks,
+      std::map<std::string, std::map<std::string, PropertyGenerator>>&
+          callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override {
     if (start_fails_) {
       return std::error_code(1, std::generic_category());
+    }
+
+    if (insert_invalid_element_) {
+      num_element_instances["INVALID"] = 99;
     }
 
     for (const auto& [element_name, element_properties] : properties_) {
@@ -225,6 +232,7 @@ class TestWriter final : public PlyWriter {
   std::span<const std::string> comments_;
   std::span<const std::string> object_info_;
   bool start_fails_;
+  bool insert_invalid_element_;
 };
 
 std::error_code WriteTo(
@@ -331,11 +339,11 @@ TEST(Validate, DefaultErrorCondition) {
       writer.WriteTo(output).category();
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 8; i++) {
+  for (int i = 1; i <= 10; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(9),
+  EXPECT_NE(error_catgegory.default_error_condition(11),
             std::errc::invalid_argument);
 }
 
@@ -372,13 +380,37 @@ TEST(Validate, BadElementNames) {
       "Names of properties and elements may only contain graphic characters");
 }
 
-TEST(Validate, BadPropertyNames) {
+TEST(Validate, EmptyPropertyNames) {
+  static const std::vector<int8_t> a = {-1, 2, 0};
+
+  std::map<std::string, std::map<std::string, Property>> properties;
+  properties["vertex"][""] = a;
+
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(WriteToASCII(output, {{"element", {{"", {}}}}}).message(),
+  EXPECT_EQ(WriteToASCII(output, properties).message(),
             "Names of properties and elements may not be empty");
+}
+
+TEST(Validate, NonGraphicPropertyNames) {
+  static const std::vector<int8_t> a = {-1, 2, 0};
+
+  std::map<std::string, std::map<std::string, Property>> properties;
+  properties["vertex"][" "] = a;
+
+  std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(
-      WriteToASCII(output, {{"element", {{" ", {}}}}}).message(),
+      WriteToASCII(output, properties).message(),
       "Names of properties and elements may only contain graphic characters");
+}
+
+TEST(Validate, NoInstances) {
+  std::map<std::string, std::map<std::string, Property>> properties;
+  properties["vertex"]["a"] = std::vector<int8_t>();
+
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(
+      WriteToASCII(output, properties).message(),
+      "All elements with properties must have a non-zero number of instances");
 }
 
 TEST(Validate, BadComment) {
@@ -395,6 +427,13 @@ TEST(Validate, BadObjInfo) {
             "An obj_info may not contain line feed or carriage return");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).message(),
             "An obj_info may not contain line feed or carriage return");
+}
+
+TEST(Validate, NoProperties) {
+  TestWriter writer({}, {}, {}, false, true);
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(writer.WriteTo(output).message(),
+            "An element must have at least one associated property");
 }
 
 TEST(Validate, ListTooBig) {

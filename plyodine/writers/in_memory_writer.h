@@ -465,7 +465,8 @@ class InMemoryWriter final : public PlyWriter {
  protected:
   std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
-      std::map<std::string, std::map<std::string, ValueGenerator>>& callbacks,
+      std::map<std::string, std::map<std::string, PropertyGenerator>>&
+          property_generators,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override;
 

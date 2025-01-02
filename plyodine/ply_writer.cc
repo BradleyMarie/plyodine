@@ -28,12 +28,14 @@ enum class ErrorCode : int {
   BAD_STREAM = 1,
   COMMENT_CONTAINS_NEWLINE = 2,
   OBJ_INFO_CONTAINS_NEWLINE = 3,
-  EMPTY_NAME_SPECIFIED = 4,
-  NAME_CONTAINED_INVALID_CHARACTERS = 5,
-  LIST_INDEX_TOO_SMALL = 6,
-  ASCII_FLOAT_NOT_FINITE = 7,
-  NOT_ENOUGH_VALUES = 8,
-  MAX_VALUE = 8,
+  ELEMENT_HAS_NO_PROPERTIES = 4,
+  PROPERTY_HAS_NO_INSTANCES = 5,
+  EMPTY_NAME_SPECIFIED = 6,
+  NAME_CONTAINED_INVALID_CHARACTERS = 7,
+  LIST_INDEX_TOO_SMALL = 8,
+  ASCII_FLOAT_NOT_FINITE = 9,
+  NOT_ENOUGH_VALUES = 10,
+  MAX_VALUE = 10,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -55,6 +57,11 @@ std::string ErrorCategory::message(int condition) const {
       return "A comment may not contain line feed or carriage return";
     case ErrorCode::OBJ_INFO_CONTAINS_NEWLINE:
       return "An obj_info may not contain line feed or carriage return";
+    case ErrorCode::ELEMENT_HAS_NO_PROPERTIES:
+      return "An element must have at least one associated property";
+    case ErrorCode::PROPERTY_HAS_NO_INSTANCES:
+      return "All elements with properties must have a non-zero number of "
+             "instances";
     case ErrorCode::EMPTY_NAME_SPECIFIED:
       return "Names of properties and elements may not be empty";
     case ErrorCode::NAME_CONTAINED_INVALID_CHARACTERS:
@@ -109,14 +116,16 @@ using PropertyGenerator = std::variant<
     std::generator<uint32_t>, std::generator<std::span<const uint32_t>>,
     std::generator<float>, std::generator<std::span<const float>>,
     std::generator<double>, std::generator<std::span<const double>>>;
+
 using GetPropertyListSizeProxy =
     unsigned int (PlyWriter::*)(const std::string&, const std::string&) const;
-using ListTypeNameAndCapacity = std::pair<std::string_view, uint32_t>;
 
-static constexpr ListTypeNameAndCapacity kListNameAndCapacity[3] = {
-    {"list uchar ", std::numeric_limits<uint8_t>::max()},
-    {"list ushort ", std::numeric_limits<uint16_t>::max()},
-    {"list uint ", std::numeric_limits<uint32_t>::max()},
+struct ListTypeParameters {
+  std::string_view prefix;
+  std::error_code (*serialize_ascii)(std::ostream& output,
+                                     std::stringstream& storage, size_t size);
+  std::error_code (*serialize_big_endian)(std::ostream& output, size_t size);
+  std::error_code (*serialize_little_endian)(std::ostream& output, size_t size);
 };
 
 std::error_code ValidateName(const std::string& name) {
@@ -145,7 +154,7 @@ bool ValidateComment(const std::string& comment) {
 
 template <std::integral T>
 std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
-                               uint32_t list_capacity, T value) {
+                               T value) {
   output << +value;
   if (!output) {
     return std::io_errc::stream;
@@ -156,7 +165,7 @@ std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
 
 template <std::floating_point T>
 std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
-                               uint32_t list_capacity, T value) {
+                               T value) {
   if (!std::isfinite(value)) {
     return ErrorCode::ASCII_FLOAT_NOT_FINITE;
   }
@@ -185,31 +194,24 @@ std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
 }
 
 template <typename T>
-std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
-                               uint32_t list_capacity,
-                               std::span<const T> values) {
-  if (list_capacity < values.size()) {
+std::error_code SerializeListSizeASCII(std::ostream& output,
+                                       std::stringstream& storage,
+                                       size_t size) {
+  if (std::numeric_limits<T>::max() < size) {
     return ErrorCode::LIST_INDEX_TOO_SMALL;
   }
 
-  if (list_capacity == std::numeric_limits<uint8_t>::max()) {
-    if (std::error_code error =
-            SerializeASCII(output, storage, list_capacity,
-                           static_cast<uint8_t>(values.size()));
-        error) {
-      return error;
-    }
-  } else if (list_capacity == std::numeric_limits<uint16_t>::max()) {
-    if (std::error_code error =
-            SerializeASCII(output, storage, list_capacity,
-                           static_cast<uint16_t>(values.size()));
-        error) {
-      return error;
-    }
-  } else if (std::error_code error =
-                 SerializeASCII(output, storage, list_capacity,
-                                static_cast<uint32_t>(values.size()));
-             error) {
+  return SerializeASCII(output, storage, static_cast<T>(size));
+}
+
+template <typename T>
+std::error_code SerializeListASCII(std::ostream& output,
+                                   std::stringstream& storage,
+                                   const ListTypeParameters& parameters,
+                                   std::span<const T> values) {
+  if (std::error_code error =
+          parameters.serialize_ascii(output, storage, values.size());
+      error) {
     return error;
   }
 
@@ -218,9 +220,7 @@ std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
       return std::io_errc::stream;
     }
 
-    if (std::error_code error =
-            SerializeASCII(output, storage, list_capacity, entry);
-        error) {
+    if (std::error_code error = SerializeASCII(output, storage, entry); error) {
       return error;
     }
   }
@@ -229,8 +229,7 @@ std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
 }
 
 template <std::endian Endianness, std::integral T>
-std::error_code SerializeBinary(std::ostream& output, uint32_t list_capacity,
-                                T value) {
+std::error_code SerializeBinary(std::ostream& output, T value) {
   if (Endianness != std::endian::native) {
     value = std::byteswap(value);
   }
@@ -244,8 +243,7 @@ std::error_code SerializeBinary(std::ostream& output, uint32_t list_capacity,
 }
 
 template <std::endian Endianness, std::floating_point T>
-std::error_code SerializeBinary(std::ostream& output, uint32_t list_capacity,
-                                T value) {
+std::error_code SerializeBinary(std::ostream& output, T value) {
   auto entry = std::bit_cast<
       std::conditional_t<std::is_same<T, float>::value, uint32_t, uintmax_t>>(
       value);
@@ -263,33 +261,34 @@ std::error_code SerializeBinary(std::ostream& output, uint32_t list_capacity,
 }
 
 template <std::endian Endianness, typename T>
-std::error_code SerializeBinary(std::ostream& output, uint32_t list_capacity,
-                                std::span<const T> values) {
-  if (list_capacity < values.size()) {
+std::error_code SerializeListSizeBinary(std::ostream& output, size_t size) {
+  if (std::numeric_limits<T>::max() < size) {
     return ErrorCode::LIST_INDEX_TOO_SMALL;
   }
 
-  if (list_capacity == std::numeric_limits<uint8_t>::max()) {
-    if (std::error_code error = SerializeBinary<Endianness>(
-            output, list_capacity, static_cast<uint8_t>(values.size()));
+  return SerializeBinary<Endianness>(output, static_cast<T>(size));
+}
+
+template <std::endian Endianness, typename T>
+std::error_code SerializeListBinary(std::ostream& output,
+                                    const ListTypeParameters& parameters,
+                                    std::span<const T> values) {
+  if constexpr (Endianness == std::endian::big) {
+    if (std::error_code error =
+            parameters.serialize_big_endian(output, values.size());
         error) {
       return error;
     }
-  } else if (list_capacity == std::numeric_limits<uint16_t>::max()) {
-    if (std::error_code error = SerializeBinary<Endianness>(
-            output, list_capacity, static_cast<uint16_t>(values.size()));
+  } else {
+    if (std::error_code error =
+            parameters.serialize_little_endian(output, values.size());
         error) {
       return error;
     }
-  } else if (std::error_code error = SerializeBinary<Endianness>(
-                 output, list_capacity, static_cast<uint32_t>(values.size()));
-             error) {
-    return error;
   }
 
   for (const auto& entry : values) {
-    if (std::error_code error =
-            SerializeBinary<Endianness>(output, list_capacity, entry);
+    if (std::error_code error = SerializeBinary<Endianness>(output, entry);
         error) {
       return error;
     }
@@ -298,29 +297,120 @@ std::error_code SerializeBinary(std::ostream& output, uint32_t list_capacity,
   return std::error_code();
 }
 
+template <typename T>
+std::move_only_function<std::error_code()> MakeASCIISerializer(
+    std::ostream& stream, std::stringstream& storage,
+    std::generator<T>& generator, const ListTypeParameters* list_parameters) {
+  return [&stream, &storage, iter = generator.begin(), end = generator.end(),
+          list_parameters]() mutable -> std::error_code {
+    if (iter == end) {
+      return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
+    }
+
+    if constexpr (std::is_arithmetic<T>::value) {
+      if (std::error_code error = SerializeASCII(stream, storage, *iter);
+          error) {
+        return error;
+      }
+    } else {
+      if (std::error_code error =
+              SerializeListASCII(stream, storage, *list_parameters, *iter);
+          error) {
+        return error;
+      }
+    }
+
+    iter++;
+
+    return std::error_code();
+  };
+}
+
+std::move_only_function<std::error_code()> MakeASCIISerializer(
+    std::ostream& stream, std::stringstream& storage,
+    PropertyGenerator& generator, const ListTypeParameters* list_parameters) {
+  return std::visit(
+      [&](auto& value) -> std::move_only_function<std::error_code()> {
+        return MakeASCIISerializer(stream, storage, value, list_parameters);
+      },
+      generator);
+}
+
+template <std::endian Endianness, typename T>
+std::move_only_function<std::error_code()> MakeBinarySerializer(
+    std::ostream& stream, std::generator<T>& generator,
+    const ListTypeParameters* list_parameters) {
+  return [&stream, iter = generator.begin(), end = generator.end(),
+          list_parameters]() mutable -> std::error_code {
+    if (iter == end) {
+      return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
+    }
+
+    if constexpr (std::is_arithmetic<T>::value) {
+      if (std::error_code error = SerializeBinary<Endianness>(stream, *iter);
+          error) {
+        return error;
+      }
+    } else {
+      if (std::error_code error =
+              SerializeListBinary<Endianness>(stream, *list_parameters, *iter);
+          error) {
+        return error;
+      }
+    }
+
+    iter++;
+
+    return std::error_code();
+  };
+}
+
+template <std::endian Endianness>
+std::move_only_function<std::error_code()> MakeBinarySerializer(
+    std::ostream& stream, PropertyGenerator& generator,
+    const ListTypeParameters* list_parameters) {
+  return std::visit(
+      [&](auto& value) -> std::move_only_function<std::error_code()> {
+        return MakeBinarySerializer<Endianness>(stream, value, list_parameters);
+      },
+      generator);
+}
+
+static constexpr ListTypeParameters kListParameters[3]{
+    {"list uchar ", SerializeListSizeASCII<uint8_t>,
+     SerializeListSizeBinary<std::endian::big, uint8_t>,
+     SerializeListSizeBinary<std::endian::little, uint8_t>},
+    {"list ushort ", SerializeListSizeASCII<uint16_t>,
+     SerializeListSizeBinary<std::endian::big, uint16_t>,
+     SerializeListSizeBinary<std::endian::little, uint16_t>},
+    {"list uint ", SerializeListSizeASCII<uint32_t>,
+     SerializeListSizeBinary<std::endian::big, uint32_t>,
+     SerializeListSizeBinary<std::endian::little, uint32_t>},
+};
+
 std::map<std::string,
          std::map<std::string,
-                  std::pair<PropertyGenerator, const ListTypeNameAndCapacity*>>>
+                  std::pair<PropertyGenerator, const ListTypeParameters*>>>
 BuildGenerators(std::map<std::string, std::map<std::string, PropertyGenerator>>
                     property_generators,
                 const PlyWriter& ply_writer,
                 GetPropertyListSizeProxy get_property_list_type) {
   std::map<std::string,
-           std::map<std::string, std::pair<PropertyGenerator,
-                                           const ListTypeNameAndCapacity*>>>
+           std::map<std::string,
+                    std::pair<PropertyGenerator, const ListTypeParameters*>>>
       result;
   for (auto& [element_name, elements] : property_generators) {
     std::map<std::string,
-             std::pair<PropertyGenerator, const ListTypeNameAndCapacity*>>&
+             std::pair<PropertyGenerator, const ListTypeParameters*>>&
         element_generators = result[element_name];
     for (auto& [property_name, generator] : elements) {
-      const ListTypeNameAndCapacity* name_and_capacity = nullptr;
+      const ListTypeParameters* name_and_capacity = nullptr;
       if (generator.index() & 1u) {
         unsigned int list_size_type = std::min(
             (ply_writer.*get_property_list_type)(element_name, property_name),
-            static_cast<unsigned int>(std::size(kListNameAndCapacity)));
+            static_cast<unsigned int>(std::size(kListParameters)));
         name_and_capacity =
-            &kListNameAndCapacity[static_cast<size_t>(list_size_type)];
+            &kListParameters[static_cast<size_t>(list_size_type)];
       }
       element_generators.try_emplace(property_name, std::move(generator),
                                      name_and_capacity);
@@ -333,10 +423,9 @@ BuildGenerators(std::map<std::string, std::map<std::string, PropertyGenerator>>
 std::error_code WriteHeader(
     std::ostream& output, std::string_view format,
     std::map<std::string, uintmax_t>& num_element_instances,
-    const std::map<
-        std::string,
-        std::map<std::string,
-                 std::pair<PropertyGenerator, const ListTypeNameAndCapacity*>>>&
+    const std::map<std::string,
+                   std::map<std::string, std::pair<PropertyGenerator,
+                                                   const ListTypeParameters*>>>&
         generators_and_list_details,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
@@ -379,6 +468,12 @@ std::error_code WriteHeader(
     }
   }
 
+  for (const auto& [element_name, _] : num_element_instances) {
+    if (!generators_and_list_details.contains(element_name)) {
+      return ErrorCode::ELEMENT_HAS_NO_PROPERTIES;
+    }
+  }
+
   for (const auto& [element_name, element_generators] :
        generators_and_list_details) {
     if (std::error_code error = ValidateName(element_name); error) {
@@ -386,6 +481,9 @@ std::error_code WriteHeader(
     }
 
     uintmax_t num_instances = num_element_instances[element_name];
+    if (num_instances == 0) {
+      return ErrorCode::PROPERTY_HAS_NO_INSTANCES;
+    }
 
     if (!output.write(element_prefix.data(), element_prefix.size()) ||
         !output.write(element_name.data(), element_name.size()) ||
@@ -404,8 +502,8 @@ std::error_code WriteHeader(
       }
 
       if (generator_and_details.second != nullptr &&
-          !output.write(generator_and_details.second->first.data(),
-                        generator_and_details.second->first.size())) {
+          !output.write(generator_and_details.second->prefix.data(),
+                        generator_and_details.second->prefix.size())) {
         return std::io_errc::stream;
       }
 
@@ -467,32 +565,9 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
   for (auto& [element_name, elements] : generators_with_capacities) {
     std::vector<std::move_only_function<std::error_code()>> add_next_property;
     for (auto& [_, generator_and_list_details] : elements) {
-      uint32_t list_capacity = (generator_and_list_details.second != nullptr)
-                                   ? generator_and_list_details.second->second
-                                   : 0u;
-
-      std::move_only_function<std::error_code()> add_property_func = std::visit(
-          [&](auto& generator) -> std::move_only_function<std::error_code()> {
-            return [iter = generator.begin(), end = generator.end(), &stream,
-                    list_capacity, &storage]() mutable -> std::error_code {
-              if (iter == end) {
-                return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
-              }
-
-              if (std::error_code error =
-                      SerializeASCII(stream, storage, list_capacity, *iter);
-                  error) {
-                return error;
-              }
-
-              iter++;
-
-              return std::error_code();
-            };
-          },
-          generator_and_list_details.first);
-
-      add_next_property.push_back(std::move(add_property_func));
+      add_next_property.push_back(
+          MakeASCIISerializer(stream, storage, generator_and_list_details.first,
+                              generator_and_list_details.second));
     }
 
     for (uintmax_t i = 0; i < num_element_instances[element_name]; i++) {
@@ -548,32 +623,9 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
   for (auto& [element_name, elements] : generators_with_capacities) {
     std::vector<std::move_only_function<std::error_code()>> add_next_property;
     for (auto& [_, generator_and_list_details] : elements) {
-      uint32_t list_capacity = (generator_and_list_details.second != nullptr)
-                                   ? generator_and_list_details.second->second
-                                   : 0u;
-
-      std::move_only_function<std::error_code()> add_property_func = std::visit(
-          [&](auto& generator) -> std::move_only_function<std::error_code()> {
-            return [iter = generator.begin(), end = generator.end(), &stream,
-                    list_capacity]() mutable -> std::error_code {
-              if (iter == end) {
-                return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
-              }
-
-              if (std::error_code error = SerializeBinary<std::endian::big>(
-                      stream, list_capacity, *iter);
-                  error) {
-                return error;
-              }
-
-              iter++;
-
-              return std::error_code();
-            };
-          },
-          generator_and_list_details.first);
-
-      add_next_property.push_back(std::move(add_property_func));
+      add_next_property.push_back(MakeBinarySerializer<std::endian::big>(
+          stream, generator_and_list_details.first,
+          generator_and_list_details.second));
     }
 
     for (uintmax_t i = 0; i < num_element_instances[element_name]; i++) {
@@ -618,32 +670,9 @@ std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
   for (auto& [element_name, elements] : generators_with_capacities) {
     std::vector<std::move_only_function<std::error_code()>> add_next_property;
     for (auto& [_, generator_and_list_details] : elements) {
-      uint32_t list_capacity = (generator_and_list_details.second != nullptr)
-                                   ? generator_and_list_details.second->second
-                                   : 0u;
-
-      std::move_only_function<std::error_code()> add_property_func = std::visit(
-          [&](auto& generator) -> std::move_only_function<std::error_code()> {
-            return [iter = generator.begin(), end = generator.end(), &stream,
-                    list_capacity]() mutable -> std::error_code {
-              if (iter == end) {
-                return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
-              }
-
-              if (std::error_code error = SerializeBinary<std::endian::little>(
-                      stream, list_capacity, *iter);
-                  error) {
-                return error;
-              }
-
-              iter++;
-
-              return std::error_code();
-            };
-          },
-          generator_and_list_details.first);
-
-      add_next_property.push_back(std::move(add_property_func));
+      add_next_property.push_back(MakeBinarySerializer<std::endian::little>(
+          stream, generator_and_list_details.first,
+          generator_and_list_details.second));
     }
 
     for (uintmax_t i = 0; i < num_element_instances[element_name]; i++) {

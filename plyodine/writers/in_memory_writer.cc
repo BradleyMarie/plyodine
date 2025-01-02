@@ -572,7 +572,8 @@ void InMemoryWriter::AddPropertyList(
 
 std::error_code InMemoryWriter::Start(
     std::map<std::string, uintmax_t>& num_element_instances,
-    std::map<std::string, std::map<std::string, ValueGenerator>>& callbacks,
+    std::map<std::string, std::map<std::string, PropertyGenerator>>&
+        property_generators,
     std::vector<std::string>& comments,
     std::vector<std::string>& object_info) const {
   comments.insert(comments.end(), comments_.begin(), comments_.end());
@@ -580,16 +581,16 @@ std::error_code InMemoryWriter::Start(
                      object_info_.end());
 
   for (const auto& [element_name, element_properties] : properties_) {
-    std::map<std::string, PlyWriter::ValueGenerator>& property_callbacks =
-        callbacks[element_name];
+    std::map<std::string, PlyWriter::PropertyGenerator>& generators =
+        property_generators[element_name];
     size_t& num_elements = num_element_instances[element_name];
     for (const auto& [property_name, property] : element_properties) {
-      property_callbacks.try_emplace(
-          property_name, std::visit(
-                             [&](const auto& values) -> ValueGenerator {
-                               return MakeGenerator(values);
-                             },
-                             property));
+      generators.try_emplace(property_name,
+                             std::visit(
+                                 [&](const auto& values) -> PropertyGenerator {
+                                   return MakeGenerator(values);
+                                 },
+                                 property));
       num_elements = std::max(
           num_elements,
           std::visit([](const auto& list) { return list.size(); }, property));
