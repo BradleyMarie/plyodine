@@ -68,82 +68,98 @@ class TestWriter final : public PlyWriter {
 
   std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
-      std::map<std::string, std::map<std::string, Callback>>& callbacks,
+      std::map<std::string, std::map<std::string, ValueGenerator>>& callbacks,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const override {
     if (start_fails_) {
       return std::error_code(1, std::generic_category());
     }
 
-    for (const auto& element : properties_) {
-      auto& property_callbacks = callbacks[element.first];
-      auto& num_instances = num_element_instances[element.first];
-      for (const auto& property : element.second) {
-        num_instances = property.second.size();
-        switch (property.second.index()) {
+    for (const auto& [element_name, element_properties] : properties_) {
+      auto& property_callbacks = callbacks[element_name];
+      auto& num_instances = num_element_instances[element_name];
+      for (const auto& [property_name, property] : element_properties) {
+        num_instances = std::max(num_instances, property.size());
+        switch (property.index()) {
           case 0:
-            property_callbacks[property.first] =
-                Int8PropertyCallback(&TestWriter::Callback<int8_t>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<int8_t>(element_name, property_name));
             break;
           case 1:
-            property_callbacks[property.first] =
-                Int8PropertyListCallback(&TestWriter::ListCallback<int8_t>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::ListGenerator<int8_t>(element_name, property_name));
             break;
           case 2:
-            property_callbacks[property.first] =
-                UInt8PropertyCallback(&TestWriter::Callback<uint8_t>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<uint8_t>(element_name, property_name));
             break;
           case 3:
-            property_callbacks[property.first] =
-                UInt8PropertyListCallback(&TestWriter::ListCallback<uint8_t>);
+            property_callbacks.try_emplace(property_name,
+                                           TestWriter::ListGenerator<uint8_t>(
+                                               element_name, property_name));
             break;
           case 4:
-            property_callbacks[property.first] =
-                Int16PropertyCallback(&TestWriter::Callback<int16_t>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<int16_t>(element_name, property_name));
             break;
           case 5:
-            property_callbacks[property.first] =
-                Int16PropertyListCallback(&TestWriter::ListCallback<int16_t>);
+            property_callbacks.try_emplace(property_name,
+                                           TestWriter::ListGenerator<int16_t>(
+                                               element_name, property_name));
             break;
           case 6:
-            property_callbacks[property.first] =
-                UInt16PropertyCallback(&TestWriter::Callback<uint16_t>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<uint16_t>(element_name, property_name));
             break;
           case 7:
-            property_callbacks[property.first] =
-                UInt16PropertyListCallback(&TestWriter::ListCallback<uint16_t>);
+            property_callbacks.try_emplace(property_name,
+                                           TestWriter::ListGenerator<uint16_t>(
+                                               element_name, property_name));
             break;
           case 8:
-            property_callbacks[property.first] =
-                Int32PropertyCallback(&TestWriter::Callback<int32_t>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<int32_t>(element_name, property_name));
             break;
           case 9:
-            property_callbacks[property.first] =
-                Int32PropertyListCallback(&TestWriter::ListCallback<int32_t>);
+            property_callbacks.try_emplace(property_name,
+                                           TestWriter::ListGenerator<int32_t>(
+                                               element_name, property_name));
             break;
           case 10:
-            property_callbacks[property.first] =
-                UInt32PropertyCallback(&TestWriter::Callback<uint32_t>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<uint32_t>(element_name, property_name));
             break;
           case 11:
-            property_callbacks[property.first] =
-                UInt32PropertyListCallback(&TestWriter::ListCallback<uint32_t>);
+            property_callbacks.try_emplace(property_name,
+                                           TestWriter::ListGenerator<uint32_t>(
+                                               element_name, property_name));
             break;
           case 12:
-            property_callbacks[property.first] =
-                FloatPropertyCallback(&TestWriter::Callback<float>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<float>(element_name, property_name));
             break;
           case 13:
-            property_callbacks[property.first] =
-                FloatPropertyListCallback(&TestWriter::ListCallback<float>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::ListGenerator<float>(element_name, property_name));
             break;
           case 14:
-            property_callbacks[property.first] =
-                DoublePropertyCallback(&TestWriter::Callback<double>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::Generator<double>(element_name, property_name));
             break;
           case 15:
-            property_callbacks[property.first] =
-                DoublePropertyListCallback(&TestWriter::ListCallback<double>);
+            property_callbacks.try_emplace(
+                property_name,
+                TestWriter::ListGenerator<double>(element_name, property_name));
             break;
         };
       }
@@ -156,9 +172,9 @@ class TestWriter final : public PlyWriter {
     return std::error_code();
   }
 
-  std::expected<ListSizeType, std::error_code> GetPropertyListSizeType(
-      const std::string& element_name, size_t element_index,
-      const std::string& property_name, size_t property_index) const override {
+  ListSizeType GetPropertyListSizeType(
+      const std::string& element_name,
+      const std::string& property_name) const override {
     size_t max_size = std::visit(
         [&](const auto& entry) -> size_t {
           size_t value = 0u;
@@ -185,22 +201,24 @@ class TestWriter final : public PlyWriter {
 
  private:
   template <typename T>
-  std::expected<T, std::error_code> Callback(const std::string& element_name,
-                                             size_t element_index,
-                                             const std::string& property_name,
-                                             size_t property_index,
-                                             uintmax_t instance) const {
-    return std::get<std::span<const T>>(
-        properties_.at(element_name).at(property_name))[instance];
+  std::generator<T> Generator(const std::string& element_name,
+                              const std::string& property_name) const {
+    const std::span<const T>& values = std::get<std::span<const T>>(
+        properties_.at(element_name).at(property_name));
+    for (const auto& value : values) {
+      co_yield value;
+    }
   }
 
   template <typename T>
-  std::expected<std::span<const T>, std::error_code> ListCallback(
-      const std::string& element_name, size_t element_index,
-      const std::string& property_name, size_t property_index,
-      uintmax_t instance, std::vector<T>& storage) const {
-    return std::get<std::span<const std::span<const T>>>(
-        properties_.at(element_name).at(property_name))[instance];
+  std::generator<std::span<const T>> ListGenerator(
+      const std::string& element_name, const std::string& property_name) const {
+    const std::span<const std::span<const T>>& values =
+        std::get<std::span<const std::span<const T>>>(
+            properties_.at(element_name).at(property_name));
+    for (const auto& value : values) {
+      co_yield value;
+    }
   }
 
   const std::map<std::string, std::map<std::string, Property>>& properties_;
@@ -313,11 +331,11 @@ TEST(Validate, DefaultErrorCondition) {
       writer.WriteTo(output).category();
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 7; i++) {
+  for (int i = 1; i <= 8; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(8),
+  EXPECT_NE(error_catgegory.default_error_condition(9),
             std::errc::invalid_argument);
 }
 
@@ -393,6 +411,20 @@ TEST(Validate, ListTooBig) {
         WriteToASCII(output, {{"element", {{"node0", {list}}}}}).message(),
         "The list was too big to be represented with the selected size type");
   }
+}
+
+TEST(Validate, UnbalancedProperties) {
+  static const std::vector<int8_t> a = {-1, 2, 0};
+  static const std::vector<uint8_t> b = {1u, 2u};
+
+  std::map<std::string, std::map<std::string, Property>> properties;
+  properties["vertex"]["a"] = a;
+  properties["vertex"]["b"] = b;
+
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(WriteToASCII(output, properties).message(),
+            "A property generator did not produce enough values to cover all "
+            "every associated element instance in the output");
 }
 
 TEST(ASCII, Empty) {

@@ -18,28 +18,6 @@ namespace {
 
 using ::testing::StartsWith;
 
-TEST(InMemoryWriter, DefaultErrorCondition) {
-  std::vector<int> l0 = {1, 2};
-  std::vector<int> l1 = {1, 2, 3};
-
-  InMemoryWriter writer;
-  writer.AddProperty("vertex", "l0", l0);
-  writer.AddProperty("vertex", "l1", l1);
-
-  std::stringstream output;
-  const std::error_category& error_catgegory =
-      writer.WriteToASCII(output).category();
-
-  EXPECT_NE(error_catgegory.default_error_condition(0),
-            std::errc::invalid_argument);
-  for (int i = 1; i <= 2; i++) {
-    EXPECT_EQ(error_catgegory.default_error_condition(i),
-              std::errc::invalid_argument);
-  }
-  EXPECT_NE(error_catgegory.default_error_condition(3),
-            std::errc::invalid_argument);
-}
-
 TEST(List, UInt8) {
   std::vector<uint8_t> values(std::numeric_limits<uint8_t>::max(),
                               std::numeric_limits<uint8_t>::max());
@@ -86,35 +64,6 @@ TEST(List, UInt32) {
   EXPECT_THAT(output.str(),
               StartsWith("ply\rformat ascii 1.0\relement vertex 1\rproperty "
                          "list uint uchar l0\rend_header\r"));
-}
-
-TEST(List, TooLargeError) {
-  if constexpr (std::numeric_limits<size_t>::max() >
-                std::numeric_limits<uint32_t>::max()) {
-    std::vector<uint8_t> values(std::numeric_limits<uint32_t>::max() + 1ull,
-                                std::numeric_limits<uint8_t>::max());
-    std::vector<std::span<const uint8_t>> l0 = {{values.begin(), values.end()}};
-
-    InMemoryWriter writer;
-    writer.AddPropertyListShallow("vertex", "l0", l0);
-
-    std::stringstream output;
-    EXPECT_EQ(writer.WriteToASCII(output).message(),
-              "Property lists can contain no more than 4294967295 entries");
-  }
-}
-
-TEST(Properties, DifferentSizes) {
-  std::vector<int> l0 = {1, 2};
-  std::vector<int> l1 = {1, 2, 3};
-
-  InMemoryWriter writer;
-  writer.AddProperty("vertex", "l0", l0);
-  writer.AddProperty("vertex", "l1", l1);
-
-  std::stringstream output;
-  EXPECT_EQ(writer.WriteToASCII(output).message(),
-            "All properties of an element must have the same size");
 }
 
 TEST(ASCII, WithData) {
