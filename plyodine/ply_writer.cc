@@ -100,11 +100,24 @@ struct is_error_code_enum<ErrorCode> : true_type {};
 namespace plyodine {
 namespace {
 
-typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
-                   std::vector<int16_t>, std::vector<uint16_t>,
-                   std::vector<int32_t>, std::vector<uint32_t>,
-                   std::vector<float>, std::vector<double>, std::stringstream>
-    Context;
+using PropertyGenerator = std::variant<
+    std::generator<int8_t>, std::generator<std::span<const int8_t>>,
+    std::generator<uint8_t>, std::generator<std::span<const uint8_t>>,
+    std::generator<int16_t>, std::generator<std::span<const int16_t>>,
+    std::generator<uint16_t>, std::generator<std::span<const uint16_t>>,
+    std::generator<int32_t>, std::generator<std::span<const int32_t>>,
+    std::generator<uint32_t>, std::generator<std::span<const uint32_t>>,
+    std::generator<float>, std::generator<std::span<const float>>,
+    std::generator<double>, std::generator<std::span<const double>>>;
+using GetPropertyListSizeProxy =
+    unsigned int (PlyWriter::*)(const std::string&, const std::string&) const;
+using ListTypeNameAndCapacity = std::pair<std::string_view, uint32_t>;
+
+static constexpr ListTypeNameAndCapacity kListNameAndCapacity[3] = {
+    {"list uchar ", std::numeric_limits<uint8_t>::max()},
+    {"list ushort ", std::numeric_limits<uint16_t>::max()},
+    {"list uint ", std::numeric_limits<uint32_t>::max()},
+};
 
 std::error_code ValidateName(const std::string& name) {
   if (name.empty()) {
@@ -285,11 +298,45 @@ std::error_code SerializeBinary(std::ostream& output, uint32_t list_capacity,
   return std::error_code();
 }
 
-template <typename T>
+std::map<std::string,
+         std::map<std::string,
+                  std::pair<PropertyGenerator, const ListTypeNameAndCapacity*>>>
+BuildGenerators(std::map<std::string, std::map<std::string, PropertyGenerator>>
+                    property_generators,
+                const PlyWriter& ply_writer,
+                GetPropertyListSizeProxy get_property_list_type) {
+  std::map<std::string,
+           std::map<std::string, std::pair<PropertyGenerator,
+                                           const ListTypeNameAndCapacity*>>>
+      result;
+  for (auto& [element_name, elements] : property_generators) {
+    std::map<std::string,
+             std::pair<PropertyGenerator, const ListTypeNameAndCapacity*>>&
+        element_generators = result[element_name];
+    for (auto& [property_name, generator] : elements) {
+      const ListTypeNameAndCapacity* name_and_capacity = nullptr;
+      if (generator.index() & 1u) {
+        unsigned int list_size_type = std::min(
+            (ply_writer.*get_property_list_type)(element_name, property_name),
+            static_cast<unsigned int>(std::size(kListNameAndCapacity)));
+        name_and_capacity =
+            &kListNameAndCapacity[static_cast<size_t>(list_size_type)];
+      }
+      element_generators.try_emplace(property_name, std::move(generator),
+                                     name_and_capacity);
+    }
+  }
+
+  return result;
+}
+
 std::error_code WriteHeader(
     std::ostream& output, std::string_view format,
     std::map<std::string, uintmax_t>& num_element_instances,
-    const std::map<std::string, std::map<std::string, T>>&
+    const std::map<
+        std::string,
+        std::map<std::string,
+                 std::pair<PropertyGenerator, const ListTypeNameAndCapacity*>>>&
         generators_and_list_details,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
@@ -379,13 +426,6 @@ std::error_code WriteHeader(
   return std::error_code();
 }
 
-typedef std::pair<std::string_view, uint32_t> ListTypeNameAndCapacity;
-static constexpr ListTypeNameAndCapacity list_type_name_and_capacity[3] = {
-    {"list uchar ", std::numeric_limits<uint8_t>::max()},
-    {"list ushort ", std::numeric_limits<uint16_t>::max()},
-    {"list uint ", std::numeric_limits<uint32_t>::max()},
-};
-
 }  // namespace
 
 std::error_code PlyWriter::WriteTo(std::ostream& stream) const {
@@ -402,36 +442,20 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
-  std::map<std::string, std::map<std::string, ValueGenerator>> generators;
+  std::map<std::string, std::map<std::string, PropertyGenerator>>
+      property_generators;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  if (std::error_code error =
-          Start(num_element_instances, generators, comments, object_info);
+  if (std::error_code error = Start(num_element_instances, property_generators,
+                                    comments, object_info);
       error) {
     return error;
   }
 
-  std::map<std::string,
-           std::map<std::string,
-                    std::pair<ValueGenerator, const ListTypeNameAndCapacity*>>>
-      generators_with_capacities;
-  for (auto& [element_name, elements] : generators) {
-    std::map<std::string,
-             std::pair<ValueGenerator, const ListTypeNameAndCapacity*>>&
-        element_generators = generators_with_capacities[element_name];
-    for (auto& [property_name, generator] : elements) {
-      const ListTypeNameAndCapacity* name_and_capacity = nullptr;
-      if (generator.index() & 1u) {
-        ListSizeType list_size_type =
-            std::min(GetPropertyListSizeType(element_name, property_name),
-                     ListSizeType::UINT32);
-        name_and_capacity =
-            &list_type_name_and_capacity[static_cast<size_t>(list_size_type)];
-      }
-      element_generators.try_emplace(property_name, std::move(generator),
-                                     name_and_capacity);
-    }
-  }
+  auto generators_with_capacities =
+      BuildGenerators(std::move(property_generators), *this,
+                      reinterpret_cast<GetPropertyListSizeProxy>(
+                          &PlyWriter::GetPropertyListSizeType));
 
   if (std::error_code error =
           WriteHeader(stream, "ascii", num_element_instances,
@@ -500,36 +524,20 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
-  std::map<std::string, std::map<std::string, ValueGenerator>> generators;
+  std::map<std::string, std::map<std::string, PropertyGenerator>>
+      property_generators;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  if (std::error_code error =
-          Start(num_element_instances, generators, comments, object_info);
+  if (std::error_code error = Start(num_element_instances, property_generators,
+                                    comments, object_info);
       error) {
     return error;
   }
 
-  std::map<std::string,
-           std::map<std::string,
-                    std::pair<ValueGenerator, const ListTypeNameAndCapacity*>>>
-      generators_with_capacities;
-  for (auto& [element_name, elements] : generators) {
-    std::map<std::string,
-             std::pair<ValueGenerator, const ListTypeNameAndCapacity*>>&
-        element_generators = generators_with_capacities[element_name];
-    for (auto& [property_name, generator] : elements) {
-      const ListTypeNameAndCapacity* name_and_capacity = nullptr;
-      if (generator.index() & 1u) {
-        ListSizeType list_size_type =
-            std::min(GetPropertyListSizeType(element_name, property_name),
-                     ListSizeType::UINT32);
-        name_and_capacity =
-            &list_type_name_and_capacity[static_cast<size_t>(list_size_type)];
-      }
-      element_generators.try_emplace(property_name, std::move(generator),
-                                     name_and_capacity);
-    }
-  }
+  auto generators_with_capacities =
+      BuildGenerators(std::move(property_generators), *this,
+                      reinterpret_cast<GetPropertyListSizeProxy>(
+                          &PlyWriter::GetPropertyListSizeType));
 
   if (std::error_code error =
           WriteHeader(stream, "binary_big_endian", num_element_instances,
@@ -586,36 +594,20 @@ std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
-  std::map<std::string, std::map<std::string, ValueGenerator>> generators;
+  std::map<std::string, std::map<std::string, PropertyGenerator>>
+      property_generators;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  if (std::error_code error =
-          Start(num_element_instances, generators, comments, object_info);
+  if (std::error_code error = Start(num_element_instances, property_generators,
+                                    comments, object_info);
       error) {
     return error;
   }
 
-  std::map<std::string,
-           std::map<std::string,
-                    std::pair<ValueGenerator, const ListTypeNameAndCapacity*>>>
-      generators_with_capacities;
-  for (auto& [element_name, elements] : generators) {
-    std::map<std::string,
-             std::pair<ValueGenerator, const ListTypeNameAndCapacity*>>&
-        element_generators = generators_with_capacities[element_name];
-    for (auto& [property_name, generator] : elements) {
-      const ListTypeNameAndCapacity* name_and_capacity = nullptr;
-      if (generator.index() & 1u) {
-        ListSizeType list_size_type =
-            std::min(GetPropertyListSizeType(element_name, property_name),
-                     ListSizeType::UINT32);
-        name_and_capacity =
-            &list_type_name_and_capacity[static_cast<size_t>(list_size_type)];
-      }
-      element_generators.try_emplace(property_name, std::move(generator),
-                                     name_and_capacity);
-    }
-  }
+  auto generators_with_capacities =
+      BuildGenerators(std::move(property_generators), *this,
+                      reinterpret_cast<GetPropertyListSizeProxy>(
+                          &PlyWriter::GetPropertyListSizeType));
 
   if (std::error_code error =
           WriteHeader(stream, "binary_little_endian", num_element_instances,
@@ -667,8 +659,8 @@ std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
 }
 
 // Static assertions to ensure float types are properly sized
-static_assert(std::numeric_limits<double>::is_iec559);
-static_assert(std::numeric_limits<float>::is_iec559);
+static_assert(std::numeric_limits<double>::is_iec559 && sizeof(double) == 8);
+static_assert(std::numeric_limits<float>::is_iec559 && sizeof(float) == 4);
 
 // Static assertions to ensure system does not use mixed endianness
 static_assert(std::endian::native == std::endian::little ||

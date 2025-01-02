@@ -13,7 +13,7 @@
 
 namespace plyodine {
 
-// The base class enabling PLY serlialization.
+// The base class enabling PLY serialization.
 class PlyWriter {
  public:
   // Writes a PLY file to the output stream in the binary format matching the
@@ -42,64 +42,64 @@ class PlyWriter {
 
  protected:
   // A generator that yields the values of a char property.
-  typedef std::generator<int8_t> Int8PropertyGenerator;
+  using CharPropertyGenerator = std::generator<int8_t>;
 
   // A generator that yields the values of a char property list.
-  typedef std::generator<std::span<const int8_t>> Int8PropertyListGenerator;
+  using CharPropertyListGenerator = std::generator<std::span<const int8_t>>;
 
   // A generator that yields the values of a uchar property.
-  typedef std::generator<uint8_t> UInt8PropertyGenerator;
+  using UCharPropertyGenerator = std::generator<uint8_t>;
 
   // A generator that yields the values of a uchar property list.
-  typedef std::generator<std::span<const uint8_t>> UInt8PropertyListGenerator;
+  using UCharPropertyListGenerator = std::generator<std::span<const uint8_t>>;
 
   // A generator that yields the values of a short property.
-  typedef std::generator<int16_t> Int16PropertyGenerator;
+  using ShortPropertyGenerator = std::generator<int16_t>;
 
   // A generator that yields the values of a short property list.
-  typedef std::generator<std::span<const int16_t>> Int16PropertyListGenerator;
+  using ShortPropertyListGenerator = std::generator<std::span<const int16_t>>;
 
   // A generator that yields the values of a ushort property.
-  typedef std::generator<uint16_t> UInt16PropertyGenerator;
+  using UShortPropertyGenerator = std::generator<uint16_t>;
 
   // A generator that yields the values of a ushort property list.
-  typedef std::generator<std::span<const uint16_t>> UInt16PropertyListGenerator;
+  using UShortPropertyListGenerator = std::generator<std::span<const uint16_t>>;
 
   // A generator that yields the values of an int property.
-  typedef std::generator<int32_t> Int32PropertyGenerator;
+  using IntPropertyGenerator = std::generator<int32_t>;
 
   // A generator that yields the values of an int property list.
-  typedef std::generator<std::span<const int32_t>> Int32PropertyListGenerator;
+  using IntPropertyListGenerator = std::generator<std::span<const int32_t>>;
 
   // A generator that yields the values of a uint property.
-  typedef std::generator<uint32_t> UInt32PropertyGenerator;
+  using UIntPropertyGenerator = std::generator<uint32_t>;
 
   // A generator that yields the values of a uint property list.
-  typedef std::generator<std::span<const uint32_t>> UInt32PropertyListGenerator;
+  using UIntPropertyListGenerator = std::generator<std::span<const uint32_t>>;
 
   // A generator that yields the values of a float property.
-  typedef std::generator<float> FloatPropertyGenerator;
+  using FloatPropertyGenerator = std::generator<float>;
 
   // A generator that yields the values of a float property list.
-  typedef std::generator<std::span<const float>> FloatPropertyListGenerator;
+  using FloatPropertyListGenerator = std::generator<std::span<const float>>;
 
   // A generator that yields the values of a double property.
-  typedef std::generator<double> DoublePropertyGenerator;
+  using DoublePropertyGenerator = std::generator<double>;
 
   // A generator that yields the values of a double property list.
-  typedef std::generator<std::span<const double>> DoublePropertyListGenerator;
+  using DoublePropertyListGenerator = std::generator<std::span<const double>>;
 
   // A variant that contains the generator for a property. The type of the
-  // generator determines the type of the property in the output.
-  typedef std::variant<Int8PropertyGenerator, Int8PropertyListGenerator,
-                       UInt8PropertyGenerator, UInt8PropertyListGenerator,
-                       Int16PropertyGenerator, Int16PropertyListGenerator,
-                       UInt16PropertyGenerator, UInt16PropertyListGenerator,
-                       Int32PropertyGenerator, Int32PropertyListGenerator,
-                       UInt32PropertyGenerator, UInt32PropertyListGenerator,
-                       FloatPropertyGenerator, FloatPropertyListGenerator,
-                       DoublePropertyGenerator, DoublePropertyListGenerator>
-      ValueGenerator;
+  // variant determines the type of the property in the output.
+  using PropertyGenerator =
+      std::variant<CharPropertyGenerator, CharPropertyListGenerator,
+                   UCharPropertyGenerator, UCharPropertyListGenerator,
+                   ShortPropertyGenerator, ShortPropertyListGenerator,
+                   UShortPropertyGenerator, UShortPropertyListGenerator,
+                   IntPropertyGenerator, IntPropertyListGenerator,
+                   UIntPropertyGenerator, UIntPropertyListGenerator,
+                   FloatPropertyGenerator, FloatPropertyListGenerator,
+                   DoublePropertyGenerator, DoublePropertyListGenerator>;
 
   // This function is implemented by derived classes and provides the details
   // needed by PlyWriter in order to fill out the header of the file as well as
@@ -107,16 +107,19 @@ class PlyWriter {
   //
   // `num_num_element_instances`: The number of instances of each element type.
   //
-  // `generators`: The generators for each property in the file, keyed from
-  // element name to property name to generator. The type of the property is
-  // inferred from the type of the generator.
+  // `property_generators`: The generators for each property in the file, keyed
+  // from element name to property name to generator. The type of the property
+  // is inferred from the type of the generator.
   //
   // `comments`: Comments to include in the header using the comment prefix.
   //
   // `object_info`: Comments to include in the header using the obj_info prefix.
+  //
+  // The value of the std::error_code returned must be zero on success.
   virtual std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
-      std::map<std::string, std::map<std::string, ValueGenerator>>& generators,
+      std::map<std::string, std::map<std::string, PropertyGenerator>>&
+          property_generators,
       std::vector<std::string>& comments,
       std::vector<std::string>& object_info) const = 0;
 

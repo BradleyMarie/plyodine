@@ -18,8 +18,8 @@ writers meaning that they can both support streams larger than can fit into
 memory.
 
 While PLYodine does not aim to deliver the absolute highest performance, it does
-attempt to be reasonably fast by completing all of its working a single pass
-and by exposing a streaming API that allows zero-copy implementations if
+attempt to be reasonably performant by completing all of its working a single
+pass and by exposing a streaming API that allows zero-copy implementations if
 desired. Additionally, the PLY reader and writers can be reused across multiple
 invocations avoiding the need to reallocate internal data structures between
 models.
