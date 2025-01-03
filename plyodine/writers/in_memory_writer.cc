@@ -615,14 +615,14 @@ PlyWriter::ListSizeType InMemoryWriter::GetPropertyListSizeType(
       properties_.find(element_name)->second.find(property_name)->second);
 
   if (max_size <= std::numeric_limits<uint8_t>::max()) {
-    return PlyWriter::ListSizeType::UINT8;
+    return PlyWriter::ListSizeType::UCHAR;
   }
 
   if (max_size <= std::numeric_limits<uint16_t>::max()) {
-    return PlyWriter::ListSizeType::UINT16;
+    return PlyWriter::ListSizeType::USHORT;
   }
 
-  return PlyWriter::ListSizeType::UINT32;
+  return PlyWriter::ListSizeType::UINT;
 }
 
 }  // namespace plyodine

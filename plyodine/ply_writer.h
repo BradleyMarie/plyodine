@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <generator>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <span>
 #include <string>
@@ -14,8 +15,12 @@
 namespace plyodine {
 
 // The base class enabling PLY serialization.
+//
+// Derived classes should implement either `DelegateTo` or `Start` (or both).
 class PlyWriter {
  public:
+  virtual ~PlyWriter() = default;
+
   // Writes a PLY file to the output stream in the binary format matching the
   // system's native endianness.
   //
@@ -41,6 +46,17 @@ class PlyWriter {
   std::error_code WriteToLittleEndian(std::ostream& stream) const;
 
  protected:
+  // The constructor of PlyWriter is protected in order to reduce the likelihood
+  // of accidentally instantiating this class directly.
+  PlyWriter() = default;
+
+  // The type used for the size of a property list.
+  enum class ListSizeType : unsigned int {
+    UCHAR = 0,   // Equivalent to uint8_t
+    USHORT = 1,  // Equivalent to uint16_t
+    UINT = 2,    // Equivalent to uint32_t
+  };
+
   // A generator that yields the values of a char property.
   using CharPropertyGenerator = std::generator<int8_t>;
 
@@ -101,6 +117,18 @@ class PlyWriter {
                    FloatPropertyGenerator, FloatPropertyListGenerator,
                    DoublePropertyGenerator, DoublePropertyListGenerator>;
 
+ private:
+  // This function may be implemented by derived classes in order to delegate
+  // PLY writing to a different writer. This function is called before `Start`
+  // and may be called recursively on the returned PlyWriter until reaching a
+  // PlyWriter that does not delegate. Once this writer has been reached, all
+  // callbacks will go to that object instead of this one.
+  //
+  // The delegate will be destroyed after writing has finished.
+  virtual std::unique_ptr<const PlyWriter> DelegateTo() const {
+    return nullptr;
+  }
+
   // This function is implemented by derived classes and provides the details
   // needed by PlyWriter in order to fill out the header of the file as well as
   // generators for all of the properties in the file.
@@ -121,21 +149,16 @@ class PlyWriter {
       std::map<std::string, std::map<std::string, PropertyGenerator>>&
           property_generators,
       std::vector<std::string>& comments,
-      std::vector<std::string>& object_info) const = 0;
+      std::vector<std::string>& object_info) const {
+    return std::error_code();
+  }
 
-  // The type used for the size of a property list.
-  enum class ListSizeType : unsigned int {
-    UINT8 = 0,
-    UINT16 = 1,
-    UINT32 = 2,
-  };
-
-  // This function is implemented by derived classes and is called by PlyWriter
-  // to determine the width of the size that should be used for each propery
-  // lists in the output.
-  virtual PlyWriter::ListSizeType GetPropertyListSizeType(
-      const std::string& element_name,
-      const std::string& property_name) const = 0;
+  // This function may be implemented by derived classes to control the width of
+  // the size that will be used for each propery list in the output.
+  virtual ListSizeType GetPropertyListSizeType(
+      const std::string& element_name, const std::string& property_name) const {
+    return ListSizeType::UINT;
+  }
 };
 
 }  // namespace plyodine

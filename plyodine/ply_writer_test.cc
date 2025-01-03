@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <fstream>
+#include <generator>
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -55,18 +56,61 @@ struct Property final
   }
 };
 
+class EmptyWriter final : public PlyWriter {};
+
+class DefaultSizeWriter final : public PlyWriter {
+  std::generator<std::span<const uint8_t>> Generator() const {
+    for (const auto& value : a_) {
+      co_yield std::span(value);
+    }
+  }
+
+  std::error_code Start(
+      std::map<std::string, uintmax_t>& num_element_instances,
+      std::map<std::string, std::map<std::string, PropertyGenerator>>&
+          callbacks,
+      std::vector<std::string>& comments,
+      std::vector<std::string>& object_info) const override {
+    num_element_instances["vertex"] = 1;
+    callbacks["vertex"].try_emplace("a", Generator());
+    return std::error_code();
+  }
+
+  std::vector<std::vector<uint8_t>> a_ = {{1}};
+};
+
+class DelegatedWriter final : public PlyWriter {
+  std::error_code Start(
+      std::map<std::string, uintmax_t>& num_element_instances,
+      std::map<std::string, std::map<std::string, PropertyGenerator>>&
+          callbacks,
+      std::vector<std::string>& comments,
+      std::vector<std::string>& object_info) const override {
+    return std::error_code(2, std::generic_category());
+  }
+};
+
 class TestWriter final : public PlyWriter {
  public:
   TestWriter(
       const std::map<std::string, std::map<std::string, Property>>& properties,
       std::span<const std::string> comments,
       std::span<const std::string> object_info, bool start_fails = false,
-      bool insert_invalid_element = false)
+      bool insert_invalid_element = false, bool should_delegate = false)
       : properties_(properties),
         comments_(comments),
         object_info_(object_info),
         start_fails_(start_fails),
-        insert_invalid_element_(insert_invalid_element) {}
+        insert_invalid_element_(insert_invalid_element),
+        should_delegate_(should_delegate) {}
+
+  std::unique_ptr<const PlyWriter> DelegateTo() const {
+    if (!should_delegate_) {
+      return nullptr;
+    }
+
+    return std::make_unique<DelegatedWriter>();
+  }
 
   std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
@@ -196,14 +240,14 @@ class TestWriter final : public PlyWriter {
         properties_.at(element_name).at(property_name));
 
     if (max_size <= std::numeric_limits<uint8_t>::max()) {
-      return PlyWriter::ListSizeType::UINT8;
+      return PlyWriter::ListSizeType::UCHAR;
     }
 
     if (max_size <= std::numeric_limits<uint16_t>::max()) {
-      return PlyWriter::ListSizeType::UINT16;
+      return PlyWriter::ListSizeType::USHORT;
     }
 
-    return PlyWriter::ListSizeType::UINT32;
+    return PlyWriter::ListSizeType::UINT;
   }
 
  private:
@@ -233,6 +277,7 @@ class TestWriter final : public PlyWriter {
   std::span<const std::string> object_info_;
   bool start_fails_;
   bool insert_invalid_element_;
+  bool should_delegate_;
 };
 
 std::error_code WriteTo(
@@ -362,6 +407,15 @@ TEST(Validate, BadStream) {
             writer.WriteToLittleEndian(output).message());
 }
 
+TEST(Validate, Delegates) {
+  TestWriter writer({}, {}, {}, false, false, true);
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(2, writer.WriteTo(output).value());
+  EXPECT_EQ(2, writer.WriteToASCII(output).value());
+  EXPECT_EQ(2, writer.WriteToBigEndian(output).value());
+  EXPECT_EQ(2, writer.WriteToLittleEndian(output).value());
+}
+
 TEST(Validate, StartFails) {
   TestWriter writer({}, {}, {}, true);
   std::stringstream output(std::ios::out | std::ios::binary);
@@ -466,9 +520,26 @@ TEST(Validate, UnbalancedProperties) {
             "every associated element instance in the output");
 }
 
-TEST(ASCII, Empty) {
+TEST(All, DefaultListSize) {
+  DefaultSizeWriter writer;
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_EQ(WriteToASCII(output, {}).value(), 0);
+  EXPECT_EQ(0, writer.WriteToASCII(output).value());
+
+  std::stringstream input(
+      "ply\r"
+      "format ascii 1.0\r"
+      "element vertex 1\r"
+      "property list uint uchar a\r"
+      "end_header\r"
+      "1 1\r");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
+}
+
+TEST(ASCII, Empty) {
+  EmptyWriter writer;
+  std::stringstream output(std::ios::out | std::ios::binary);
+  ASSERT_EQ(writer.WriteToASCII(output).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_empty.ply");
@@ -553,8 +624,9 @@ TEST(ASCII, SmallFP) {
 }
 
 TEST(BigEndian, Empty) {
+  EmptyWriter writer;
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_EQ(WriteToBigEndian(output, {}).value(), 0);
+  ASSERT_EQ(writer.WriteToBigEndian(output).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_big_empty.ply");
@@ -587,8 +659,9 @@ TEST(BigEndian, ListSizes) {
 }
 
 TEST(LittleEndian, Empty) {
+  EmptyWriter writer;
   std::stringstream output(std::ios::out | std::ios::binary);
-  ASSERT_EQ(WriteToLittleEndian(output, {}).value(), 0);
+  ASSERT_EQ(writer.WriteToLittleEndian(output).value(), 0);
 
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/ply_little_empty.ply");

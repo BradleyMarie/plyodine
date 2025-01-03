@@ -11,6 +11,7 @@
 #include <ios>
 #include <limits>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <span>
 #include <sstream>
@@ -539,19 +540,31 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
     return ErrorCode::BAD_STREAM;
   }
 
+  std::unique_ptr<const PlyWriter> final_delegate;
+  const PlyWriter* ply_writer = this;
+  for (;;) {
+    std::unique_ptr<const PlyWriter> delegate = ply_writer->DelegateTo();
+    if (!delegate) {
+      break;
+    }
+
+    ply_writer = delegate.get();
+    final_delegate = std::move(delegate);
+  }
+
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, PropertyGenerator>>
       property_generators;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  if (std::error_code error = Start(num_element_instances, property_generators,
-                                    comments, object_info);
+  if (std::error_code error = ply_writer->Start(
+          num_element_instances, property_generators, comments, object_info);
       error) {
     return error;
   }
 
   auto generators_with_capacities =
-      BuildGenerators(std::move(property_generators), *this,
+      BuildGenerators(std::move(property_generators), *ply_writer,
                       reinterpret_cast<GetPropertyListSizeProxy>(
                           &PlyWriter::GetPropertyListSizeType));
 
@@ -598,19 +611,31 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
     return ErrorCode::BAD_STREAM;
   }
 
+  std::unique_ptr<const PlyWriter> final_delegate;
+  const PlyWriter* ply_writer = this;
+  for (;;) {
+    std::unique_ptr<const PlyWriter> delegate = ply_writer->DelegateTo();
+    if (!delegate) {
+      break;
+    }
+
+    ply_writer = delegate.get();
+    final_delegate = std::move(delegate);
+  }
+
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, PropertyGenerator>>
       property_generators;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  if (std::error_code error = Start(num_element_instances, property_generators,
-                                    comments, object_info);
+  if (std::error_code error = ply_writer->Start(
+          num_element_instances, property_generators, comments, object_info);
       error) {
     return error;
   }
 
   auto generators_with_capacities =
-      BuildGenerators(std::move(property_generators), *this,
+      BuildGenerators(std::move(property_generators), *ply_writer,
                       reinterpret_cast<GetPropertyListSizeProxy>(
                           &PlyWriter::GetPropertyListSizeType));
 
@@ -645,19 +670,31 @@ std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
     return ErrorCode::BAD_STREAM;
   }
 
+  std::unique_ptr<const PlyWriter> final_delegate;
+  const PlyWriter* ply_writer = this;
+  for (;;) {
+    std::unique_ptr<const PlyWriter> delegate = ply_writer->DelegateTo();
+    if (!delegate) {
+      break;
+    }
+
+    ply_writer = delegate.get();
+    final_delegate = std::move(delegate);
+  }
+
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, PropertyGenerator>>
       property_generators;
   std::vector<std::string> comments;
   std::vector<std::string> object_info;
-  if (std::error_code error = Start(num_element_instances, property_generators,
-                                    comments, object_info);
+  if (std::error_code error = ply_writer->Start(
+          num_element_instances, property_generators, comments, object_info);
       error) {
     return error;
   }
 
   auto generators_with_capacities =
-      BuildGenerators(std::move(property_generators), *this,
+      BuildGenerators(std::move(property_generators), *ply_writer,
                       reinterpret_cast<GetPropertyListSizeProxy>(
                           &PlyWriter::GetPropertyListSizeType));
 
