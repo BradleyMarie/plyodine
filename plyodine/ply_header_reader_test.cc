@@ -256,13 +256,13 @@ TEST(ReadPlyHeader, PropertyTypes) {
                            "int8",  "uint8",  "int16",   "uint16",
                            "int32", "uint32", "float32", "float64"};
   PlyHeader::Property::Type parsed_types[16] = {
-      PlyHeader::Property::Type::INT8,  PlyHeader::Property::Type::UINT8,
-      PlyHeader::Property::Type::INT16, PlyHeader::Property::Type::UINT16,
-      PlyHeader::Property::Type::INT32, PlyHeader::Property::Type::UINT32,
+      PlyHeader::Property::Type::CHAR,  PlyHeader::Property::Type::UCHAR,
+      PlyHeader::Property::Type::SHORT, PlyHeader::Property::Type::USHORT,
+      PlyHeader::Property::Type::INT,   PlyHeader::Property::Type::UINT,
       PlyHeader::Property::Type::FLOAT, PlyHeader::Property::Type::DOUBLE,
-      PlyHeader::Property::Type::INT8,  PlyHeader::Property::Type::UINT8,
-      PlyHeader::Property::Type::INT16, PlyHeader::Property::Type::UINT16,
-      PlyHeader::Property::Type::INT32, PlyHeader::Property::Type::UINT32,
+      PlyHeader::Property::Type::CHAR,  PlyHeader::Property::Type::UCHAR,
+      PlyHeader::Property::Type::SHORT, PlyHeader::Property::Type::USHORT,
+      PlyHeader::Property::Type::INT,   PlyHeader::Property::Type::UINT,
       PlyHeader::Property::Type::FLOAT, PlyHeader::Property::Type::DOUBLE};
 
   std::string base = "ply\nformat ascii 1.0\nelement vertex 1\n";
@@ -375,13 +375,13 @@ TEST(ReadPlyHeader, PropertyListTypes) {
                            "int8",  "uint8",  "int16",   "uint16",
                            "int32", "uint32", "float32", "float64"};
   PlyHeader::Property::Type parsed_types[16] = {
-      PlyHeader::Property::Type::INT8,  PlyHeader::Property::Type::UINT8,
-      PlyHeader::Property::Type::INT16, PlyHeader::Property::Type::UINT16,
-      PlyHeader::Property::Type::INT32, PlyHeader::Property::Type::UINT32,
+      PlyHeader::Property::Type::CHAR,  PlyHeader::Property::Type::UCHAR,
+      PlyHeader::Property::Type::SHORT, PlyHeader::Property::Type::USHORT,
+      PlyHeader::Property::Type::INT,   PlyHeader::Property::Type::UINT,
       PlyHeader::Property::Type::FLOAT, PlyHeader::Property::Type::DOUBLE,
-      PlyHeader::Property::Type::INT8,  PlyHeader::Property::Type::UINT8,
-      PlyHeader::Property::Type::INT16, PlyHeader::Property::Type::UINT16,
-      PlyHeader::Property::Type::INT32, PlyHeader::Property::Type::UINT32,
+      PlyHeader::Property::Type::CHAR,  PlyHeader::Property::Type::UCHAR,
+      PlyHeader::Property::Type::SHORT, PlyHeader::Property::Type::USHORT,
+      PlyHeader::Property::Type::INT,   PlyHeader::Property::Type::UINT,
       PlyHeader::Property::Type::FLOAT, PlyHeader::Property::Type::DOUBLE};
 
   std::string base = "ply\nformat ascii 1.0\nelement vertex 1\n";
@@ -505,46 +505,46 @@ TEST(ReadPlyHeader, Valid) {
               result->elements.at(0).properties.at(2).data_type);
     EXPECT_FALSE(result->elements.at(0).properties.at(2).list_type);
     EXPECT_EQ("red", result->elements.at(0).properties.at(3).name);
-    EXPECT_EQ(PlyHeader::Property::Type::UINT8,
+    EXPECT_EQ(PlyHeader::Property::Type::UCHAR,
               result->elements.at(0).properties.at(3).data_type);
     EXPECT_FALSE(result->elements.at(0).properties.at(3).list_type);
     EXPECT_EQ("green", result->elements.at(0).properties.at(4).name);
-    EXPECT_EQ(PlyHeader::Property::Type::UINT8,
+    EXPECT_EQ(PlyHeader::Property::Type::UCHAR,
               result->elements.at(0).properties.at(4).data_type);
     EXPECT_FALSE(result->elements.at(0).properties.at(4).list_type);
     EXPECT_EQ("blue", result->elements.at(0).properties.at(5).name);
-    EXPECT_EQ(PlyHeader::Property::Type::UINT8,
+    EXPECT_EQ(PlyHeader::Property::Type::UCHAR,
               result->elements.at(0).properties.at(5).data_type);
     EXPECT_FALSE(result->elements.at(0).properties.at(5).list_type);
 
     EXPECT_EQ("face", result->elements.at(1).name);
     EXPECT_EQ(1u, result->elements.at(1).properties.size());
     EXPECT_EQ("vertex_index", result->elements.at(1).properties.at(0).name);
-    EXPECT_EQ(PlyHeader::Property::Type::INT32,
+    EXPECT_EQ(PlyHeader::Property::Type::INT,
               result->elements.at(1).properties.at(0).data_type);
-    EXPECT_EQ(PlyHeader::Property::Type::UINT8,
+    EXPECT_EQ(PlyHeader::Property::Type::UCHAR,
               *result->elements.at(1).properties.at(0).list_type);
 
     EXPECT_EQ("edge", result->elements.at(2).name);
     EXPECT_EQ(5u, result->elements.at(2).properties.size());
     EXPECT_EQ("vertex1", result->elements.at(2).properties.at(0).name);
-    EXPECT_EQ(PlyHeader::Property::Type::INT32,
+    EXPECT_EQ(PlyHeader::Property::Type::INT,
               result->elements.at(2).properties.at(0).data_type);
     EXPECT_FALSE(result->elements.at(2).properties.at(0).list_type);
     EXPECT_EQ("vertex2", result->elements.at(2).properties.at(1).name);
-    EXPECT_EQ(PlyHeader::Property::Type::INT32,
+    EXPECT_EQ(PlyHeader::Property::Type::INT,
               result->elements.at(2).properties.at(1).data_type);
     EXPECT_FALSE(result->elements.at(2).properties.at(1).list_type);
     EXPECT_EQ("red", result->elements.at(2).properties.at(2).name);
-    EXPECT_EQ(PlyHeader::Property::Type::UINT8,
+    EXPECT_EQ(PlyHeader::Property::Type::UCHAR,
               result->elements.at(2).properties.at(2).data_type);
     EXPECT_FALSE(result->elements.at(2).properties.at(2).list_type);
     EXPECT_EQ("green", result->elements.at(2).properties.at(3).name);
-    EXPECT_EQ(PlyHeader::Property::Type::UINT8,
+    EXPECT_EQ(PlyHeader::Property::Type::UCHAR,
               result->elements.at(2).properties.at(3).data_type);
     EXPECT_FALSE(result->elements.at(2).properties.at(3).list_type);
     EXPECT_EQ("blue", result->elements.at(2).properties.at(4).name);
-    EXPECT_EQ(PlyHeader::Property::Type::UINT8,
+    EXPECT_EQ(PlyHeader::Property::Type::UCHAR,
               result->elements.at(2).properties.at(4).data_type);
     EXPECT_FALSE(result->elements.at(2).properties.at(4).list_type);
   }

@@ -26,18 +26,18 @@ using ::testing::IsEmpty;
 using ::testing::Return;
 
 enum class PropertyType {
-  INT8 = 0u,
-  INT8_LIST = 1u,
-  UINT8 = 2u,
-  UINT8_LIST = 3u,
-  INT16 = 4u,
-  INT16_LIST = 5u,
-  UINT16 = 6u,
-  UINT16_LIST = 7u,
-  INT32 = 8u,
-  INT32_LIST = 9u,
-  UINT32 = 10u,
-  UINT32_LIST = 11u,
+  CHAR = 0u,
+  CHAR_LIST = 1u,
+  UCHAR = 2u,
+  UCHAR_LIST = 3u,
+  SHORT = 4u,
+  SHORT_LIST = 5u,
+  USHORT = 6u,
+  USHORT_LIST = 7u,
+  INT = 8u,
+  INT_LIST = 9u,
+  UINT = 10u,
+  UINT_LIST = 11u,
   FLOAT = 12u,
   FLOAT_LIST = 13u,
   DOUBLE = 14u,
@@ -142,56 +142,56 @@ class MockPlyReader final : public PlyReader {
     for (const auto& element : properties) {
       for (const auto& property : element.second.second) {
         switch (property.second) {
-          case PropertyType::INT8:
+          case PropertyType::CHAR:
             callbacks[element.first][property.first] =
                 PlyReader::Int8PropertyCallback(&MockPlyReader::HandleInt8);
             break;
-          case PropertyType::INT8_LIST:
+          case PropertyType::CHAR_LIST:
             callbacks[element.first][property.first] =
                 PlyReader::Int8PropertyListCallback(
                     &MockPlyReader::HandleInt8List);
             break;
-          case PropertyType::UINT8:
+          case PropertyType::UCHAR:
             callbacks[element.first][property.first] =
                 PlyReader::UInt8PropertyCallback(&MockPlyReader::HandleUInt8);
             break;
-          case PropertyType::UINT8_LIST:
+          case PropertyType::UCHAR_LIST:
             callbacks[element.first][property.first] =
                 PlyReader::UInt8PropertyListCallback(
                     &MockPlyReader::HandleUInt8List);
             break;
-          case PropertyType::INT16:
+          case PropertyType::SHORT:
             callbacks[element.first][property.first] =
                 PlyReader::Int16PropertyCallback(&MockPlyReader::HandleInt16);
             break;
-          case PropertyType::INT16_LIST:
+          case PropertyType::SHORT_LIST:
             callbacks[element.first][property.first] =
                 PlyReader::Int16PropertyListCallback(
                     &MockPlyReader::HandleInt16List);
             break;
-          case PropertyType::UINT16:
+          case PropertyType::USHORT:
             callbacks[element.first][property.first] =
                 PlyReader::UInt16PropertyCallback(&MockPlyReader::HandleUInt16);
             break;
-          case PropertyType::UINT16_LIST:
+          case PropertyType::USHORT_LIST:
             callbacks[element.first][property.first] =
                 PlyReader::UInt16PropertyListCallback(
                     &MockPlyReader::HandleUInt16List);
             break;
-          case PropertyType::INT32:
+          case PropertyType::INT:
             callbacks[element.first][property.first] =
                 PlyReader::Int32PropertyCallback(&MockPlyReader::HandleInt32);
             break;
-          case PropertyType::INT32_LIST:
+          case PropertyType::INT_LIST:
             callbacks[element.first][property.first] =
                 PlyReader::Int32PropertyListCallback(
                     &MockPlyReader::HandleInt32List);
             break;
-          case PropertyType::UINT32:
+          case PropertyType::UINT:
             callbacks[element.first][property.first] =
                 PlyReader::UInt32PropertyCallback(&MockPlyReader::HandleUInt32);
             break;
-          case PropertyType::UINT32_LIST:
+          case PropertyType::UINT_LIST:
             callbacks[element.first][property.first] =
                 PlyReader::UInt32PropertyListCallback(
                     &MockPlyReader::HandleUInt32List);
@@ -459,7 +459,7 @@ TEST(ASCII, Empty) {
 TEST(ASCII, MismatchedLineEndings) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {2u, {{"a", PropertyType::INT8}}}}};
+      properties = {{"vertex", {2u, {{"a", PropertyType::CHAR}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -492,7 +492,7 @@ TEST(ASCII, MismatchedLineEndings) {
 TEST(ASCII, InvalidCharacter) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {2u, {{"a", PropertyType::INT8}}}}};
+      properties = {{"vertex", {2u, {{"a", PropertyType::CHAR}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -525,7 +525,7 @@ TEST(ASCII, InvalidCharacter) {
 TEST(ASCII, ListMissingEntries) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -558,7 +558,7 @@ TEST(ASCII, ListMissingEntries) {
 TEST(ASCII, MissingElement) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {2u, {{"l", PropertyType::INT8}}}}};
+      properties = {{"vertex", {2u, {{"l", PropertyType::CHAR}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -593,7 +593,7 @@ TEST(ASCII, ExtraWhitespace) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {
           {"vertex",
-           {2u, {{"a", PropertyType::INT8}, {"b", PropertyType::INT8}}}}};
+           {2u, {{"a", PropertyType::CHAR}, {"b", PropertyType::CHAR}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -629,7 +629,7 @@ TEST(ASCII, ListSizeTooLarge) {
   auto impl = [](const std::string& name) {
     std::map<std::string,
              std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-        properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+        properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
     MockPlyReader reader;
     EXPECT_CALL(reader,
@@ -670,7 +670,7 @@ TEST(ASCII, ListSizeBad) {
   auto impl = [](const std::string& name) {
     std::map<std::string,
              std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-        properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+        properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
     MockPlyReader reader;
     EXPECT_CALL(reader,
@@ -745,17 +745,17 @@ TEST(ASCII, EntryBad) {
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_float.ply",
        PropertyType::FLOAT);
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_int8.ply",
-       PropertyType::INT8);
+       PropertyType::CHAR);
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_int16.ply",
-       PropertyType::INT16);
+       PropertyType::SHORT);
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_int32.ply",
-       PropertyType::INT32);
+       PropertyType::INT);
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_uint8.ply",
-       PropertyType::UINT8);
+       PropertyType::UCHAR);
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_uint16.ply",
-       PropertyType::UINT16);
+       PropertyType::USHORT);
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_uint32.ply",
-       PropertyType::UINT32);
+       PropertyType::UINT);
 }
 
 TEST(ASCII, EntryTooBig) {
@@ -796,23 +796,23 @@ TEST(ASCII, EntryTooBig) {
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_float.ply",
        PropertyType::FLOAT);
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_int8.ply",
-       PropertyType::INT8);
+       PropertyType::CHAR);
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_int16.ply",
-       PropertyType::INT16);
+       PropertyType::SHORT);
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_int32.ply",
-       PropertyType::INT32);
+       PropertyType::INT);
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_uint8.ply",
-       PropertyType::UINT8);
+       PropertyType::UCHAR);
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_uint16.ply",
-       PropertyType::UINT16);
+       PropertyType::USHORT);
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_uint32.ply",
-       PropertyType::UINT32);
+       PropertyType::UINT);
 }
 
 TEST(ASCII, UnusedTokens) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {2u, {{"a", PropertyType::INT8}}}}};
+      properties = {{"vertex", {2u, {{"a", PropertyType::CHAR}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -848,22 +848,22 @@ TEST(ASCII, WithData) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
-                      {{"a", PropertyType::INT8},
-                       {"b", PropertyType::UINT8},
-                       {"c", PropertyType::INT16},
-                       {"d", PropertyType::UINT16},
-                       {"e", PropertyType::INT32},
-                       {"f", PropertyType::UINT32},
+                      {{"a", PropertyType::CHAR},
+                       {"b", PropertyType::UCHAR},
+                       {"c", PropertyType::SHORT},
+                       {"d", PropertyType::USHORT},
+                       {"e", PropertyType::INT},
+                       {"f", PropertyType::UINT},
                        {"g", PropertyType::FLOAT},
                        {"h", PropertyType::DOUBLE}}}},
                     {"vertex_lists",
                      {1u,
-                      {{"a", PropertyType::INT8_LIST},
-                       {"b", PropertyType::UINT8_LIST},
-                       {"c", PropertyType::INT16_LIST},
-                       {"d", PropertyType::UINT16_LIST},
-                       {"e", PropertyType::INT32_LIST},
-                       {"f", PropertyType::UINT32_LIST},
+                      {{"a", PropertyType::CHAR_LIST},
+                       {"b", PropertyType::UCHAR_LIST},
+                       {"c", PropertyType::SHORT_LIST},
+                       {"d", PropertyType::USHORT_LIST},
+                       {"e", PropertyType::INT_LIST},
+                       {"f", PropertyType::UINT_LIST},
                        {"g", PropertyType::FLOAT_LIST},
                        {"h", PropertyType::DOUBLE_LIST}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
@@ -1006,22 +1006,22 @@ TEST(ASCII, WithDataSkipAll) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
-                      {{"a", PropertyType::INT8},
-                       {"b", PropertyType::UINT8},
-                       {"c", PropertyType::INT16},
-                       {"d", PropertyType::UINT16},
-                       {"e", PropertyType::INT32},
-                       {"f", PropertyType::UINT32},
+                      {{"a", PropertyType::CHAR},
+                       {"b", PropertyType::UCHAR},
+                       {"c", PropertyType::SHORT},
+                       {"d", PropertyType::USHORT},
+                       {"e", PropertyType::INT},
+                       {"f", PropertyType::UINT},
                        {"g", PropertyType::FLOAT},
                        {"h", PropertyType::DOUBLE}}}},
                     {"vertex_lists",
                      {1u,
-                      {{"a", PropertyType::INT8_LIST},
-                       {"b", PropertyType::UINT8_LIST},
-                       {"c", PropertyType::INT16_LIST},
-                       {"d", PropertyType::UINT16_LIST},
-                       {"e", PropertyType::INT32_LIST},
-                       {"f", PropertyType::UINT32_LIST},
+                      {{"a", PropertyType::CHAR_LIST},
+                       {"b", PropertyType::UCHAR_LIST},
+                       {"c", PropertyType::SHORT_LIST},
+                       {"d", PropertyType::USHORT_LIST},
+                       {"e", PropertyType::INT_LIST},
+                       {"f", PropertyType::UINT_LIST},
                        {"g", PropertyType::FLOAT_LIST},
                        {"h", PropertyType::DOUBLE_LIST}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
@@ -1128,10 +1128,10 @@ TEST(ASCII, WithUIntListSizes) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
-                      {{"l0", PropertyType::UINT8_LIST},
-                       {"l1", PropertyType::UINT8_LIST},
-                       {"l2", PropertyType::UINT8_LIST},
-                       {"l3", PropertyType::UINT8_LIST}}}}};
+                      {{"l0", PropertyType::UCHAR_LIST},
+                       {"l1", PropertyType::UCHAR_LIST},
+                       {"l2", PropertyType::UCHAR_LIST},
+                       {"l3", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1171,10 +1171,10 @@ TEST(ASCII, WithIntListSizes) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
-                      {{"l0", PropertyType::UINT8_LIST},
-                       {"l1", PropertyType::UINT8_LIST},
-                       {"l2", PropertyType::UINT8_LIST},
-                       {"l3", PropertyType::UINT8_LIST}}}}};
+                      {{"l0", PropertyType::UCHAR_LIST},
+                       {"l1", PropertyType::UCHAR_LIST},
+                       {"l2", PropertyType::UCHAR_LIST},
+                       {"l3", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1212,7 +1212,7 @@ TEST(ASCII, WithIntListSizes) {
 TEST(ASCII, WithNegativeInt8ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1230,7 +1230,7 @@ TEST(ASCII, WithNegativeInt8ListSize) {
 TEST(ASCII, WithNegativeInt16ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1248,7 +1248,7 @@ TEST(ASCII, WithNegativeInt16ListSize) {
 TEST(ASCII, WithNegativeInt32ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1295,22 +1295,22 @@ TEST(BigEndian, WithData) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
-                      {{"a", PropertyType::INT8},
-                       {"b", PropertyType::UINT8},
-                       {"c", PropertyType::INT16},
-                       {"d", PropertyType::UINT16},
-                       {"e", PropertyType::INT32},
-                       {"f", PropertyType::UINT32},
+                      {{"a", PropertyType::CHAR},
+                       {"b", PropertyType::UCHAR},
+                       {"c", PropertyType::SHORT},
+                       {"d", PropertyType::USHORT},
+                       {"e", PropertyType::INT},
+                       {"f", PropertyType::UINT},
                        {"g", PropertyType::FLOAT},
                        {"h", PropertyType::DOUBLE}}}},
                     {"vertex_lists",
                      {1u,
-                      {{"a", PropertyType::INT8_LIST},
-                       {"b", PropertyType::UINT8_LIST},
-                       {"c", PropertyType::INT16_LIST},
-                       {"d", PropertyType::UINT16_LIST},
-                       {"e", PropertyType::INT32_LIST},
-                       {"f", PropertyType::UINT32_LIST},
+                      {{"a", PropertyType::CHAR_LIST},
+                       {"b", PropertyType::UCHAR_LIST},
+                       {"c", PropertyType::SHORT_LIST},
+                       {"d", PropertyType::USHORT_LIST},
+                       {"e", PropertyType::INT_LIST},
+                       {"f", PropertyType::UINT_LIST},
                        {"g", PropertyType::FLOAT_LIST},
                        {"h", PropertyType::DOUBLE_LIST}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
@@ -1453,22 +1453,22 @@ TEST(BigEndian, WithDataSkipAll) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
-                      {{"a", PropertyType::INT8},
-                       {"b", PropertyType::UINT8},
-                       {"c", PropertyType::INT16},
-                       {"d", PropertyType::UINT16},
-                       {"e", PropertyType::INT32},
-                       {"f", PropertyType::UINT32},
+                      {{"a", PropertyType::CHAR},
+                       {"b", PropertyType::UCHAR},
+                       {"c", PropertyType::SHORT},
+                       {"d", PropertyType::USHORT},
+                       {"e", PropertyType::INT},
+                       {"f", PropertyType::UINT},
                        {"g", PropertyType::FLOAT},
                        {"h", PropertyType::DOUBLE}}}},
                     {"vertex_lists",
                      {1u,
-                      {{"a", PropertyType::INT8_LIST},
-                       {"b", PropertyType::UINT8_LIST},
-                       {"c", PropertyType::INT16_LIST},
-                       {"d", PropertyType::UINT16_LIST},
-                       {"e", PropertyType::INT32_LIST},
-                       {"f", PropertyType::UINT32_LIST},
+                      {{"a", PropertyType::CHAR_LIST},
+                       {"b", PropertyType::UCHAR_LIST},
+                       {"c", PropertyType::SHORT_LIST},
+                       {"d", PropertyType::USHORT_LIST},
+                       {"e", PropertyType::INT_LIST},
+                       {"f", PropertyType::UINT_LIST},
                        {"g", PropertyType::FLOAT_LIST},
                        {"h", PropertyType::DOUBLE_LIST}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
@@ -1511,10 +1511,10 @@ TEST(BigEndian, WithUIntListSizes) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
-                      {{"l0", PropertyType::UINT8_LIST},
-                       {"l1", PropertyType::UINT8_LIST},
-                       {"l2", PropertyType::UINT8_LIST},
-                       {"l3", PropertyType::UINT8_LIST}}}}};
+                      {{"l0", PropertyType::UCHAR_LIST},
+                       {"l1", PropertyType::UCHAR_LIST},
+                       {"l2", PropertyType::UCHAR_LIST},
+                       {"l3", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1626,10 +1626,10 @@ TEST(BigEndian, WithIntListSizes) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
-                      {{"l0", PropertyType::UINT8_LIST},
-                       {"l1", PropertyType::UINT8_LIST},
-                       {"l2", PropertyType::UINT8_LIST},
-                       {"l3", PropertyType::UINT8_LIST}}}}};
+                      {{"l0", PropertyType::UCHAR_LIST},
+                       {"l1", PropertyType::UCHAR_LIST},
+                       {"l2", PropertyType::UCHAR_LIST},
+                       {"l3", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1672,7 +1672,7 @@ TEST(BigEndian, WithIntListSizesError) {
 TEST(BigEndian, WithNegativeInt8ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1690,7 +1690,7 @@ TEST(BigEndian, WithNegativeInt8ListSize) {
 TEST(BigEndian, WithNegativeInt16ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1708,7 +1708,7 @@ TEST(BigEndian, WithNegativeInt16ListSize) {
 TEST(BigEndian, WithNegativeInt32ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -1755,22 +1755,22 @@ TEST(LittleEndian, WithData) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
-                      {{"a", PropertyType::INT8},
-                       {"b", PropertyType::UINT8},
-                       {"c", PropertyType::INT16},
-                       {"d", PropertyType::UINT16},
-                       {"e", PropertyType::INT32},
-                       {"f", PropertyType::UINT32},
+                      {{"a", PropertyType::CHAR},
+                       {"b", PropertyType::UCHAR},
+                       {"c", PropertyType::SHORT},
+                       {"d", PropertyType::USHORT},
+                       {"e", PropertyType::INT},
+                       {"f", PropertyType::UINT},
                        {"g", PropertyType::FLOAT},
                        {"h", PropertyType::DOUBLE}}}},
                     {"vertex_lists",
                      {1u,
-                      {{"a", PropertyType::INT8_LIST},
-                       {"b", PropertyType::UINT8_LIST},
-                       {"c", PropertyType::INT16_LIST},
-                       {"d", PropertyType::UINT16_LIST},
-                       {"e", PropertyType::INT32_LIST},
-                       {"f", PropertyType::UINT32_LIST},
+                      {{"a", PropertyType::CHAR_LIST},
+                       {"b", PropertyType::UCHAR_LIST},
+                       {"c", PropertyType::SHORT_LIST},
+                       {"d", PropertyType::USHORT_LIST},
+                       {"e", PropertyType::INT_LIST},
+                       {"f", PropertyType::UINT_LIST},
                        {"g", PropertyType::FLOAT_LIST},
                        {"h", PropertyType::DOUBLE_LIST}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
@@ -1913,22 +1913,22 @@ TEST(LittleEndian, WithDataSkipAll) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {3u,
-                      {{"a", PropertyType::INT8},
-                       {"b", PropertyType::UINT8},
-                       {"c", PropertyType::INT16},
-                       {"d", PropertyType::UINT16},
-                       {"e", PropertyType::INT32},
-                       {"f", PropertyType::UINT32},
+                      {{"a", PropertyType::CHAR},
+                       {"b", PropertyType::UCHAR},
+                       {"c", PropertyType::SHORT},
+                       {"d", PropertyType::USHORT},
+                       {"e", PropertyType::INT},
+                       {"f", PropertyType::UINT},
                        {"g", PropertyType::FLOAT},
                        {"h", PropertyType::DOUBLE}}}},
                     {"vertex_lists",
                      {1u,
-                      {{"a", PropertyType::INT8_LIST},
-                       {"b", PropertyType::UINT8_LIST},
-                       {"c", PropertyType::INT16_LIST},
-                       {"d", PropertyType::UINT16_LIST},
-                       {"e", PropertyType::INT32_LIST},
-                       {"f", PropertyType::UINT32_LIST},
+                      {{"a", PropertyType::CHAR_LIST},
+                       {"b", PropertyType::UCHAR_LIST},
+                       {"c", PropertyType::SHORT_LIST},
+                       {"d", PropertyType::USHORT_LIST},
+                       {"e", PropertyType::INT_LIST},
+                       {"f", PropertyType::UINT_LIST},
                        {"g", PropertyType::FLOAT_LIST},
                        {"h", PropertyType::DOUBLE_LIST}}}}};
   std::vector<std::string> comments = {"comment 1", "comment 2"};
@@ -2039,10 +2039,10 @@ TEST(LittleEndian, WithUIntListSizes) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
-                      {{"l0", PropertyType::UINT8_LIST},
-                       {"l1", PropertyType::UINT8_LIST},
-                       {"l2", PropertyType::UINT8_LIST},
-                       {"l3", PropertyType::UINT8_LIST}}}}};
+                      {{"l0", PropertyType::UCHAR_LIST},
+                       {"l1", PropertyType::UCHAR_LIST},
+                       {"l2", PropertyType::UCHAR_LIST},
+                       {"l3", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -2086,10 +2086,10 @@ TEST(LittleEndian, WithIntListSizes) {
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
       properties = {{"vertex",
                      {1u,
-                      {{"l0", PropertyType::UINT8_LIST},
-                       {"l1", PropertyType::UINT8_LIST},
-                       {"l2", PropertyType::UINT8_LIST},
-                       {"l3", PropertyType::UINT8_LIST}}}}};
+                      {{"l0", PropertyType::UCHAR_LIST},
+                       {"l1", PropertyType::UCHAR_LIST},
+                       {"l2", PropertyType::UCHAR_LIST},
+                       {"l3", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -2132,7 +2132,7 @@ TEST(LittleEndian, WithIntListSizesError) {
 TEST(LittleEndian, WithNegativeInt8ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -2150,7 +2150,7 @@ TEST(LittleEndian, WithNegativeInt8ListSize) {
 TEST(LittleEndian, WithNegativeInt16ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
@@ -2168,7 +2168,7 @@ TEST(LittleEndian, WithNegativeInt16ListSize) {
 TEST(LittleEndian, WithNegativeInt32ListSize) {
   std::map<std::string,
            std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {1u, {{"l", PropertyType::UINT8_LIST}}}}};
+      properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
 
   MockPlyReader reader;
   EXPECT_CALL(reader,
