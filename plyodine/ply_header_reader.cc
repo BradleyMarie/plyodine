@@ -522,18 +522,18 @@ std::expected<PlyHeader::Property, std::error_code> ParseProperty(
 
 }  // namespace
 
-std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& input) {
-  if (!input) {
+std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& stream) {
+  if (!stream) {
     return std::unexpected(ErrorCode::BAD_STREAM);
   }
 
-  auto line_ending = ParseMagicString(input);
+  auto line_ending = ParseMagicString(stream);
   if (!line_ending) {
     return std::unexpected(line_ending.error());
   }
 
   std::string storage;
-  auto format = ParseFormat(input, storage, *line_ending);
+  auto format = ParseFormat(stream, storage, *line_ending);
   if (!format) {
     return std::unexpected(format.error());
   }
@@ -545,7 +545,7 @@ std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& input) {
   std::unordered_map<std::string, std::unordered_set<std::string>>
       property_names;
   for (;;) {
-    auto line = ReadNextLine(input, storage, *line_ending);
+    auto line = ReadNextLine(stream, storage, *line_ending);
     if (!line) {
       return std::unexpected(line.error());
     }

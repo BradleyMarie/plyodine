@@ -22,27 +22,34 @@ class PlyWriter {
   virtual ~PlyWriter() = default;
 
   // Writes a PLY file to the output stream in the binary format matching the
-  // system's native endianness.
+  // system's native endianness. On success returns an `std::error_code` with a
+  // zero value.
   //
-  // NOTE: Behavior is undefined if stream is not a binary stream.
+  // NOTE: Behavior is undefined if `stream` is not a binary stream.
   std::error_code WriteTo(std::ostream& stream) const;
 
-  // Writes a PLY file to the output stream in the ASCII format. Most clients
-  // should prefer WriteTo over this.
+  // Writes a PLY file to the output stream in the ASCII format. On success
+  // returns an `std::error_code` with a zero value.
   //
-  // NOTE: Behavior is undefined if stream is not a binary stream.
-  std::error_code WriteToASCII(std::ostream& stream) const;
-
-  // Writes a PLY file to the output stream in the binary big-endian format.
   // Most clients should prefer WriteTo over this.
   //
-  // NOTE: Behavior is undefined if stream is not a binary stream.
+  // NOTE: Behavior is undefined if `stream` is not a binary stream.
+  std::error_code WriteToASCII(std::ostream& stream) const;
+
+  // Writes a PLY file to the output stream in the binary big-endian format. On
+  // success returns an `std::error_code` with a zero value.
+  //
+  // Most clients should prefer WriteTo over this.
+  //
+  // NOTE: Behavior is undefined if `stream` is not a binary stream.
   std::error_code WriteToBigEndian(std::ostream& stream) const;
 
   // Writes a PLY file to the output stream in the binary little-endian format.
+  // On success returns an `std::error_code` with a zero value.
+  //
   // Most clients should prefer WriteTo over these.
   //
-  // NOTE: Behavior is undefined if stream is not a binary stream.
+  // NOTE: Behavior is undefined if `stream` is not a binary stream.
   std::error_code WriteToLittleEndian(std::ostream& stream) const;
 
  protected:
@@ -143,7 +150,7 @@ class PlyWriter {
   //
   // `object_info`: Comments to include in the header using the obj_info prefix.
   //
-  // The value of the std::error_code returned must be zero on success.
+  // The value of the `std::error_code` returned must be zero on success.
   virtual std::error_code Start(
       std::map<std::string, uintmax_t>& num_element_instances,
       std::map<std::string, std::map<std::string, PropertyGenerator>>&

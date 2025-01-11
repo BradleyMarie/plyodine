@@ -79,8 +79,8 @@ struct PlyHeader final {
 // returns an `std::error_code` containing a non-zero value and the stream will
 // be left in an undefined state.
 //
-// NOTE: Behavior is undefined if input is not a binary stream
-std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& input);
+// NOTE: Behavior is undefined if `stream` is not a binary stream
+std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& stream);
 
 }  // namespace plyodine
 
