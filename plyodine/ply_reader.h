@@ -12,9 +12,18 @@
 
 namespace plyodine {
 
+// The base class enabling PLY deserialization.
 class PlyReader {
  public:
-  // NOTE: Behavior is undefined if stream is not a binary stream
+  virtual ~PlyReader() = default;
+
+  // Reads the input stream as a PLY file. On success, the function returns an
+  // `std::error_code` containing a zero value and the stream will have been
+  // advanced to the end of the data section of the input. On failure, returns
+  // an `std::error_code` containing a non-zero value and the stream will be
+  // left in an undefined state.
+  //
+  // NOTE: Behavior is undefined if `stream` is not a binary stream
   std::error_code ReadFrom(std::istream& stream);
 
  protected:
@@ -83,11 +92,11 @@ class PlyReader {
                        UInt32PropertyCallback, UInt32PropertyListCallback,
                        FloatPropertyCallback, FloatPropertyListCallback,
                        DoublePropertyCallback, DoublePropertyListCallback>
-      Callback;
+      PropertyCallback;
 
   virtual std::error_code Start(
       const std::map<std::string, uintmax_t>& num_element_instances,
-      std::map<std::string, std::map<std::string, Callback>>& callbacks,
+      std::map<std::string, std::map<std::string, PropertyCallback>>& callbacks,
       const std::vector<std::string>& comments,
       const std::vector<std::string>& object_info) = 0;
 };

@@ -525,15 +525,17 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
-  std::map<std::string, std::map<std::string, Callback>> empty_callbacks;
+  std::map<std::string, std::map<std::string, PropertyCallback>>
+      empty_callbacks;
   for (const auto& element : header->elements) {
     num_element_instances[element.name] = element.num_in_file;
 
     auto insertion_iterator =
-        empty_callbacks.emplace(element.name, std::map<std::string, Callback>())
+        empty_callbacks
+            .emplace(element.name, std::map<std::string, PropertyCallback>())
             .first;
     for (const auto& property : element.properties) {
-      Callback callback;
+      PropertyCallback callback;
       if (property.list_type) {
         switch (property.data_type) {
           case PlyHeader::Property::Type::CHAR:
@@ -603,7 +605,7 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
 
   size_t element_index = 0;
   std::map<std::string,
-           std::map<std::string, std::tuple<size_t, size_t, Callback>>>
+           std::map<std::string, std::tuple<size_t, size_t, PropertyCallback>>>
       requested_callbacks;
   for (const auto& element : callbacks) {
     size_t property_index = 0;
@@ -624,7 +626,7 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
   }
 
   std::map<std::string,
-           std::map<std::string, std::tuple<size_t, size_t, Callback>>>
+           std::map<std::string, std::tuple<size_t, size_t, PropertyCallback>>>
       numbered_callbacks;
   for (const auto& element : empty_callbacks) {
     for (const auto& property : element.second) {
@@ -656,14 +658,14 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
       std::tuple<std::string, uintmax_t,
                  std::vector<std::tuple<
                      std::string, std::optional<PlyHeader::Property::Type>,
-                     size_t, size_t, Callback>>>>
+                     size_t, size_t, PropertyCallback>>>>
       ordered_callbacks;
   for (const auto& element : header->elements) {
     ordered_callbacks.emplace_back(
         element.name, element.num_in_file,
         std::vector<
             std::tuple<std::string, std::optional<PlyHeader::Property::Type>,
-                       size_t, size_t, Callback>>());
+                       size_t, size_t, PropertyCallback>>());
     for (const auto& property : element.properties) {
       const auto& numbered_property = numbered_callbacks.find(element.name)
                                           ->second.find(property.name)

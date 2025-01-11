@@ -22,22 +22,31 @@ class PlyWriter {
   virtual ~PlyWriter() = default;
 
   // Writes a PLY file to the output stream in the binary format matching the
-  // system's native endianness. On success returns an `std::error_code` with a
-  // zero value.
+  // system's native endianness.
+  //
+  // On success returns an `std::error_code` with a zero value. On failure,
+  // returns an `std::error_code` with a non-zero value and the stream will be
+  // left in an undetermined state.
   //
   // NOTE: Behavior is undefined if `stream` is not a binary stream.
   std::error_code WriteTo(std::ostream& stream) const;
 
-  // Writes a PLY file to the output stream in the ASCII format. On success
-  // returns an `std::error_code` with a zero value.
+  // Writes a PLY file to the output stream in the ASCII format.
+  //
+  // On success returns an `std::error_code` with a zero value. On failure,
+  // returns an `std::error_code` with a non-zero value and the stream will be
+  // left in an undetermined state.
   //
   // Most clients should prefer WriteTo over this.
   //
   // NOTE: Behavior is undefined if `stream` is not a binary stream.
   std::error_code WriteToASCII(std::ostream& stream) const;
 
-  // Writes a PLY file to the output stream in the binary big-endian format. On
-  // success returns an `std::error_code` with a zero value.
+  // Writes a PLY file to the output stream in the binary big-endian format.
+  //
+  // On success returns an `std::error_code` with a zero value. On failure,
+  // returns an `std::error_code` with a non-zero value and the stream will be
+  // left in an undetermined state.
   //
   // Most clients should prefer WriteTo over this.
   //
@@ -45,7 +54,10 @@ class PlyWriter {
   std::error_code WriteToBigEndian(std::ostream& stream) const;
 
   // Writes a PLY file to the output stream in the binary little-endian format.
-  // On success returns an `std::error_code` with a zero value.
+  //
+  // On success returns an `std::error_code` with a zero value. On failure,
+  // returns an `std::error_code` with a non-zero value and the stream will be
+  // left in an undetermined state.
   //
   // Most clients should prefer WriteTo over these.
   //

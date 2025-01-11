@@ -240,8 +240,9 @@ class TriangleMeshReader : public PlyReader {
     return std::error_code();
   }
 
-  static const Callback *LookupProperty(
-      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
+  static const PropertyCallback *LookupProperty(
+      const std::map<std::string, std::map<std::string, PropertyCallback>>
+          &callbacks,
       const std::string &element_name, const std::string &property_name) {
     auto element_iter = callbacks.find(element_name);
     if (element_iter == callbacks.end()) {
@@ -257,8 +258,10 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<Callback>, std::error_code> LocationPropertyIndex(
-      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
+  std::expected<std::optional<PropertyCallback>, std::error_code>
+  LocationPropertyIndex(
+      const std::map<std::string, std::map<std::string, PropertyCallback>>
+          &callbacks,
       const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(callbacks, element_name, property_name);
 
@@ -282,8 +285,10 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<Callback>, std::error_code> NormalPropertyIndex(
-      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
+  std::expected<std::optional<PropertyCallback>, std::error_code>
+  NormalPropertyIndex(
+      const std::map<std::string, std::map<std::string, PropertyCallback>>
+          &callbacks,
       const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(callbacks, element_name, property_name);
 
@@ -307,10 +312,11 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<std::pair<std::string, Callback>>,
+  std::expected<std::optional<std::pair<std::string, PropertyCallback>>,
                 std::error_code>
   UVPropertyIndex(
-      const std::map<std::string, std::map<std::string, Callback>> &callbacks,
+      const std::map<std::string, std::map<std::string, PropertyCallback>>
+          &callbacks,
       const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(callbacks, element_name, property_name);
 
@@ -337,10 +343,10 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index>
-  std::expected<std::optional<std::pair<std::string, Callback>>,
+  std::expected<std::optional<std::pair<std::string, PropertyCallback>>,
                 std::error_code>
   UVPropertyIndex(
-      std::map<std::string, std::map<std::string, Callback>> &callbacks,
+      std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
       const std::string &element_name,
       const std::vector<std::string> &property_names) {
     for (const auto &property_name : property_names) {
@@ -354,8 +360,9 @@ class TriangleMeshReader : public PlyReader {
     return std::nullopt;
   }
 
-  std::expected<std::optional<Callback>, std::error_code> FacePropertyIndex(
-      std::map<std::string, std::map<std::string, Callback>> &callbacks,
+  std::expected<std::optional<PropertyCallback>, std::error_code>
+  FacePropertyIndex(
+      std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
       const std::string &element_name, const std::string &property_name) {
     auto property = LookupProperty(callbacks, element_name, property_name);
 
@@ -404,7 +411,7 @@ class TriangleMeshReader : public PlyReader {
 
   std::error_code Start(
       const std::map<std::string, uintmax_t> &num_element_instances,
-      std::map<std::string, std::map<std::string, Callback>> &callbacks,
+      std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
       const std::vector<std::string> &comments,
       const std::vector<std::string> &obj_infos) final {
     Start();

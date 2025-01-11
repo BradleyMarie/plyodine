@@ -114,7 +114,7 @@ class MockPlyReader final : public PlyReader {
 
   std::error_code Start(
       const std::map<std::string, uintmax_t>& num_element_instances,
-      std::map<std::string, std::map<std::string, Callback>>& callbacks,
+      std::map<std::string, std::map<std::string, PropertyCallback>>& callbacks,
       const std::vector<std::string>& comments,
       const std::vector<std::string>& object_info) override {
     std::map<std::string,
@@ -134,7 +134,8 @@ class MockPlyReader final : public PlyReader {
       return error;
     }
 
-    std::map<std::string, std::map<std::string, PlyReader::Callback>> result;
+    std::map<std::string, std::map<std::string, PlyReader::PropertyCallback>>
+        result;
     if (!initialize_callbacks) {
       return std::error_code();
     }

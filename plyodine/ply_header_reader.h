@@ -73,11 +73,12 @@ struct PlyHeader final {
   std::vector<Element> elements;
 };
 
-// Reads the PLY header from the input stream. On success, the function returns
-// a struct describing the contents of the PLY header and stream will have been
-// advanced past the header to the start of the data section. On failure,
-// returns an `std::error_code` containing a non-zero value and the stream will
-// be left in an undefined state.
+// Reads the PLY header from the input stream.
+//
+// On success, the function returns a struct describing the contents of the PLY
+// header and stream will have been advanced past the header to the start of the
+// data section. On failure, returns an `std::error_code` containing a non-zero
+// value and the stream will be left in an undefined state.
 //
 // NOTE: Behavior is undefined if `stream` is not a binary stream
 std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& stream);
