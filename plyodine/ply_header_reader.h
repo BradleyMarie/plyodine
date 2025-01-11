@@ -16,7 +16,7 @@ struct PlyHeader final {
   // A struct describing a property.
   struct Property final {
     // The set of supported types.
-    enum Type {
+    enum class Type {
       CHAR,    // Equivalent to int8_t
       UCHAR,   // Equivalent to uint8_t
       SHORT,   // Equivalent to int16_t
@@ -52,7 +52,7 @@ struct PlyHeader final {
   };
 
   // The format of the data following the header.
-  enum Format { ASCII, BINARY_LITTLE_ENDIAN, BINARY_BIG_ENDIAN } format;
+  enum class Format { ASCII, BINARY_BIG_ENDIAN, BINARY_LITTLE_ENDIAN } format;
 
   // A string containing the line ending used in the header.
   std::string line_ending;

@@ -139,21 +139,21 @@ TEST(ReadPlyHeader, FormatASCII) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_format_ascii.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ(PlyHeader::ASCII, result->format);
+  EXPECT_EQ(PlyHeader::Format::ASCII, result->format);
 }
 
 TEST(ReadPlyHeader, FormatBigEndian) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_format_big_endian.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ(PlyHeader::BINARY_BIG_ENDIAN, result->format);
+  EXPECT_EQ(PlyHeader::Format::BINARY_BIG_ENDIAN, result->format);
 }
 
 TEST(ReadPlyHeader, FormatLittleEndian) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_format_little_endian.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ(PlyHeader::BINARY_LITTLE_ENDIAN, result->format);
+  EXPECT_EQ(PlyHeader::Format::BINARY_LITTLE_ENDIAN, result->format);
 }
 
 TEST(ReadPlyHeader, FormatBad) {
@@ -479,7 +479,7 @@ TEST(ReadPlyHeader, Valid) {
     auto result = ReadPlyHeader(input);
     ASSERT_TRUE(result);
 
-    EXPECT_EQ(PlyHeader::ASCII, result->format);
+    EXPECT_EQ(PlyHeader::Format::ASCII, result->format);
     EXPECT_EQ(line_endings[i], result->line_ending);
     EXPECT_EQ(1u, result->major_version);
     EXPECT_EQ(0u, result->minor_version);

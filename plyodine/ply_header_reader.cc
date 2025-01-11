@@ -301,13 +301,13 @@ std::expected<PlyHeader::Format, std::error_code> ParseFormat(
 
   PlyHeader::Format format;
   if (second_token->has_value() && *second_token == "ascii") {
-    format = PlyHeader::ASCII;
+    format = PlyHeader::Format::ASCII;
   } else if (second_token->has_value() &&
              *second_token == "binary_big_endian") {
-    format = PlyHeader::BINARY_BIG_ENDIAN;
+    format = PlyHeader::Format::BINARY_BIG_ENDIAN;
   } else if (second_token->has_value() &&
              *second_token == "binary_little_endian") {
-    format = PlyHeader::BINARY_LITTLE_ENDIAN;
+    format = PlyHeader::Format::BINARY_LITTLE_ENDIAN;
   } else {
     return std::unexpected(ErrorCode::SPECIFIED_INVALID_FORMAT);
   }
@@ -384,22 +384,22 @@ std::expected<std::pair<std::string, uintmax_t>, std::error_code> ParseElement(
 std::expected<PlyHeader::Property::Type, std::error_code> ParseType(
     std::string_view type_name) {
   static const std::unordered_map<std::string_view, PlyHeader::Property::Type>
-      type_map = {{"char", PlyHeader::Property::CHAR},
-                  {"uchar", PlyHeader::Property::UCHAR},
-                  {"int8", PlyHeader::Property::CHAR},
-                  {"uint8", PlyHeader::Property::UCHAR},
-                  {"short", PlyHeader::Property::SHORT},
-                  {"ushort", PlyHeader::Property::USHORT},
-                  {"int16", PlyHeader::Property::SHORT},
-                  {"uint16", PlyHeader::Property::USHORT},
-                  {"int", PlyHeader::Property::INT},
-                  {"uint", PlyHeader::Property::UINT},
-                  {"int32", PlyHeader::Property::INT},
-                  {"uint32", PlyHeader::Property::UINT},
-                  {"float", PlyHeader::Property::FLOAT},
-                  {"float32", PlyHeader::Property::FLOAT},
-                  {"double", PlyHeader::Property::DOUBLE},
-                  {"float64", PlyHeader::Property::DOUBLE}};
+      type_map = {{"char", PlyHeader::Property::Type::CHAR},
+                  {"uchar", PlyHeader::Property::Type::UCHAR},
+                  {"int8", PlyHeader::Property::Type::CHAR},
+                  {"uint8", PlyHeader::Property::Type::UCHAR},
+                  {"short", PlyHeader::Property::Type::SHORT},
+                  {"ushort", PlyHeader::Property::Type::USHORT},
+                  {"int16", PlyHeader::Property::Type::SHORT},
+                  {"uint16", PlyHeader::Property::Type::USHORT},
+                  {"int", PlyHeader::Property::Type::INT},
+                  {"uint", PlyHeader::Property::Type::UINT},
+                  {"int32", PlyHeader::Property::Type::INT},
+                  {"uint32", PlyHeader::Property::Type::UINT},
+                  {"float", PlyHeader::Property::Type::FLOAT},
+                  {"float32", PlyHeader::Property::Type::FLOAT},
+                  {"double", PlyHeader::Property::Type::DOUBLE},
+                  {"float64", PlyHeader::Property::Type::DOUBLE}};
   auto iter = type_map.find(type_name);
   if (iter == type_map.end()) {
     return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_INVALID_TYPE);
@@ -425,11 +425,11 @@ std::expected<PlyHeader::Property, std::error_code> ParsePropertyList(
     return std::unexpected(list_type.error());
   }
 
-  if (*list_type == PlyHeader::Property::FLOAT) {
+  if (*list_type == PlyHeader::Property::Type::FLOAT) {
     return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_LIST_TYPE_FLOAT);
   }
 
-  if (*list_type == PlyHeader::Property::DOUBLE) {
+  if (*list_type == PlyHeader::Property::Type::DOUBLE) {
     return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_LIST_TYPE_DOUBLE);
   }
 

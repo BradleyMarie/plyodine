@@ -429,36 +429,36 @@ std::unique_ptr<PropertyReaderBase> BuildPropertyReader(
   if constexpr (std::is_class<T>::value) {
     if (list_type.has_value()) {
       switch (*list_type) {
-        case PlyHeader::Property::CHAR:
+        case PlyHeader::Property::Type::CHAR:
           return std::make_unique<PropertyReader<Ascii, Endianness, int8_t, T>>(
               input, ply_reader, callback, element_name, element_index,
               property_name, property_index, actual_property_index,
               num_properties, context);
-        case PlyHeader::Property::UCHAR:
+        case PlyHeader::Property::Type::UCHAR:
           return std::make_unique<
               PropertyReader<Ascii, Endianness, uint8_t, T>>(
               input, ply_reader, callback, element_name, element_index,
               property_name, property_index, actual_property_index,
               num_properties, context);
-        case PlyHeader::Property::SHORT:
+        case PlyHeader::Property::Type::SHORT:
           return std::make_unique<
               PropertyReader<Ascii, Endianness, int16_t, T>>(
               input, ply_reader, callback, element_name, element_index,
               property_name, property_index, actual_property_index,
               num_properties, context);
-        case PlyHeader::Property::USHORT:
+        case PlyHeader::Property::Type::USHORT:
           return std::make_unique<
               PropertyReader<Ascii, Endianness, uint16_t, T>>(
               input, ply_reader, callback, element_name, element_index,
               property_name, property_index, actual_property_index,
               num_properties, context);
-        case PlyHeader::Property::INT:
+        case PlyHeader::Property::Type::INT:
           return std::make_unique<
               PropertyReader<Ascii, Endianness, int32_t, T>>(
               input, ply_reader, callback, element_name, element_index,
               property_name, property_index, actual_property_index,
               num_properties, context);
-        case PlyHeader::Property::UINT:
+        case PlyHeader::Property::Type::UINT:
           break;
         default:
           assert(false);
@@ -536,55 +536,55 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
       Callback callback;
       if (property.list_type) {
         switch (property.data_type) {
-          case PlyHeader::Property::CHAR:
+          case PlyHeader::Property::Type::CHAR:
             callback = Int8PropertyListCallback();
             break;
-          case PlyHeader::Property::UCHAR:
+          case PlyHeader::Property::Type::UCHAR:
             callback = UInt8PropertyListCallback();
             break;
-          case PlyHeader::Property::SHORT:
+          case PlyHeader::Property::Type::SHORT:
             callback = Int16PropertyListCallback();
             break;
-          case PlyHeader::Property::USHORT:
+          case PlyHeader::Property::Type::USHORT:
             callback = UInt16PropertyListCallback();
             break;
-          case PlyHeader::Property::INT:
+          case PlyHeader::Property::Type::INT:
             callback = Int32PropertyListCallback();
             break;
-          case PlyHeader::Property::UINT:
+          case PlyHeader::Property::Type::UINT:
             callback = UInt32PropertyListCallback();
             break;
-          case PlyHeader::Property::FLOAT:
+          case PlyHeader::Property::Type::FLOAT:
             callback = FloatPropertyListCallback();
             break;
-          case PlyHeader::Property::DOUBLE:
+          case PlyHeader::Property::Type::DOUBLE:
             callback = DoublePropertyListCallback();
             break;
         }
       } else {
         switch (property.data_type) {
-          case PlyHeader::Property::CHAR:
+          case PlyHeader::Property::Type::CHAR:
             callback = Int8PropertyCallback();
             break;
-          case PlyHeader::Property::UCHAR:
+          case PlyHeader::Property::Type::UCHAR:
             callback = UInt8PropertyCallback();
             break;
-          case PlyHeader::Property::SHORT:
+          case PlyHeader::Property::Type::SHORT:
             callback = Int16PropertyCallback();
             break;
-          case PlyHeader::Property::USHORT:
+          case PlyHeader::Property::Type::USHORT:
             callback = UInt16PropertyCallback();
             break;
-          case PlyHeader::Property::INT:
+          case PlyHeader::Property::Type::INT:
             callback = Int32PropertyCallback();
             break;
-          case PlyHeader::Property::UINT:
+          case PlyHeader::Property::Type::UINT:
             callback = UInt32PropertyCallback();
             break;
-          case PlyHeader::Property::FLOAT:
+          case PlyHeader::Property::Type::FLOAT:
             callback = FloatPropertyCallback();
             break;
-          case PlyHeader::Property::DOUBLE:
+          case PlyHeader::Property::Type::DOUBLE:
             callback = DoublePropertyCallback();
             break;
         }
@@ -682,15 +682,15 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
       std::pair<uintmax_t, std::vector<std::unique_ptr<PropertyReaderBase>>>>
       wrapped_callbacks;
   switch (header->format) {
-    case PlyHeader::ASCII:
+    case PlyHeader::Format::ASCII:
       wrapped_callbacks = BuildPropertyReaders<true, std::endian::native>(
           input, *this, ordered_callbacks, context);
       break;
-    case PlyHeader::BINARY_BIG_ENDIAN:
+    case PlyHeader::Format::BINARY_BIG_ENDIAN:
       wrapped_callbacks = BuildPropertyReaders<false, std::endian::big>(
           input, *this, ordered_callbacks, context);
       break;
-    case PlyHeader::BINARY_LITTLE_ENDIAN:
+    case PlyHeader::Format::BINARY_LITTLE_ENDIAN:
       wrapped_callbacks = BuildPropertyReaders<false, std::endian::little>(
           input, *this, ordered_callbacks, context);
       break;
