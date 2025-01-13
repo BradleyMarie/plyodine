@@ -179,7 +179,7 @@ class TriangleMeshReader : public PlyReader {
 
   template <typename T>
   std::error_code ValidateVertexIndex(T index) {
-    if constexpr (std::is_signed<T>::value) {
+    if constexpr (std::is_signed_v<T>) {
       if (index < 0) {
         return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
       }

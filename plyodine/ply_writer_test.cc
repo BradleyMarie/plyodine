@@ -229,8 +229,7 @@ class TestWriter final : public PlyWriter {
     size_t max_size = std::visit(
         [&](const auto& entry) -> size_t {
           size_t value = 0u;
-          if constexpr (std::is_class<
-                            std::decay_t<decltype(entry[0])>>::value) {
+          if constexpr (std::is_class_v<std::decay_t<decltype(entry[0])>>) {
             for (const auto& list : entry) {
               value = std::max(value, list.size());
             }

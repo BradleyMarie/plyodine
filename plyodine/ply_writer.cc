@@ -246,8 +246,7 @@ std::error_code SerializeBinary(std::ostream& output, T value) {
 template <std::endian Endianness, std::floating_point T>
 std::error_code SerializeBinary(std::ostream& output, T value) {
   auto entry = std::bit_cast<
-      std::conditional_t<std::is_same<T, float>::value, uint32_t, uintmax_t>>(
-      value);
+      std::conditional_t<std::is_same_v<T, float>, uint32_t, uintmax_t>>(value);
 
   if (Endianness != std::endian::native) {
     entry = std::byteswap(entry);
@@ -308,7 +307,7 @@ std::move_only_function<std::error_code()> MakeASCIISerializer(
       return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
     }
 
-    if constexpr (std::is_arithmetic<T>::value) {
+    if constexpr (std::is_arithmetic_v<T>) {
       if (std::error_code error = SerializeASCII(stream, storage, *iter);
           error) {
         return error;
@@ -347,7 +346,7 @@ std::move_only_function<std::error_code()> MakeBinarySerializer(
       return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
     }
 
-    if constexpr (std::is_arithmetic<T>::value) {
+    if constexpr (std::is_arithmetic_v<T>) {
       if (std::error_code error = SerializeBinary<Endianness>(stream, *iter);
           error) {
         return error;
