@@ -1,0 +1,6 @@
+ply
+format ascii 1.0
+element vertex 1
+property double a
+end_header
+340282349999999999999999983484516925442

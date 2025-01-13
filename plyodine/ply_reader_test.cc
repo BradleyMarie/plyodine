@@ -2334,5 +2334,132 @@ TEST(LittleEndian, WithNegativeIntListSize) {
             result.message());
 }
 
+class MockConvertingPlyReader final : public PlyReader {
+ public:
+  MockConvertingPlyReader(PropertyType type) : type_(type) {}
+
+  MOCK_METHOD(std::error_code, OnConversionFailure,
+              (const std::string&, const std::string&, int));
+
+ private:
+  std::error_code Start(
+      std::map<std::string, uintmax_t> num_element_instances,
+      std::map<std::string, std::map<std::string, PropertyCallback>>& callbacks,
+      std::vector<std::string> comments,
+      std::vector<std::string> object_info) override {
+    static const PropertyCallback property_callbacks[16] = {
+        PropertyCallback(std::in_place_index<0>),
+        PropertyCallback(std::in_place_index<1>),
+        PropertyCallback(std::in_place_index<2>),
+        PropertyCallback(std::in_place_index<3>),
+        PropertyCallback(std::in_place_index<4>),
+        PropertyCallback(std::in_place_index<5>),
+        PropertyCallback(std::in_place_index<6>),
+        PropertyCallback(std::in_place_index<7>),
+        PropertyCallback(std::in_place_index<8>),
+        PropertyCallback(std::in_place_index<9>),
+        PropertyCallback(std::in_place_index<10>),
+        PropertyCallback(std::in_place_index<11>),
+        PropertyCallback(std::in_place_index<12>),
+        PropertyCallback(std::in_place_index<13>),
+        PropertyCallback(std::in_place_index<14>),
+        PropertyCallback(std::in_place_index<15>)};
+    callbacks["vertex"]["a"] = property_callbacks[static_cast<size_t>(type_)];
+    return std::error_code();
+  }
+
+  std::error_code OnConversionFailure(const std::string& element_name,
+                                      const std::string& property_name,
+                                      ConversionFailureReason reason) override {
+    return OnConversionFailure(element_name, property_name,
+                               static_cast<int>(reason));
+  }
+
+  PropertyType type_;
+};
+
+TEST(Error, OverridesError) {
+  std::ifstream stream = OpenRunfile(
+      "_main/plyodine/test_data/ply_ascii_limit_negative_int32.ply");
+
+  MockConvertingPlyReader reader(PropertyType::UCHAR);
+  EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 0))
+      .WillOnce(Return(std::error_code(1, std::generic_category())));
+
+  EXPECT_EQ(1, reader.ReadFrom(stream).value());
+}
+
+TEST(Error, NegativeToUnsigned) {
+  PropertyType types[]{PropertyType::UCHAR, PropertyType::USHORT,
+                       PropertyType::UINT};
+  for (PropertyType type : types) {
+    std::ifstream stream = OpenRunfile(
+        "_main/plyodine/test_data/ply_ascii_limit_negative_int32.ply");
+
+    MockConvertingPlyReader reader(type);
+    EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 0))
+        .WillOnce(Return(std::error_code()));
+
+    EXPECT_EQ("Signed integer to unsigned integer conversion underflowed",
+              reader.ReadFrom(stream).message());
+  }
+}
+
+TEST(Error, NegativeSignedUnderflow) {
+  PropertyType types[]{PropertyType::CHAR, PropertyType::SHORT};
+  for (PropertyType type : types) {
+    std::ifstream stream = OpenRunfile(
+        "_main/plyodine/test_data/ply_ascii_limit_negative_int32.ply");
+
+    MockConvertingPlyReader reader(type);
+    EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 1))
+        .WillOnce(Return(std::error_code()));
+
+    EXPECT_EQ("Signed integer conversion underflowed",
+              reader.ReadFrom(stream).message());
+  }
+}
+
+TEST(Error, IntegerOverflow) {
+  PropertyType types[]{PropertyType::CHAR, PropertyType::UCHAR,
+                       PropertyType::SHORT, PropertyType::USHORT,
+                       PropertyType::INT};
+  for (PropertyType type : types) {
+    std::ifstream stream = OpenRunfile(
+        "_main/plyodine/test_data/ply_ascii_limit_positive_uint32.ply");
+
+    MockConvertingPlyReader reader(type);
+    EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 2))
+        .WillOnce(Return(std::error_code()));
+
+    EXPECT_EQ("Integer conversion overflowed",
+              reader.ReadFrom(stream).message());
+  }
+}
+
+TEST(Error, FloatUnderflow) {
+  std::ifstream stream = OpenRunfile(
+      "_main/plyodine/test_data/ply_ascii_limit_negative_double.ply");
+
+  MockConvertingPlyReader reader(PropertyType::FLOAT);
+  EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 3))
+      .WillOnce(Return(std::error_code()));
+
+  EXPECT_EQ("Floating point conversion underflowed",
+            reader.ReadFrom(stream).message());
+}
+
+TEST(Error, FloatOverflow) {
+  std::ifstream stream = OpenRunfile(
+      "_main/plyodine/test_data/ply_ascii_limit_positive_double.ply");
+
+  MockConvertingPlyReader reader(PropertyType::FLOAT);
+  EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 4))
+      .WillOnce(Return(std::error_code()));
+
+  EXPECT_EQ("Floating point conversion overflowed",
+            reader.ReadFrom(stream).message());
+}
+
 }  // namespace
 }  // namespace plyodine

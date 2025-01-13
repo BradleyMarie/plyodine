@@ -338,20 +338,12 @@ ReadFunc GetReadFunc(PlyHeader::Format format, PlyHeader::Property::Type type) {
 
 template <typename Source, typename Dest>
 std::error_code Convert(Context& context) {
-  if constexpr (std::is_signed_v<Source> && !std::is_signed_v<Dest>) {
-    if (std::get<Source>(context.data) < 0) {
-      return ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW;
-    }
-  }
-
-  if constexpr (sizeof(Source) > sizeof(Dest)) {
+  if constexpr (!std::is_same_v<Source, Dest>) {
     if constexpr (std::is_floating_point_v<Source>) {
       if (std::isfinite(std::get<Source>(context.data))) {
-        if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
-          if (std::get<Source>(context.data) <
-              std::numeric_limits<Dest>::min()) {
-            return ErrorCode::CONVERSION_FLOAT_UNDERFLOW;
-          }
+        if (std::get<Source>(context.data) <
+            std::numeric_limits<Dest>::lowest()) {
+          return ErrorCode::CONVERSION_FLOAT_UNDERFLOW;
         }
 
         if (std::get<Source>(context.data) > std::numeric_limits<Dest>::max()) {
@@ -359,20 +351,29 @@ std::error_code Convert(Context& context) {
         }
       }
     } else {
-      if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
+      if constexpr (std::is_signed_v<Source> && !std::is_signed_v<Dest>) {
+        if (std::get<Source>(context.data) < 0) {
+          return ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW;
+        }
+      } else if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
         if (std::get<Source>(context.data) < std::numeric_limits<Dest>::min()) {
           return ErrorCode::CONVERSION_SIGNED_UNDERFLOW;
         }
       }
 
-      if (std::get<Source>(context.data) > std::numeric_limits<Dest>::max()) {
-        return ErrorCode::CONVERSION_INTEGER_OVERFLOW;
+      if constexpr (sizeof(Source) > sizeof(Dest) ||
+                    (sizeof(Source) == sizeof(Dest) &&
+                     !std::is_signed_v<Source> && std::is_signed_v<Dest>)) {
+        if (std::get<Source>(context.data) >
+            static_cast<Source>(std::numeric_limits<Dest>::max())) {
+          return ErrorCode::CONVERSION_INTEGER_OVERFLOW;
+        }
       }
     }
-  }
 
-  std::get<Dest>(context.data) =
-      static_cast<Dest>(std::get<Source>(context.data));
+    std::get<Dest>(context.data) =
+        static_cast<Dest>(std::get<Source>(context.data));
+  }
 
   return std::error_code();
 }
@@ -665,7 +666,7 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
             }
 
             if (std::error_code error =
-                    OnConversionError(element_name, property_name, reason);
+                    OnConversionFailure(element_name, property_name, reason);
                 error) {
               return error;
             }

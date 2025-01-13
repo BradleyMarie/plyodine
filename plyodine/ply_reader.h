@@ -30,12 +30,12 @@ class PlyReader {
  protected:
   // The reason a type conversion failed.
   enum class ConversionFailureReason {
+    // Attempted to convert a negative signed integer to an unsigned integer.
+    UNSIGNED_INTEGER_UNDERFLOW = 0,
+
     // Attempted to narrow a negative integer that was out of range for the
     // destination signed integer type.
-    SIGNED_INTEGER_UNDERFLOW = 0,
-
-    // Attempted to convert a negative signed integer to an unsigned integer.
-    UNSIGNED_INTEGER_UNDERFLOW = 1,
+    SIGNED_INTEGER_UNDERFLOW = 1,
 
     // Attempted to narrow a positive integer that was out of range for the
     // destination integer type.
@@ -171,7 +171,7 @@ class PlyReader {
   // remains finite after narrowing. Conversions between integer and floating
   // point types are not supported and will be rejected by PlyReader. In the
   // event a supported conversion fails, the failure can be observed by
-  // implementing `OnConversionError`.
+  // implementing `OnConversionFailure`.
   //
   // `comments`: The comments in the that used the comment prefix.
   //
@@ -188,9 +188,9 @@ class PlyReader {
   // the std::error_code returned from `ReadFrom` can be replaced with one that
   // is domain specific. Returning an `std::error_code` with a zero value will
   // cause the generic error to be returned.
-  virtual std::error_code OnConversionError(
-      const std::string& element, const std::string& property,
-      ConversionFailureReason reason) const {
+  virtual std::error_code OnConversionFailure(const std::string& element,
+                                              const std::string& property,
+                                              ConversionFailureReason reason) {
     return std::error_code();
   }
 };
