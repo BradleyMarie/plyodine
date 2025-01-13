@@ -17,14 +17,14 @@ struct PlyHeader final {
   struct Property final {
     // The set of supported types.
     enum class Type {
-      CHAR,    // Equivalent to int8_t
-      UCHAR,   // Equivalent to uint8_t
-      SHORT,   // Equivalent to int16_t
-      USHORT,  // Equivalent to uint16_t
-      INT,     // Equivalent to int32_t
-      UINT,    // Equivalent to uint32_t
-      FLOAT,   // Equivalent to float
-      DOUBLE   // Equivalent to double
+      CHAR = 0,    // Equivalent to int8_t
+      UCHAR = 1,   // Equivalent to uint8_t
+      SHORT = 2,   // Equivalent to int16_t
+      USHORT = 3,  // Equivalent to uint16_t
+      INT = 4,     // Equivalent to int32_t
+      UINT = 5,    // Equivalent to uint32_t
+      FLOAT = 6,   // Equivalent to float
+      DOUBLE = 7   // Equivalent to double
     };
 
     // The name of the property.
@@ -52,7 +52,11 @@ struct PlyHeader final {
   };
 
   // The format of the data following the header.
-  enum class Format { ASCII, BINARY_BIG_ENDIAN, BINARY_LITTLE_ENDIAN } format;
+  enum class Format {
+    ASCII = 0,
+    BINARY_BIG_ENDIAN = 1,
+    BINARY_LITTLE_ENDIAN = 2
+  } format;
 
   // A string containing the line ending used in the header.
   std::string line_ending;

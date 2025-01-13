@@ -1,7 +1,6 @@
 #include "plyodine/ply_reader.h"
 
 #include <bit>
-#include <cassert>
 #include <charconv>
 #include <cstdint>
 #include <ios>
@@ -25,18 +24,26 @@ namespace {
 enum class ErrorCode : int {
   MIN_VALUE = 1,
   BAD_STREAM = 1,
-  UNEXPECTED_EOF = 2,
-  CONTAINS_MISMATCHED_LINE_ENDINGS = 3,
-  CONTAINS_INVALID_CHARACTER = 4,
-  NEGATIVE_LIST_SIZE = 5,
-  ELEMENT_TOO_FEW_TOKENS = 6,
-  ELEMENT_CONTAINS_EXTRA_WHITESPACE = 7,
-  ELEMENT_CONTAINS_EXTRA_TOKENS = 8,
-  ELEMENT_LIST_SIZE_OUT_OF_RANGE = 9,
-  ELEMENT_PROPERTY_OUT_OF_RANGE = 10,
-  ELEMENT_LIST_SIZE_PARSING_FAILED = 11,
-  ELEMENT_PROPERTY_PARSING_FAILED = 12,
-  MAX_VALUE = 12,
+  UNKNOWN_ELEMENT = 2,
+  UNKNOWN_PROPERTY = 3,
+  UNSUPPORTED_CONVERSION = 4,
+  UNEXPECTED_EOF = 5,
+  CONTAINS_MISMATCHED_LINE_ENDINGS = 6,
+  CONTAINS_INVALID_CHARACTER = 7,
+  NEGATIVE_LIST_SIZE = 8,
+  ELEMENT_TOO_FEW_TOKENS = 9,
+  ELEMENT_CONTAINS_EXTRA_WHITESPACE = 10,
+  ELEMENT_CONTAINS_EXTRA_TOKENS = 11,
+  ELEMENT_LIST_SIZE_OUT_OF_RANGE = 12,
+  ELEMENT_PROPERTY_OUT_OF_RANGE = 13,
+  ELEMENT_LIST_SIZE_PARSING_FAILED = 14,
+  ELEMENT_PROPERTY_PARSING_FAILED = 15,
+  CONVERSION_SIGNED_UNDERFLOW = 16,
+  CONVERSION_UNSIGNED_UNDERFLOW = 17,
+  CONVERSION_INTEGER_OVERFLOW = 18,
+  CONVERSION_FLOAT_UNDERFLOW = 19,
+  CONVERSION_FLOAT_OVERFLOW = 20,
+  MAX_VALUE = 20,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -54,6 +61,12 @@ std::string ErrorCategory::message(int condition) const {
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
       return "Input stream must be in good state";
+    case ErrorCode::UNKNOWN_ELEMENT:
+      return "";
+    case ErrorCode::UNKNOWN_PROPERTY:
+      return "";
+    case ErrorCode::UNSUPPORTED_CONVERSION:
+      return "";
     case ErrorCode::UNEXPECTED_EOF:
       return "Unexpected EOF";
     case ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS:
@@ -77,6 +90,16 @@ std::string ErrorCategory::message(int condition) const {
       return "The input contained a property list size that failed to parse";
     case ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED:
       return "The input contained a property entry that failed to parse";
+    case ErrorCode::CONVERSION_SIGNED_UNDERFLOW:
+      return "";
+    case ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW:
+      return "";
+    case ErrorCode::CONVERSION_INTEGER_OVERFLOW:
+      return "";
+    case ErrorCode::CONVERSION_FLOAT_UNDERFLOW:
+      return "";
+    case ErrorCode::CONVERSION_FLOAT_OVERFLOW:
+      return "";
   };
 
   return "Unknown Error";
@@ -108,26 +131,55 @@ struct is_error_code_enum<ErrorCode> : true_type {};
 namespace plyodine {
 namespace {
 
-typedef std::tuple<std::vector<int8_t>, std::vector<uint8_t>,
-                   std::vector<int16_t>, std::vector<uint16_t>,
-                   std::vector<int32_t>, std::vector<uint32_t>,
-                   std::vector<float>, std::vector<double>, std::string_view,
-                   std::stringstream, std::string, bool>
-    Context;
+using ContextData =
+    std::tuple<int8_t, std::vector<int8_t>, uint8_t, std::vector<uint8_t>,
+               int16_t, std::vector<int16_t>, uint16_t, std::vector<uint16_t>,
+               int32_t, std::vector<int32_t>, uint32_t, std::vector<uint32_t>,
+               float, std::vector<float>, double, std::vector<double>>;
 
-std::error_code ReadNextLine(std::istream& input, Context& context) {
-  auto line_ending = std::get<std::string_view>(context);
-  auto& line = std::get<std::stringstream>(context);
+struct Context final {
+  ContextData data;
+  std::string_view line_ending;
+  std::stringstream line;
+  std::string token;
+};
 
-  line.str("");
-  line.clear();
+using AppendFunc = void (*)(Context&);
+using ConvertFunc = std::error_code (*)(Context&);
+using Handler = std::function<std::error_code(Context&)>;
+using OnConversionErrorFunc = std::function<std::error_code(
+    const std::string&, const std::string&, std::error_code)>;
+using PropertyCallback =
+    std::variant<std::function<std::error_code(int8_t)>,
+                 std::function<std::error_code(std::span<const int8_t>)>,
+                 std::function<std::error_code(uint8_t)>,
+                 std::function<std::error_code(std::span<const uint8_t>)>,
+                 std::function<std::error_code(int16_t)>,
+                 std::function<std::error_code(std::span<const int16_t>)>,
+                 std::function<std::error_code(uint16_t)>,
+                 std::function<std::error_code(std::span<const uint16_t>)>,
+                 std::function<std::error_code(int32_t)>,
+                 std::function<std::error_code(std::span<const int32_t>)>,
+                 std::function<std::error_code(uint32_t)>,
+                 std::function<std::error_code(std::span<const uint32_t>)>,
+                 std::function<std::error_code(float)>,
+                 std::function<std::error_code(std::span<const float>)>,
+                 std::function<std::error_code(double)>,
+                 std::function<std::error_code(std::span<const double>)>>;
+using ReadFunc = std::error_code (*)(std::istream&, Context&);
 
-  char c;
-  while (input.get(c)) {
+std::error_code ReadNextLine(std::istream& stream, Context& context) {
+  std::string_view line_ending = context.line_ending;
+
+  context.line.str("");
+  context.line.clear();
+
+  char c = 0;
+  while (stream.get(c)) {
     if (c == line_ending[0]) {
       line_ending.remove_prefix(1);
 
-      while (!line_ending.empty() && input.get(c)) {
+      while (!line_ending.empty() && stream.get(c)) {
         if (c != line_ending[0]) {
           return ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS;
         }
@@ -141,397 +193,478 @@ std::error_code ReadNextLine(std::istream& input, Context& context) {
       return ErrorCode::CONTAINS_INVALID_CHARACTER;
     }
 
-    line.put(c);
+    context.line.put(c);
   }
 
-  if (input.fail() && !input.eof()) {
+  if (!c) {
+    return ErrorCode::UNEXPECTED_EOF;
+  }
+
+  if (stream.fail() && !stream.eof()) {
     return std::io_errc::stream;
   }
-
-  std::get<bool>(context) = input.eof();
 
   return std::error_code();
 }
 
 std::error_code ReadNextToken(Context& context) {
-  auto& input = std::get<std::stringstream>(context);
-  auto& token = std::get<std::string>(context);
-  bool last_line = std::get<bool>(context);
-
-  token.clear();
+  context.token.clear();
 
   char c = 0;
-  while (input.get(c)) {
+  while (context.line.get(c)) {
     if (c == ' ') {
       break;
     }
 
-    token.push_back(c);
+    context.token.push_back(c);
   }
 
   if (!c) {
-    if (last_line) {
-      return ErrorCode::UNEXPECTED_EOF;
-    }
-
     return ErrorCode::ELEMENT_TOO_FEW_TOKENS;
   }
 
-  if (token.empty()) {
+  if (context.token.empty()) {
     return ErrorCode::ELEMENT_CONTAINS_EXTRA_WHITESPACE;
   }
 
   return std::error_code();
 }
 
-std::error_code CheckForUnusedTokens(Context& context) {
-  auto& line = std::get<std::stringstream>(context);
-
-  char c;
-  while (line.get(c)) {
-    if (std::isgraph(c)) {
-      return ErrorCode::ELEMENT_CONTAINS_EXTRA_TOKENS;
-    }
-  }
-
-  return std::error_code();
-}
-
-template <std::integral SizeType, bool IsListSize, typename T>
-std::expected<T, std::error_code> DeserializeASCII(std::istream& input,
-                                                   Context& context) {
+template <typename T>
+std::error_code ReadASCII(std::istream& input, Context& context) {
   if (std::error_code error = ReadNextToken(context); error) {
-    return std::unexpected(error);
-  }
-
-  auto& token = std::get<std::string>(context);
-
-  T value;
-  auto parsing_result =
-      std::from_chars(token.data(), token.data() + token.size(), value);
-  if (parsing_result.ec == std::errc::result_out_of_range) {
-    if constexpr (IsListSize) {
-      return std::unexpected(ErrorCode::ELEMENT_LIST_SIZE_OUT_OF_RANGE);
-    }
-    return std::unexpected(ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE);
-  } else if (parsing_result.ec != std::errc{}) {
-    if constexpr (IsListSize) {
-      return std::unexpected(ErrorCode::ELEMENT_LIST_SIZE_PARSING_FAILED);
-    }
-    return std::unexpected(ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED);
-  }
-
-  return value;
-}
-
-template <std::integral SizeType, bool IsListSize, typename T>
-  requires std::is_class<T>::value
-std::expected<T, std::error_code> DeserializeASCII(std::istream& input,
-                                                   Context& context) {
-  auto list_size = DeserializeASCII<SizeType, true, SizeType>(input, context);
-  if (!list_size) {
-    return std::unexpected(list_size.error());
-  }
-
-  if constexpr (std::is_signed<SizeType>::value) {
-    if (*list_size < 0) {
-      return std::unexpected(ErrorCode::NEGATIVE_LIST_SIZE);
-    }
-  }
-
-  auto& result = std::get<std::vector<typename T::value_type>>(context);
-  result.clear();
-
-  for (SizeType i = 0; i < *list_size; i++) {
-    auto entry = DeserializeASCII<SizeType, false, typename T::value_type>(
-        input, context);
-    if (!entry) {
-      return std::unexpected(entry.error());
-    }
-
-    result.push_back(*entry);
-  }
-
-  return result;
-}
-
-template <std::endian Endianness, std::integral SizeType, std::integral T>
-std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
-                                                    Context& context) {
-  T result;
-  input.read(reinterpret_cast<char*>(&result), sizeof(T));
-  if (input.fail()) {
-    if (input.eof()) {
-      return std::unexpected(ErrorCode::UNEXPECTED_EOF);
-    }
-    return std::unexpected(std::io_errc::stream);
-  }
-
-  if (Endianness != std::endian::native) {
-    result = std::byteswap(result);
-  }
-
-  return result;
-}
-
-template <std::endian Endianness, std::integral SizeType, std::floating_point T>
-std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
-                                                    Context& context) {
-  std::conditional_t<std::is_same<T, float>::value, uint32_t, uint64_t> read;
-
-  input.read(reinterpret_cast<char*>(&read), sizeof(read));
-  if (input.fail()) {
-    if (input.eof()) {
-      return std::unexpected(ErrorCode::UNEXPECTED_EOF);
-    }
-    return std::unexpected(std::io_errc::stream);
-  }
-
-  if (Endianness != std::endian::native) {
-    read = std::byteswap(read);
-  }
-
-  return std::bit_cast<T>(read);
-}
-
-template <std::endian Endianness, std::integral SizeType, typename T>
-  requires std::is_class<T>::value
-std::expected<T, std::error_code> DeserializeBinary(std::istream& input,
-                                                    Context& context) {
-  auto list_size =
-      DeserializeBinary<Endianness, SizeType, SizeType>(input, context);
-  if (!list_size) {
-    return std::unexpected(list_size.error());
-  }
-
-  if constexpr (std::is_signed<SizeType>::value) {
-    if (*list_size < 0) {
-      return std::unexpected(ErrorCode::NEGATIVE_LIST_SIZE);
-    }
-  }
-
-  auto& result = std::get<std::vector<typename T::value_type>>(context);
-  result.clear();
-
-  for (SizeType i = 0; i < *list_size; i++) {
-    auto entry =
-        DeserializeBinary<Endianness, SizeType, typename T::value_type>(
-            input, context);
-    if (!entry) {
-      return std::unexpected(entry.error());
-    }
-
-    result.push_back(*entry);
-  }
-
-  return result;
-}
-
-class PropertyReaderBase {
- public:
-  virtual std::error_code Read(uintmax_t instance) = 0;
-};
-
-template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
-class PropertyReader final : public PropertyReaderBase {
- public:
-  PropertyReader(std::istream& input, PlyReader& ply_reader,
-                 std::error_code (PlyReader::*callback)(const std::string&,
-                                                        size_t,
-                                                        const std::string&,
-                                                        size_t, uintmax_t, T),
-                 const std::string& element_name, size_t element_index,
-                 const std::string& property_name, size_t property_index,
-                 size_t actual_property_index, size_t num_properties,
-                 Context& context)
-      : input_(input),
-        ply_reader_(ply_reader),
-        callback_(callback),
-        element_name_(element_name),
-        element_index_(element_index),
-        property_name_(property_name),
-        property_index_(property_index),
-        actual_property_index_(actual_property_index),
-        num_properties_(num_properties),
-        context_(context) {}
-
-  std::error_code Read(uintmax_t instance) override;
-
- private:
-  std::istream& input_;
-  PlyReader& ply_reader_;
-  std::error_code (PlyReader::*callback_)(const std::string&, size_t,
-                                          const std::string&, size_t, uintmax_t,
-                                          T);
-  const std::string& element_name_;
-  size_t element_index_;
-  const std::string& property_name_;
-  size_t property_index_;
-  size_t actual_property_index_;
-  size_t num_properties_;
-  Context& context_;
-};
-
-template <bool Ascii, std::endian Endianness, typename SizeType, typename T>
-std::error_code PropertyReader<Ascii, Endianness, SizeType, T>::Read(
-    uintmax_t instance) {
-  if constexpr (Ascii) {
-    if (actual_property_index_ == 0) {
-      if (std::error_code error = ReadNextLine(input_, context_); error) {
-        return error;
-      }
-    }
-  }
-
-  std::expected<T, std::error_code> result;
-  if constexpr (Ascii) {
-    result = DeserializeASCII<SizeType, false, T>(input_, context_);
-  } else {
-    result = DeserializeBinary<Endianness, SizeType, T>(input_, context_);
-  }
-
-  if (!result) {
-    return result.error();
-  }
-
-  if (callback_ == nullptr) {
-    return std::error_code();
-  }
-
-  if (std::error_code error = (ply_reader_.*callback_)(
-          element_name_, element_index_, property_name_, property_index_,
-          instance, *result);
-      error) {
     return error;
   }
 
-  if constexpr (Ascii) {
-    if (actual_property_index_ + 1 == num_properties_) {
-      if (std::error_code error = CheckForUnusedTokens(context_); error) {
-        return error;
-      }
-    }
+  T value;
+  auto parsing_result = std::from_chars(
+      context.token.data(), context.token.data() + context.token.size(), value);
+  if (parsing_result.ec == std::errc::result_out_of_range) {
+    return ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE;
+  } else if (parsing_result.ec != std::errc{}) {
+    return ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED;
   }
+
+  std::get<T>(context.data) = value;
 
   return std::error_code();
 }
 
-template <bool Ascii, std::endian Endianness, typename T>
-std::unique_ptr<PropertyReaderBase> BuildPropertyReader(
-    std::istream& input, PlyReader& ply_reader,
-    std::error_code (PlyReader::*callback)(const std::string&, size_t,
-                                           const std::string&, size_t,
-                                           uintmax_t, T),
-    const std::string& element_name, size_t element_index,
-    const std::string& property_name, size_t property_index,
-    size_t actual_property_index, size_t num_properties,
-    std::optional<PlyHeader::Property::Type> list_type, Context& context) {
-  if constexpr (std::is_class<T>::value) {
-    if (list_type.has_value()) {
-      switch (*list_type) {
-        case PlyHeader::Property::Type::CHAR:
-          return std::make_unique<PropertyReader<Ascii, Endianness, int8_t, T>>(
-              input, ply_reader, callback, element_name, element_index,
-              property_name, property_index, actual_property_index,
-              num_properties, context);
-        case PlyHeader::Property::Type::UCHAR:
-          return std::make_unique<
-              PropertyReader<Ascii, Endianness, uint8_t, T>>(
-              input, ply_reader, callback, element_name, element_index,
-              property_name, property_index, actual_property_index,
-              num_properties, context);
-        case PlyHeader::Property::Type::SHORT:
-          return std::make_unique<
-              PropertyReader<Ascii, Endianness, int16_t, T>>(
-              input, ply_reader, callback, element_name, element_index,
-              property_name, property_index, actual_property_index,
-              num_properties, context);
-        case PlyHeader::Property::Type::USHORT:
-          return std::make_unique<
-              PropertyReader<Ascii, Endianness, uint16_t, T>>(
-              input, ply_reader, callback, element_name, element_index,
-              property_name, property_index, actual_property_index,
-              num_properties, context);
-        case PlyHeader::Property::Type::INT:
-          return std::make_unique<
-              PropertyReader<Ascii, Endianness, int32_t, T>>(
-              input, ply_reader, callback, element_name, element_index,
-              property_name, property_index, actual_property_index,
-              num_properties, context);
-        case PlyHeader::Property::Type::UINT:
-          break;
-        default:
-          assert(false);
-      }
+template <std::endian Endianness, std::integral T>
+std::error_code ReadBinary(std::istream& stream, Context& context) {
+  T value;
+  stream.read(reinterpret_cast<char*>(&value), sizeof(T));
+  if (stream.fail()) {
+    if (stream.eof()) {
+      return ErrorCode::UNEXPECTED_EOF;
     }
+    return std::io_errc::stream;
   }
 
-  return std::make_unique<PropertyReader<Ascii, Endianness, uint32_t, T>>(
-      input, ply_reader, callback, element_name, element_index, property_name,
-      property_index, actual_property_index, num_properties, context);
+  if (Endianness != std::endian::native) {
+    value = std::byteswap(value);
+  }
+
+  std::get<T>(context.data) = value;
+
+  return std::error_code();
 }
 
-template <bool Ascii, std::endian Endianness, typename T>
-std::vector<
-    std::pair<uintmax_t, std::vector<std::unique_ptr<PropertyReaderBase>>>>
-BuildPropertyReaders(
-    std::istream& input, PlyReader& ply_reader,
-    const std::vector<
-        std::tuple<std::string, uintmax_t,
-                   std::vector<std::tuple<
-                       std::string, std::optional<PlyHeader::Property::Type>,
-                       size_t, size_t, T>>>>& ordered_callbacks,
-    Context& context) {
-  std::vector<
-      std::pair<uintmax_t, std::vector<std::unique_ptr<PropertyReaderBase>>>>
-      result;
-  for (size_t actual_element_index = 0;
-       actual_element_index < ordered_callbacks.size();
-       actual_element_index++) {
-    const auto& element = ordered_callbacks[actual_element_index];
-    const auto& properties = std::get<2>(element);
+template <std::endian Endianness, std::floating_point T>
+std::error_code ReadBinary(std::istream& stream, Context& context) {
+  std::conditional_t<std::is_same_v<T, float>, uint32_t, uint64_t> value;
 
-    result.emplace_back(std::get<uintmax_t>(element),
-                        std::vector<std::unique_ptr<PropertyReaderBase>>());
-    for (size_t actual_property_index = 0;
-         actual_property_index < properties.size(); actual_property_index++) {
-      const auto& property = properties[actual_property_index];
+  stream.read(reinterpret_cast<char*>(&value), sizeof(value));
+  if (stream.fail()) {
+    if (stream.eof()) {
+      return ErrorCode::UNEXPECTED_EOF;
+    }
+    return std::io_errc::stream;
+  }
 
-      result.back().second.emplace_back(std::visit(
-          [&](const auto& func_ptr) {
-            return BuildPropertyReader<Ascii, Endianness>(
-                input, ply_reader, func_ptr, std::get<0>(element),
-                std::get<2>(property), std::get<0>(property),
-                std::get<3>(property), actual_property_index, properties.size(),
-                std::get<1>(property), context);
-          },
-          std::get<4>(property)));
+  if (Endianness != std::endian::native) {
+    value = std::byteswap(value);
+  }
+
+  std::get<T>(context.data) = std::bit_cast<T>(value);
+
+  return std::error_code();
+}
+
+ReadFunc GetReadFunc(PlyHeader::Format format, PlyHeader::Property::Type type) {
+  static constexpr ReadFunc ascii_read_funcs[8] = {
+      ReadASCII<std::tuple_element_t<0, ContextData>>,
+      ReadASCII<std::tuple_element_t<2, ContextData>>,
+      ReadASCII<std::tuple_element_t<4, ContextData>>,
+      ReadASCII<std::tuple_element_t<6, ContextData>>,
+      ReadASCII<std::tuple_element_t<8, ContextData>>,
+      ReadASCII<std::tuple_element_t<10, ContextData>>,
+      ReadASCII<std::tuple_element_t<12, ContextData>>,
+      ReadASCII<std::tuple_element_t<14, ContextData>>,
+  };
+
+  static constexpr ReadFunc big_endian_read_funcs[8] = {
+      ReadBinary<std::endian::big, std::tuple_element_t<0, ContextData>>,
+      ReadBinary<std::endian::big, std::tuple_element_t<2, ContextData>>,
+      ReadBinary<std::endian::big, std::tuple_element_t<4, ContextData>>,
+      ReadBinary<std::endian::big, std::tuple_element_t<6, ContextData>>,
+      ReadBinary<std::endian::big, std::tuple_element_t<8, ContextData>>,
+      ReadBinary<std::endian::big, std::tuple_element_t<10, ContextData>>,
+      ReadBinary<std::endian::big, std::tuple_element_t<12, ContextData>>,
+      ReadBinary<std::endian::big, std::tuple_element_t<14, ContextData>>,
+  };
+
+  static constexpr ReadFunc little_endian_read_funcs[8] = {
+      ReadBinary<std::endian::little, std::tuple_element_t<0, ContextData>>,
+      ReadBinary<std::endian::little, std::tuple_element_t<2, ContextData>>,
+      ReadBinary<std::endian::little, std::tuple_element_t<4, ContextData>>,
+      ReadBinary<std::endian::little, std::tuple_element_t<6, ContextData>>,
+      ReadBinary<std::endian::little, std::tuple_element_t<8, ContextData>>,
+      ReadBinary<std::endian::little, std::tuple_element_t<10, ContextData>>,
+      ReadBinary<std::endian::little, std::tuple_element_t<12, ContextData>>,
+      ReadBinary<std::endian::little, std::tuple_element_t<14, ContextData>>,
+  };
+
+  if (format == PlyHeader::Format::ASCII) {
+    return ascii_read_funcs[static_cast<size_t>(type)];
+  }
+
+  if (format == PlyHeader::Format::BINARY_BIG_ENDIAN) {
+    return big_endian_read_funcs[static_cast<size_t>(type)];
+  }
+
+  return little_endian_read_funcs[static_cast<size_t>(type)];
+}
+
+template <typename Source, typename Dest>
+std::error_code Convert(Context& context) {
+  if constexpr (std::is_signed_v<Source> && !std::is_signed_v<Dest>) {
+    if (std::get<Source>(context.data) < 0) {
+      return ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW;
     }
   }
 
-  return result;
+  if constexpr (sizeof(Source) > sizeof(Dest)) {
+    if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
+      if (std::get<Source>(context.data) < std::numeric_limits<Dest>::min()) {
+        return std::is_floating_point_v<Dest>
+                   ? ErrorCode::CONVERSION_SIGNED_UNDERFLOW
+                   : ErrorCode::CONVERSION_FLOAT_UNDERFLOW;
+      }
+    }
+
+    if (std::get<Source>(context.data) > std::numeric_limits<Dest>::max()) {
+      return std::is_floating_point_v<Dest>
+                 ? ErrorCode::CONVERSION_INTEGER_OVERFLOW
+                 : ErrorCode::CONVERSION_FLOAT_OVERFLOW;
+    }
+  }
+
+  std::get<Dest>(context.data) =
+      static_cast<Dest>(std::get<Source>(context.data));
+
+  return std::error_code();
+}
+
+template <size_t SourceTypeIndex, size_t DestTypeIndex>
+constexpr ConvertFunc GetConvertFunc() {
+  if constexpr (SourceTypeIndex >= 6 && DestTypeIndex < 6) {
+    return nullptr;
+  }
+
+  return Convert<std::tuple_element_t<SourceTypeIndex * 2, ContextData>,
+                 std::tuple_element_t<DestTypeIndex * 2, ContextData>>;
+}
+
+template <size_t SourceTypeIndex>
+constexpr std::array<ConvertFunc, 8> GetConvertFuncs() {
+  return {
+      GetConvertFunc<SourceTypeIndex, 0>(),
+      GetConvertFunc<SourceTypeIndex, 1>(),
+      GetConvertFunc<SourceTypeIndex, 2>(),
+      GetConvertFunc<SourceTypeIndex, 3>(),
+      GetConvertFunc<SourceTypeIndex, 4>(),
+      GetConvertFunc<SourceTypeIndex, 5>(),
+      GetConvertFunc<SourceTypeIndex, 6>(),
+      GetConvertFunc<SourceTypeIndex, 7>(),
+  };
+}
+
+ConvertFunc GetConvertFunc(PlyHeader::Property::Type source,
+                           PlyHeader::Property::Type dest) {
+  static constexpr std::array<ConvertFunc, 8> conversion_funcs[8] = {
+      GetConvertFuncs<0>(), GetConvertFuncs<1>(), GetConvertFuncs<2>(),
+      GetConvertFuncs<3>(), GetConvertFuncs<4>(), GetConvertFuncs<5>(),
+      GetConvertFuncs<6>(), GetConvertFuncs<7>(),
+  };
+
+  return conversion_funcs[static_cast<size_t>(source)]
+                         [static_cast<size_t>(dest)];
+}
+
+template <size_t Index>
+void Append(Context& context) {
+  std::get<2 * Index + 1>(context.data)
+      .push_back(std::get<2 * Index>(context.data));
+}
+
+AppendFunc GetAppendFunc(PlyHeader::Property::Type dest_type) {
+  static constexpr AppendFunc append_funcs[8] = {
+      Append<0>, Append<1>, Append<2>, Append<3>,
+      Append<4>, Append<5>, Append<6>, Append<7>,
+  };
+
+  return append_funcs[static_cast<size_t>(dest_type)];
+}
+
+Handler MakeHandler(const std::function<std::error_code(int8_t)>& callback) {
+  return [&](Context& context) {
+    return callback(std::get<int8_t>(context.data));
+  };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const int8_t>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<int8_t>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const std::function<std::error_code(uint8_t)>& callback) {
+  return [&](Context& context) {
+    return callback(std::get<uint8_t>(context.data));
+  };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const uint8_t>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<uint8_t>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const std::function<std::error_code(int16_t)>& callback) {
+  return [&](Context& context) {
+    return callback(std::get<int16_t>(context.data));
+  };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const int16_t>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<int16_t>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const std::function<std::error_code(uint16_t)>& callback) {
+  return [&](Context& context) {
+    return callback(std::get<uint16_t>(context.data));
+  };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const uint16_t>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<uint16_t>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const std::function<std::error_code(int32_t)>& callback) {
+  return [&](Context& context) {
+    return callback(std::get<int32_t>(context.data));
+  };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const int32_t>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<int32_t>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const std::function<std::error_code(uint32_t)>& callback) {
+  return [&](Context& context) {
+    return callback(std::get<uint32_t>(context.data));
+  };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const uint32_t>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<uint32_t>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const std::function<std::error_code(float)>& callback) {
+  return
+      [&](Context& context) { return callback(std::get<float>(context.data)); };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const float>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<float>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const std::function<std::error_code(double)>& callback) {
+  return [&](Context& context) {
+    return callback(std::get<double>(context.data));
+  };
+}
+
+Handler MakeHandler(
+    const std::function<std::error_code(std::span<const double>)>& callback) {
+  return [&](Context& context) {
+    auto& data = std::get<std::vector<double>>(context.data);
+    std::error_code result = callback(data);
+    data.clear();
+    return result;
+  };
+}
+
+Handler MakeHandler(const PropertyCallback& callback) {
+  return std::visit(
+      [](const auto& true_callback) -> Handler {
+        if (!true_callback) {
+          return Handler();
+        }
+
+        return MakeHandler(true_callback);
+      },
+      callback);
+}
+
+class PropertyParser {
+ public:
+  PropertyParser(PlyHeader::Format format,
+                 std::optional<PlyHeader::Property::Type> list_type,
+                 PlyHeader::Property::Type source_type,
+                 PlyHeader::Property::Type dest_type, Handler handler,
+                 OnConversionErrorFunc on_conversion_error,
+                 const std::string& element_name,
+                 const std::string& property_name);
+
+  std::error_code Parse(std::istream& stream, Context& context) const;
+
+ private:
+  const std::string& element_name_;
+  const std::string& property_name_;
+  ReadFunc read_length_;
+  ConvertFunc convert_length_;
+  ReadFunc read_;
+  ConvertFunc convert_;
+  AppendFunc append_to_list_;
+  OnConversionErrorFunc on_conversion_error_;
+  Handler handler_;
+};
+
+PropertyParser::PropertyParser(
+    PlyHeader::Format format,
+    std::optional<PlyHeader::Property::Type> list_type,
+    PlyHeader::Property::Type source_type, PlyHeader::Property::Type dest_type,
+    Handler handler, OnConversionErrorFunc on_conversion_error,
+    const std::string& element_name, const std::string& property_name)
+    : element_name_(element_name),
+      property_name_(property_name),
+      read_length_(list_type ? GetReadFunc(format, *list_type) : nullptr),
+      convert_length_(
+          list_type
+              ? GetConvertFunc(*list_type, PlyHeader::Property::Type::UINT)
+              : nullptr),
+      read_(GetReadFunc(format, source_type)),
+      convert_(GetConvertFunc(source_type, dest_type)),
+      append_to_list_(list_type ? GetAppendFunc(dest_type) : nullptr),
+      on_conversion_error_(std::move(on_conversion_error)),
+      handler_(std::move(handler)) {}
+
+std::error_code PropertyParser::Parse(std::istream& stream,
+                                      Context& context) const {
+  uint32_t length = 1;
+  if (read_length_) {
+    if (std::error_code error = read_length_(stream, context); error) {
+      if (error == ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE) {
+        return ErrorCode::ELEMENT_LIST_SIZE_OUT_OF_RANGE;
+      }
+
+      if (error == ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED) {
+        return ErrorCode::ELEMENT_LIST_SIZE_PARSING_FAILED;
+      }
+
+      return error;
+    }
+
+    if (convert_length_(context)) {
+      return ErrorCode::NEGATIVE_LIST_SIZE;
+    }
+
+    length = std::get<uint32_t>(context.data);
+  }
+
+  for (uint32_t i = 0; i < length; i++) {
+    if (std::error_code error = read_(stream, context); error) {
+      return error;
+    }
+
+    if (std::error_code error = convert_(context); error) {
+      return on_conversion_error_(element_name_, property_name_, error);
+    }
+
+    if (append_to_list_) {
+      append_to_list_(context);
+    }
+  }
+
+  if (handler_) {
+    if (std::error_code error = handler_(context); error) {
+      return error;
+    }
+  }
+
+  return std::error_code();
 }
 
 }  // namespace
 
-std::error_code PlyReader::ReadFrom(std::istream& input) {
-  if (!input) {
+std::error_code PlyReader::ReadFrom(std::istream& stream) {
+  if (!stream) {
     return ErrorCode::BAD_STREAM;
   }
 
-  auto header = ReadPlyHeader(input);
+  auto header = ReadPlyHeader(stream);
   if (!header) {
     return header.error();
   }
 
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, PropertyCallback>>
-      empty_callbacks;
+      actual_callbacks;
   for (const auto& element : header->elements) {
     num_element_instances[element.name] = element.num_in_file;
 
     auto insertion_iterator =
-        empty_callbacks
+        actual_callbacks
             .emplace(element.name, std::map<std::string, PropertyCallback>())
             .first;
     for (const auto& property : element.properties) {
@@ -539,22 +672,22 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
       if (property.list_type) {
         switch (property.data_type) {
           case PlyHeader::Property::Type::CHAR:
-            callback = Int8PropertyListCallback();
+            callback = CharPropertyListCallback();
             break;
           case PlyHeader::Property::Type::UCHAR:
-            callback = UInt8PropertyListCallback();
+            callback = UCharPropertyListCallback();
             break;
           case PlyHeader::Property::Type::SHORT:
-            callback = Int16PropertyListCallback();
+            callback = ShortPropertyListCallback();
             break;
           case PlyHeader::Property::Type::USHORT:
-            callback = UInt16PropertyListCallback();
+            callback = UShortPropertyListCallback();
             break;
           case PlyHeader::Property::Type::INT:
-            callback = Int32PropertyListCallback();
+            callback = IntPropertyListCallback();
             break;
           case PlyHeader::Property::Type::UINT:
-            callback = UInt32PropertyListCallback();
+            callback = UIntPropertyListCallback();
             break;
           case PlyHeader::Property::Type::FLOAT:
             callback = FloatPropertyListCallback();
@@ -566,22 +699,22 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
       } else {
         switch (property.data_type) {
           case PlyHeader::Property::Type::CHAR:
-            callback = Int8PropertyCallback();
+            callback = CharPropertyCallback();
             break;
           case PlyHeader::Property::Type::UCHAR:
-            callback = UInt8PropertyCallback();
+            callback = UCharPropertyCallback();
             break;
           case PlyHeader::Property::Type::SHORT:
-            callback = Int16PropertyCallback();
+            callback = ShortPropertyCallback();
             break;
           case PlyHeader::Property::Type::USHORT:
-            callback = UInt16PropertyCallback();
+            callback = UShortPropertyCallback();
             break;
           case PlyHeader::Property::Type::INT:
-            callback = Int32PropertyCallback();
+            callback = IntPropertyCallback();
             break;
           case PlyHeader::Property::Type::UINT:
-            callback = UInt32PropertyCallback();
+            callback = UIntPropertyCallback();
             break;
           case PlyHeader::Property::Type::FLOAT:
             callback = FloatPropertyCallback();
@@ -596,112 +729,112 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
     }
   }
 
-  auto callbacks = empty_callbacks;
-  if (std::error_code error = Start(num_element_instances, callbacks,
-                                    header->comments, header->object_info);
+  auto requested_callbacks = actual_callbacks;
+  if (std::error_code error =
+          Start(std::move(num_element_instances), requested_callbacks,
+                std::move(header->comments), std::move(header->object_info));
       error) {
     return error;
   }
 
-  size_t element_index = 0;
-  std::map<std::string,
-           std::map<std::string, std::tuple<size_t, size_t, PropertyCallback>>>
-      requested_callbacks;
-  for (const auto& element : callbacks) {
-    size_t property_index = 0;
-    for (const auto& property : element.second) {
-      if (std::visit([](auto value) { return value == nullptr; },
-                     property.second)) {
-        continue;
-      }
-
-      requested_callbacks[element.first][property.first] =
-          std::make_tuple(element_index, property_index, property.second);
-      property_index += 1;
+  for (auto& [element_name, element_callbacks] : requested_callbacks) {
+    auto element_iter = actual_callbacks.find(element_name);
+    if (element_iter == actual_callbacks.end()) {
+      return ErrorCode::UNKNOWN_ELEMENT;
     }
 
-    if (property_index != 0) {
-      element_index += 1;
-    }
-  }
-
-  std::map<std::string,
-           std::map<std::string, std::tuple<size_t, size_t, PropertyCallback>>>
-      numbered_callbacks;
-  for (const auto& element : empty_callbacks) {
-    for (const auto& property : element.second) {
-      auto insertion_iterator =
-          numbered_callbacks[element.first]
-              .emplace(property.first, std::make_tuple(0, 0, property.second))
-              .first;
-
-      auto element_iter = requested_callbacks.find(element.first);
-      if (element_iter == requested_callbacks.end()) {
-        continue;
-      }
-
-      auto property_iter = element_iter->second.find(property.first);
+    for (auto& [property_name, property_callback] : element_callbacks) {
+      auto property_iter = element_iter->second.find(property_name);
       if (property_iter == element_iter->second.end()) {
-        continue;
+        return ErrorCode::UNKNOWN_PROPERTY;
       }
 
-      if (std::get<2>(property_iter->second).index() !=
-          property.second.index()) {
-        continue;
+      size_t original_index = property_iter->second.index();
+      size_t desired_index = property_callback.index();
+
+      if ((original_index & 0x1u) != (desired_index & 0x1u)) {
+        return ErrorCode::UNSUPPORTED_CONVERSION;
       }
 
-      insertion_iterator->second = property_iter->second;
+      if ((original_index >> 1u) < 6 && (desired_index >> 1u) >= 6) {
+        return ErrorCode::UNSUPPORTED_CONVERSION;
+      }
+
+      property_iter->second = std::move(property_callback);
     }
   }
 
-  std::vector<
-      std::tuple<std::string, uintmax_t,
-                 std::vector<std::tuple<
-                     std::string, std::optional<PlyHeader::Property::Type>,
-                     size_t, size_t, PropertyCallback>>>>
-      ordered_callbacks;
-  for (const auto& element : header->elements) {
-    ordered_callbacks.emplace_back(
-        element.name, element.num_in_file,
-        std::vector<
-            std::tuple<std::string, std::optional<PlyHeader::Property::Type>,
-                       size_t, size_t, PropertyCallback>>());
-    for (const auto& property : element.properties) {
-      const auto& numbered_property = numbered_callbacks.find(element.name)
-                                          ->second.find(property.name)
-                                          ->second;
-      auto& row = std::get<2>(ordered_callbacks.back());
-      row.emplace_back(
-          property.name, property.list_type, std::get<0>(numbered_property),
-          std::get<1>(numbered_property), std::get<2>(numbered_property));
+  std::vector<std::vector<PropertyParser>> parsers;
+  for (const PlyHeader::Element& element : header->elements) {
+    parsers.emplace_back();
+    for (const PlyHeader::Property& property : element.properties) {
+      const PropertyCallback& callback = actual_callbacks.find(element.name)
+                                             ->second.find(property.name)
+                                             ->second;
+      parsers.back().emplace_back(
+          header->format, property.list_type, property.data_type,
+          static_cast<PlyHeader::Property::Type>(callback.index() >> 1u),
+          MakeHandler(callback),
+          [&, this](const std::string& element_name,
+                    const std::string& property_name,
+                    std::error_code original_error) -> std::error_code {
+            ConversionFailureReason reason;
+            if (original_error == ErrorCode::CONVERSION_SIGNED_UNDERFLOW) {
+              reason = ConversionFailureReason::SIGNED_INTEGER_UNDERFLOW;
+            } else if (original_error ==
+                       ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW) {
+              reason = ConversionFailureReason::UNSIGNED_INTEGER_UNDERFLOW;
+            } else if (original_error ==
+                       ErrorCode::CONVERSION_INTEGER_OVERFLOW) {
+              reason = ConversionFailureReason::INTEGER_OVERFLOW;
+            } else if (original_error ==
+                       ErrorCode::CONVERSION_FLOAT_UNDERFLOW) {
+              reason = ConversionFailureReason::FLOAT_UNDERFLOW;
+            } else {
+              reason = ConversionFailureReason::FLOAT_OVERFLOW;
+            }
+
+            if (std::error_code error =
+                    OnConversionError(element_name, property_name, reason);
+                error) {
+              return error;
+            }
+
+            return original_error;
+          },
+          element.name, property.name);
     }
   }
 
   Context context;
-  std::get<std::string_view>(context) = header->line_ending;
+  context.line_ending = header->line_ending;
+  for (size_t element_index = 0; element_index < header->elements.size();
+       element_index++) {
+    for (size_t instance = 0;
+         instance < header->elements[element_index].num_in_file; instance++) {
+      if (header->format == PlyHeader::Format::ASCII) {
+        if (std::error_code error = ReadNextLine(stream, context); error) {
+          return error;
+        }
+      }
 
-  std::vector<
-      std::pair<uintmax_t, std::vector<std::unique_ptr<PropertyReaderBase>>>>
-      wrapped_callbacks;
-  switch (header->format) {
-    case PlyHeader::Format::ASCII:
-      wrapped_callbacks = BuildPropertyReaders<true, std::endian::native>(
-          input, *this, ordered_callbacks, context);
-      break;
-    case PlyHeader::Format::BINARY_BIG_ENDIAN:
-      wrapped_callbacks = BuildPropertyReaders<false, std::endian::big>(
-          input, *this, ordered_callbacks, context);
-      break;
-    case PlyHeader::Format::BINARY_LITTLE_ENDIAN:
-      wrapped_callbacks = BuildPropertyReaders<false, std::endian::little>(
-          input, *this, ordered_callbacks, context);
-      break;
-  }
+      for (size_t property_index = 0;
+           property_index < header->elements[element_index].properties.size();
+           property_index++) {
+        if (std::error_code error =
+                parsers[element_index][property_index].Parse(stream, context);
+            error) {
+          return error;
+        }
+      }
 
-  for (const auto& element : wrapped_callbacks) {
-    for (uintmax_t instance = 0; instance < element.first; instance++) {
-      for (const auto& property_reader : element.second) {
-        if (std::error_code error = property_reader->Read(instance); error) {
+      if (header->format == PlyHeader::Format::ASCII) {
+        if (std::error_code error = ReadNextToken(context);
+            error != ErrorCode::ELEMENT_TOO_FEW_TOKENS) {
+          if (!error) {
+            return ErrorCode::ELEMENT_CONTAINS_EXTRA_TOKENS;
+          }
+
           return error;
         }
       }
@@ -712,8 +845,8 @@ std::error_code PlyReader::ReadFrom(std::istream& input) {
 }
 
 // Static assertions to ensure float types are properly sized
-static_assert(sizeof(double) == 8);
-static_assert(sizeof(float) == 4);
+static_assert(std::numeric_limits<double>::is_iec559 && sizeof(double) == 8);
+static_assert(std::numeric_limits<float>::is_iec559 && sizeof(float) == 4);
 
 // Static assertions to ensure system does not use mixed endianness
 static_assert(std::endian::native == std::endian::little ||

@@ -129,11 +129,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index, typename T>
-  std::error_code AddPosition(const std::string &element_name,
-                              size_t element_index,
-                              const std::string &property_name,
-                              size_t property_index, uintmax_t instance,
-                              T value) {
+  std::error_code AddPosition(T value) {
     xyz_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(xyz_[index])) {
@@ -150,11 +146,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index, typename T>
-  std::error_code AddNormal(const std::string &element_name,
-                            size_t element_index,
-                            const std::string &property_name,
-                            size_t property_index, uintmax_t instance,
-                            T value) {
+  std::error_code AddNormal(T value) {
     normals_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(normals_storage_[index])) {
@@ -171,9 +163,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <size_t index, typename T>
-  std::error_code AddUV(const std::string &element_name, size_t element_index,
-                        const std::string &property_name, size_t property_index,
-                        uintmax_t instance, T value) {
+  std::error_code AddUV(T value) {
     uv_storage_[index] = static_cast<LocationType>(value);
 
     if (!std::isfinite(uv_storage_[index])) {
@@ -210,11 +200,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   template <typename T>
-  std::error_code AddVertexIndices(const std::string &element_name,
-                                   size_t element_index,
-                                   const std::string &property_name,
-                                   size_t property_index, uintmax_t instance,
-                                   std::span<const T> value) {
+  std::error_code AddVertexIndices(std::span<const T> value) {
     if (value.size() >= 3) {
       if (std::error_code error = ValidateVertexIndex(value[0]); error) {
         return error;
@@ -268,14 +254,16 @@ class TriangleMeshReader : public PlyReader {
     if (property) {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
       if (float_callback) {
-        return FloatPropertyCallback(
-            &TriangleMeshReader::AddPosition<index, float>);
+        return FloatPropertyCallback([this](float value) {
+          return TriangleMeshReader::AddPosition<index, float>(value);
+        });
       }
 
       auto *double_callback = std::get_if<DoublePropertyCallback>(property);
       if (double_callback) {
-        return DoublePropertyCallback(
-            &TriangleMeshReader::AddPosition<index, double>);
+        return DoublePropertyCallback([this](double value) {
+          return TriangleMeshReader::AddPosition<index, double>(value);
+        });
       }
 
       return std::unexpected(MakeError(ErrorCode::INVALID_VERTEX_TYPE));
@@ -295,14 +283,16 @@ class TriangleMeshReader : public PlyReader {
     if (property) {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
       if (float_callback) {
-        return FloatPropertyCallback(
-            &TriangleMeshReader::AddNormal<index, float>);
+        return FloatPropertyCallback([this](float value) {
+          return TriangleMeshReader::AddNormal<index, float>(value);
+        });
       }
 
       auto *double_callback = std::get_if<DoublePropertyCallback>(property);
       if (double_callback) {
-        return DoublePropertyCallback(
-            &TriangleMeshReader::AddNormal<index, double>);
+        return DoublePropertyCallback([this](double value) {
+          return TriangleMeshReader::AddNormal<index, double>(value);
+        });
       }
 
       return std::unexpected(MakeError(ErrorCode::INVALID_NORMAL_TYPE));
@@ -324,15 +314,17 @@ class TriangleMeshReader : public PlyReader {
       auto *float_callback = std::get_if<FloatPropertyCallback>(property);
       if (float_callback) {
         return std::make_pair(
-            property_name,
-            FloatPropertyCallback(&TriangleMeshReader::AddUV<index, float>));
+            property_name, FloatPropertyCallback([this](float value) {
+              return TriangleMeshReader::AddUV<index, float>(value);
+            }));
       }
 
       auto *double_callback = std::get_if<DoublePropertyCallback>(property);
       if (double_callback) {
         return std::make_pair(
-            property_name,
-            DoublePropertyCallback(&TriangleMeshReader::AddUV<index, double>));
+            property_name, DoublePropertyCallback([this](double value) {
+              return TriangleMeshReader::AddUV<index, double>(value);
+            }));
       }
 
       return std::unexpected(
@@ -367,40 +359,50 @@ class TriangleMeshReader : public PlyReader {
     auto property = LookupProperty(callbacks, element_name, property_name);
 
     if (property) {
-      auto *int8_callback = std::get_if<Int8PropertyListCallback>(property);
+      auto *int8_callback = std::get_if<CharPropertyListCallback>(property);
       if (int8_callback) {
-        return Int8PropertyListCallback(
-            &TriangleMeshReader::AddVertexIndices<int8_t>);
+        return CharPropertyListCallback([this](std::span<const int8_t> value) {
+          return TriangleMeshReader::AddVertexIndices<int8_t>(value);
+        });
       }
 
-      auto *uint8_callback = std::get_if<UInt8PropertyListCallback>(property);
+      auto *uint8_callback = std::get_if<UCharPropertyListCallback>(property);
       if (uint8_callback) {
-        return UInt8PropertyListCallback(
-            &TriangleMeshReader::AddVertexIndices<uint8_t>);
+        return UCharPropertyListCallback(
+            [this](std::span<const uint8_t> value) {
+              return TriangleMeshReader::AddVertexIndices<uint8_t>(value);
+            });
       }
 
-      auto *int16_callback = std::get_if<Int16PropertyListCallback>(property);
+      auto *int16_callback = std::get_if<ShortPropertyListCallback>(property);
       if (int16_callback) {
-        return Int16PropertyListCallback(
-            &TriangleMeshReader::AddVertexIndices<int16_t>);
+        return ShortPropertyListCallback(
+            [this](std::span<const int16_t> value) {
+              return TriangleMeshReader::AddVertexIndices<int16_t>(value);
+            });
       }
 
-      auto *uint16_callback = std::get_if<UInt16PropertyListCallback>(property);
+      auto *uint16_callback = std::get_if<UShortPropertyListCallback>(property);
       if (uint16_callback) {
-        return UInt16PropertyListCallback(
-            &TriangleMeshReader::AddVertexIndices<uint16_t>);
+        return UShortPropertyListCallback(
+            [this](std::span<const uint16_t> value) {
+              return TriangleMeshReader::AddVertexIndices<uint16_t>(value);
+            });
       }
 
-      auto *int32_callback = std::get_if<Int32PropertyListCallback>(property);
+      auto *int32_callback = std::get_if<IntPropertyListCallback>(property);
       if (int32_callback) {
-        return Int32PropertyListCallback(
-            &TriangleMeshReader::AddVertexIndices<int32_t>);
+        return IntPropertyListCallback([this](std::span<const int32_t> value) {
+          return TriangleMeshReader::AddVertexIndices<int32_t>(value);
+        });
       }
 
-      auto *uint32_callback = std::get_if<UInt32PropertyListCallback>(property);
+      auto *uint32_callback = std::get_if<UIntPropertyListCallback>(property);
       if (uint32_callback) {
-        return UInt32PropertyListCallback(
-            &TriangleMeshReader::AddVertexIndices<uint32_t>);
+        return UIntPropertyListCallback(
+            [this](std::span<const uint32_t> value) {
+              return TriangleMeshReader::AddVertexIndices<uint32_t>(value);
+            });
       }
 
       return std::unexpected(MakeError(ErrorCode::INVALID_VERTEX_INDEX_TYPE));
@@ -410,10 +412,10 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::error_code Start(
-      const std::map<std::string, uintmax_t> &num_element_instances,
+      std::map<std::string, uintmax_t> num_element_instances,
       std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
-      const std::vector<std::string> &comments,
-      const std::vector<std::string> &obj_infos) final {
+      std::vector<std::string> comments,
+      std::vector<std::string> object_info) final {
     Start();
 
     auto x = LocationPropertyIndex<0>(callbacks, "vertex", "x");
