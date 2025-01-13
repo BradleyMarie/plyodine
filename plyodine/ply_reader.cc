@@ -4,7 +4,6 @@
 #include <charconv>
 #include <cstdint>
 #include <ios>
-#include <istream>
 #include <map>
 #include <memory>
 #include <span>
@@ -645,6 +644,30 @@ std::error_code PropertyParser::Parse(std::istream& stream,
   return std::error_code();
 }
 
+PropertyCallback MakeEmptyCallback(PlyHeader::Property::Type data_type,
+                                   bool is_list) {
+  static const PropertyCallback empty_callbacks[16] = {
+      PropertyCallback(std::in_place_index<0>),
+      PropertyCallback(std::in_place_index<1>),
+      PropertyCallback(std::in_place_index<2>),
+      PropertyCallback(std::in_place_index<3>),
+      PropertyCallback(std::in_place_index<4>),
+      PropertyCallback(std::in_place_index<5>),
+      PropertyCallback(std::in_place_index<6>),
+      PropertyCallback(std::in_place_index<7>),
+      PropertyCallback(std::in_place_index<8>),
+      PropertyCallback(std::in_place_index<9>),
+      PropertyCallback(std::in_place_index<10>),
+      PropertyCallback(std::in_place_index<11>),
+      PropertyCallback(std::in_place_index<12>),
+      PropertyCallback(std::in_place_index<13>),
+      PropertyCallback(std::in_place_index<14>),
+      PropertyCallback(std::in_place_index<15>)};
+
+  return empty_callbacks[2 * static_cast<size_t>(data_type) +
+                         static_cast<size_t>(is_list)];
+}
+
 }  // namespace
 
 std::error_code PlyReader::ReadFrom(std::istream& stream) {
@@ -668,64 +691,8 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
             .emplace(element.name, std::map<std::string, PropertyCallback>())
             .first;
     for (const auto& property : element.properties) {
-      PropertyCallback callback;
-      if (property.list_type) {
-        switch (property.data_type) {
-          case PlyHeader::Property::Type::CHAR:
-            callback = CharPropertyListCallback();
-            break;
-          case PlyHeader::Property::Type::UCHAR:
-            callback = UCharPropertyListCallback();
-            break;
-          case PlyHeader::Property::Type::SHORT:
-            callback = ShortPropertyListCallback();
-            break;
-          case PlyHeader::Property::Type::USHORT:
-            callback = UShortPropertyListCallback();
-            break;
-          case PlyHeader::Property::Type::INT:
-            callback = IntPropertyListCallback();
-            break;
-          case PlyHeader::Property::Type::UINT:
-            callback = UIntPropertyListCallback();
-            break;
-          case PlyHeader::Property::Type::FLOAT:
-            callback = FloatPropertyListCallback();
-            break;
-          case PlyHeader::Property::Type::DOUBLE:
-            callback = DoublePropertyListCallback();
-            break;
-        }
-      } else {
-        switch (property.data_type) {
-          case PlyHeader::Property::Type::CHAR:
-            callback = CharPropertyCallback();
-            break;
-          case PlyHeader::Property::Type::UCHAR:
-            callback = UCharPropertyCallback();
-            break;
-          case PlyHeader::Property::Type::SHORT:
-            callback = ShortPropertyCallback();
-            break;
-          case PlyHeader::Property::Type::USHORT:
-            callback = UShortPropertyCallback();
-            break;
-          case PlyHeader::Property::Type::INT:
-            callback = IntPropertyCallback();
-            break;
-          case PlyHeader::Property::Type::UINT:
-            callback = UIntPropertyCallback();
-            break;
-          case PlyHeader::Property::Type::FLOAT:
-            callback = FloatPropertyCallback();
-            break;
-          case PlyHeader::Property::Type::DOUBLE:
-            callback = DoublePropertyCallback();
-            break;
-        }
-      }
-
-      insertion_iterator->second[property.name] = callback;
+      insertion_iterator->second[property.name] =
+          MakeEmptyCallback(property.data_type, property.list_type.has_value());
     }
   }
 
