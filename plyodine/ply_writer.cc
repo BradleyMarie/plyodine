@@ -118,8 +118,8 @@ using PropertyGenerator = std::variant<
     std::generator<float>, std::generator<std::span<const float>>,
     std::generator<double>, std::generator<std::span<const double>>>;
 
-using GetPropertyListSizeProxy =
-    unsigned int (PlyWriter::*)(const std::string&, const std::string&) const;
+using GetPropertyListSizeProxy = int (PlyWriter::*)(const std::string&,
+                                                    const std::string&) const;
 
 struct ListTypeParameters {
   std::string_view prefix;
@@ -388,6 +388,8 @@ static constexpr ListTypeParameters kListParameters[3]{
      SerializeListSizeBinary<std::endian::little, uint32_t>},
 };
 
+static constexpr int kNumListParameters = std::size(kListParameters);
+
 std::map<std::string,
          std::map<std::string,
                   std::pair<PropertyGenerator, const ListTypeParameters*>>>
@@ -406,9 +408,11 @@ BuildGenerators(std::map<std::string, std::map<std::string, PropertyGenerator>>
     for (auto& [property_name, generator] : elements) {
       const ListTypeParameters* name_and_capacity = nullptr;
       if (generator.index() & 1u) {
-        unsigned int list_size_type = std::min(
-            (ply_writer.*get_property_list_type)(element_name, property_name),
-            static_cast<unsigned int>(std::size(kListParameters)));
+        int list_size_type =
+            (ply_writer.*get_property_list_type)(element_name, property_name);
+        if (list_size_type < 0 || list_size_type > kNumListParameters) {
+          list_size_type = kNumListParameters;
+        }
         name_and_capacity =
             &kListParameters[static_cast<size_t>(list_size_type)];
       }

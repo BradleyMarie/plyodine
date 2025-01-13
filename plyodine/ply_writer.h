@@ -70,7 +70,7 @@ class PlyWriter {
   PlyWriter() = default;
 
   // The type used for the size of a property list.
-  enum class ListSizeType : unsigned int {
+  enum class ListSizeType {
     UCHAR = 0,   // Equivalent to uint8_t
     USHORT = 1,  // Equivalent to uint16_t
     UINT = 2,    // Equivalent to uint32_t
