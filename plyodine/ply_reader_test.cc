@@ -47,6 +47,12 @@ enum class PropertyType {
 class MockPlyReader final : public PlyReader {
  public:
   bool initialize_callbacks = true;
+  bool add_invalid_element = false;
+  bool add_invalid_property = false;
+  bool convert_float_to_int = false;
+  bool convert_int_to_float = false;
+  bool convert_list_to_scalar = false;
+  bool convert_scalar_to_list = false;
 
   MOCK_METHOD(std::error_code, StartImpl,
               ((const std::map<
@@ -131,7 +137,15 @@ class MockPlyReader final : public PlyReader {
       return std::error_code();
     }
 
+    if (add_invalid_element) {
+      callbacks.try_emplace("invalid_element");
+    }
+
     for (const auto& element : properties) {
+      if (add_invalid_property) {
+        callbacks[element.first].try_emplace("invalid_property");
+      }
+
       for (const auto& property : element.second.second) {
         switch (property.second) {
           case PropertyType::CHAR:
@@ -212,11 +226,21 @@ class MockPlyReader final : public PlyReader {
                 });
             break;
           case PropertyType::UINT:
-            callbacks[element.first][property.first] = UIntPropertyCallback(
-                [element_name = element.first, property_name = property.first,
-                 this](uint32_t value) {
-                  return HandleUInt(element_name, property_name, value);
-                });
+            if (convert_int_to_float) {
+              callbacks[element.first][property.first] =
+                  FloatPropertyListCallback([element_name = element.first,
+                                             property_name = property.first,
+                                             this](
+                                                std::span<const float> value) {
+                    return HandleFloatList(element_name, property_name, value);
+                  });
+            } else {
+              callbacks[element.first][property.first] = UIntPropertyCallback(
+                  [element_name = element.first, property_name = property.first,
+                   this](uint32_t value) {
+                    return HandleUInt(element_name, property_name, value);
+                  });
+            }
             break;
           case PropertyType::UINT_LIST:
             callbacks[element.first][property.first] = UIntPropertyListCallback(
@@ -226,11 +250,19 @@ class MockPlyReader final : public PlyReader {
                 });
             break;
           case PropertyType::FLOAT:
-            callbacks[element.first][property.first] = FloatPropertyCallback(
-                [element_name = element.first, property_name = property.first,
-                 this](float value) {
-                  return HandleFloat(element_name, property_name, value);
-                });
+            if (convert_float_to_int) {
+              callbacks[element.first][property.first] = UIntPropertyCallback(
+                  [element_name = element.first, property_name = property.first,
+                   this](uint32_t value) {
+                    return HandleUInt(element_name, property_name, value);
+                  });
+            } else {
+              callbacks[element.first][property.first] = FloatPropertyCallback(
+                  [element_name = element.first, property_name = property.first,
+                   this](float value) {
+                    return HandleFloat(element_name, property_name, value);
+                  });
+            }
             break;
           case PropertyType::FLOAT_LIST:
             callbacks[element.first][property.first] =
@@ -241,20 +273,40 @@ class MockPlyReader final : public PlyReader {
                 });
             break;
           case PropertyType::DOUBLE:
-            callbacks[element.first][property.first] = DoublePropertyCallback(
-                [element_name = element.first, property_name = property.first,
-                 this](double value) {
-                  return HandleDouble(element_name, property_name, value);
-                });
+            if (convert_scalar_to_list) {
+              callbacks[element.first][property.first] =
+                  DoublePropertyListCallback(
+                      [element_name = element.first,
+                       property_name = property.first,
+                       this](std::span<const double> value) {
+                        return HandleDoubleList(element_name, property_name,
+                                                value);
+                      });
+            } else {
+              callbacks[element.first][property.first] = DoublePropertyCallback(
+                  [element_name = element.first, property_name = property.first,
+                   this](double value) {
+                    return HandleDouble(element_name, property_name, value);
+                  });
+            }
             break;
           case PropertyType::DOUBLE_LIST:
-            callbacks[element.first][property.first] =
-                DoublePropertyListCallback([element_name = element.first,
-                                            property_name = property.first,
-                                            this](
-                                               std::span<const double> value) {
-                  return HandleDoubleList(element_name, property_name, value);
-                });
+            if (convert_list_to_scalar) {
+              callbacks[element.first][property.first] = DoublePropertyCallback(
+                  [element_name = element.first, property_name = property.first,
+                   this](double value) {
+                    return HandleDouble(element_name, property_name, value);
+                  });
+            } else {
+              callbacks[element.first][property.first] =
+                  DoublePropertyListCallback(
+                      [element_name = element.first,
+                       property_name = property.first,
+                       this](std::span<const double> value) {
+                        return HandleDoubleList(element_name, property_name,
+                                                value);
+                      });
+            }
             break;
         }
       }
@@ -469,6 +521,90 @@ TEST(Header, StartFails) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_empty.ply");
   EXPECT_EQ(reader.ReadFrom(stream).value(), 1);
+}
+
+TEST(Error, UnknownElement) {
+  MockPlyReader reader;
+  reader.add_invalid_element = true;
+
+  EXPECT_CALL(reader, StartImpl(_, _, _))
+      .Times(1)
+      .WillOnce(Return(std::error_code()));
+
+  std::ifstream stream =
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
+  EXPECT_EQ("The callback map contained an unknown element",
+            reader.ReadFrom(stream).message());
+}
+
+TEST(Error, UnknownProperty) {
+  MockPlyReader reader;
+  reader.add_invalid_property = true;
+
+  EXPECT_CALL(reader, StartImpl(_, _, _))
+      .Times(1)
+      .WillOnce(Return(std::error_code()));
+
+  std::ifstream stream =
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
+  EXPECT_EQ("The callback map contained an unknown property",
+            reader.ReadFrom(stream).message());
+}
+
+TEST(Error, IntToFloat) {
+  MockPlyReader reader;
+  reader.convert_int_to_float = true;
+
+  EXPECT_CALL(reader, StartImpl(_, _, _))
+      .Times(1)
+      .WillOnce(Return(std::error_code()));
+
+  std::ifstream stream =
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
+  EXPECT_EQ("The callback map requested an unsupported conversion",
+            reader.ReadFrom(stream).message());
+}
+
+TEST(Error, FloatToInt) {
+  MockPlyReader reader;
+  reader.convert_float_to_int = true;
+
+  EXPECT_CALL(reader, StartImpl(_, _, _))
+      .Times(1)
+      .WillOnce(Return(std::error_code()));
+
+  std::ifstream stream =
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
+  EXPECT_EQ("The callback map requested an unsupported conversion",
+            reader.ReadFrom(stream).message());
+}
+
+TEST(Error, ListToScalar) {
+  MockPlyReader reader;
+  reader.convert_list_to_scalar = true;
+
+  EXPECT_CALL(reader, StartImpl(_, _, _))
+      .Times(1)
+      .WillOnce(Return(std::error_code()));
+
+  std::ifstream stream =
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
+  EXPECT_EQ("The callback map requested an unsupported conversion",
+            reader.ReadFrom(stream).message());
+}
+
+TEST(Error, ScalarToList) {
+  MockPlyReader reader;
+  reader.convert_scalar_to_list = true;
+
+  EXPECT_CALL(reader, StartImpl(_, _, _))
+      .Times(1)
+      .WillOnce(Return(std::error_code()));
+
+  std::ifstream stream =
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
+  EXPECT_EQ("The callback map requested an unsupported conversion",
+            reader.ReadFrom(stream).message());
 }
 
 TEST(ASCII, Empty) {

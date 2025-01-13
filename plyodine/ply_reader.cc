@@ -62,11 +62,11 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::BAD_STREAM:
       return "Input stream must be in good state";
     case ErrorCode::UNKNOWN_ELEMENT:
-      return "";
+      return "The callback map contained an unknown element";
     case ErrorCode::UNKNOWN_PROPERTY:
-      return "";
+      return "The callback map contained an unknown property";
     case ErrorCode::UNSUPPORTED_CONVERSION:
-      return "";
+      return "The callback map requested an unsupported conversion";
     case ErrorCode::UNEXPECTED_EOF:
       return "Unexpected EOF";
     case ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS:
@@ -91,15 +91,15 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED:
       return "The input contained a property entry that failed to parse";
     case ErrorCode::CONVERSION_SIGNED_UNDERFLOW:
-      return "";
+      return "Signed integer conversion underflowed";
     case ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW:
-      return "";
+      return "Signed integer to unsigned integer conversion underflowed";
     case ErrorCode::CONVERSION_INTEGER_OVERFLOW:
-      return "";
+      return "Integer conversion overflowed";
     case ErrorCode::CONVERSION_FLOAT_UNDERFLOW:
-      return "";
+      return "Floating point conversion underflowed";
     case ErrorCode::CONVERSION_FLOAT_OVERFLOW:
-      return "";
+      return "Floating point conversion overflowed";
   };
 
   return "Unknown Error";
@@ -379,7 +379,8 @@ std::error_code Convert(Context& context) {
 
 template <size_t SourceTypeIndex, size_t DestTypeIndex>
 constexpr ConvertFunc GetConvertFunc() {
-  if constexpr (SourceTypeIndex >= 6 && DestTypeIndex < 6) {
+  if constexpr ((SourceTypeIndex >= 6 && DestTypeIndex < 6) ||
+                (SourceTypeIndex < 6 && DestTypeIndex >= 6)) {
     return nullptr;
   }
 
@@ -624,7 +625,8 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
         return ErrorCode::UNSUPPORTED_CONVERSION;
       }
 
-      if ((original_index >> 1u) < 6 && (desired_index >> 1u) >= 6) {
+      if (((original_index >> 1u) < 6 && (desired_index >> 1u) >= 6) ||
+          ((original_index >> 1u) >= 6 && (desired_index >> 1u) < 6)) {
         return ErrorCode::UNSUPPORTED_CONVERSION;
       }
 
