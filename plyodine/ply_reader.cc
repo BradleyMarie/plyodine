@@ -416,127 +416,16 @@ AppendFunc GetAppendFunc(PlyHeader::Property::Type dest_type) {
   return append_funcs[static_cast<size_t>(dest_type)];
 }
 
-Handler MakeHandler(const std::function<std::error_code(int8_t)>& callback) {
-  return [&](Context& context) {
-    return callback(std::get<int8_t>(context.data));
-  };
+template <typename T>
+Handler MakeHandler(const std::function<std::error_code(T)>& callback) {
+  return [&](Context& context) { return callback(std::get<T>(context.data)); };
 }
 
+template <typename T>
 Handler MakeHandler(
-    const std::function<std::error_code(std::span<const int8_t>)>& callback) {
+    const std::function<std::error_code(std::span<const T>)>& callback) {
   return [&](Context& context) {
-    auto& data = std::get<std::vector<int8_t>>(context.data);
-    std::error_code result = callback(data);
-    data.clear();
-    return result;
-  };
-}
-
-Handler MakeHandler(const std::function<std::error_code(uint8_t)>& callback) {
-  return [&](Context& context) {
-    return callback(std::get<uint8_t>(context.data));
-  };
-}
-
-Handler MakeHandler(
-    const std::function<std::error_code(std::span<const uint8_t>)>& callback) {
-  return [&](Context& context) {
-    auto& data = std::get<std::vector<uint8_t>>(context.data);
-    std::error_code result = callback(data);
-    data.clear();
-    return result;
-  };
-}
-
-Handler MakeHandler(const std::function<std::error_code(int16_t)>& callback) {
-  return [&](Context& context) {
-    return callback(std::get<int16_t>(context.data));
-  };
-}
-
-Handler MakeHandler(
-    const std::function<std::error_code(std::span<const int16_t>)>& callback) {
-  return [&](Context& context) {
-    auto& data = std::get<std::vector<int16_t>>(context.data);
-    std::error_code result = callback(data);
-    data.clear();
-    return result;
-  };
-}
-
-Handler MakeHandler(const std::function<std::error_code(uint16_t)>& callback) {
-  return [&](Context& context) {
-    return callback(std::get<uint16_t>(context.data));
-  };
-}
-
-Handler MakeHandler(
-    const std::function<std::error_code(std::span<const uint16_t>)>& callback) {
-  return [&](Context& context) {
-    auto& data = std::get<std::vector<uint16_t>>(context.data);
-    std::error_code result = callback(data);
-    data.clear();
-    return result;
-  };
-}
-
-Handler MakeHandler(const std::function<std::error_code(int32_t)>& callback) {
-  return [&](Context& context) {
-    return callback(std::get<int32_t>(context.data));
-  };
-}
-
-Handler MakeHandler(
-    const std::function<std::error_code(std::span<const int32_t>)>& callback) {
-  return [&](Context& context) {
-    auto& data = std::get<std::vector<int32_t>>(context.data);
-    std::error_code result = callback(data);
-    data.clear();
-    return result;
-  };
-}
-
-Handler MakeHandler(const std::function<std::error_code(uint32_t)>& callback) {
-  return [&](Context& context) {
-    return callback(std::get<uint32_t>(context.data));
-  };
-}
-
-Handler MakeHandler(
-    const std::function<std::error_code(std::span<const uint32_t>)>& callback) {
-  return [&](Context& context) {
-    auto& data = std::get<std::vector<uint32_t>>(context.data);
-    std::error_code result = callback(data);
-    data.clear();
-    return result;
-  };
-}
-
-Handler MakeHandler(const std::function<std::error_code(float)>& callback) {
-  return
-      [&](Context& context) { return callback(std::get<float>(context.data)); };
-}
-
-Handler MakeHandler(
-    const std::function<std::error_code(std::span<const float>)>& callback) {
-  return [&](Context& context) {
-    auto& data = std::get<std::vector<float>>(context.data);
-    std::error_code result = callback(data);
-    data.clear();
-    return result;
-  };
-}
-
-Handler MakeHandler(const std::function<std::error_code(double)>& callback) {
-  return [&](Context& context) {
-    return callback(std::get<double>(context.data));
-  };
-}
-
-Handler MakeHandler(
-    const std::function<std::error_code(std::span<const double>)>& callback) {
-  return [&](Context& context) {
-    auto& data = std::get<std::vector<double>>(context.data);
+    auto& data = std::get<std::vector<T>>(context.data);
     std::error_code result = callback(data);
     data.clear();
     return result;
