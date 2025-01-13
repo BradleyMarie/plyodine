@@ -2,6 +2,7 @@
 
 #include <bit>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <ios>
 #include <map>
@@ -344,18 +345,29 @@ std::error_code Convert(Context& context) {
   }
 
   if constexpr (sizeof(Source) > sizeof(Dest)) {
-    if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
-      if (std::get<Source>(context.data) < std::numeric_limits<Dest>::min()) {
-        return std::is_floating_point_v<Dest>
-                   ? ErrorCode::CONVERSION_SIGNED_UNDERFLOW
-                   : ErrorCode::CONVERSION_FLOAT_UNDERFLOW;
-      }
-    }
+    if constexpr (std::is_floating_point_v<Source>) {
+      if (std::isfinite(std::get<Source>(context.data))) {
+        if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
+          if (std::get<Source>(context.data) <
+              std::numeric_limits<Dest>::min()) {
+            return ErrorCode::CONVERSION_FLOAT_UNDERFLOW;
+          }
+        }
 
-    if (std::get<Source>(context.data) > std::numeric_limits<Dest>::max()) {
-      return std::is_floating_point_v<Dest>
-                 ? ErrorCode::CONVERSION_INTEGER_OVERFLOW
-                 : ErrorCode::CONVERSION_FLOAT_OVERFLOW;
+        if (std::get<Source>(context.data) > std::numeric_limits<Dest>::max()) {
+          return ErrorCode::CONVERSION_FLOAT_OVERFLOW;
+        }
+      }
+    } else {
+      if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
+        if (std::get<Source>(context.data) < std::numeric_limits<Dest>::min()) {
+          return ErrorCode::CONVERSION_SIGNED_UNDERFLOW;
+        }
+      }
+
+      if (std::get<Source>(context.data) > std::numeric_limits<Dest>::max()) {
+        return ErrorCode::CONVERSION_INTEGER_OVERFLOW;
+      }
     }
   }
 
