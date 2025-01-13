@@ -27,12 +27,12 @@ namespace {
 enum class ErrorCode : int {
   MIN_VALUE = 1,
   BAD_STREAM = 1,
-  COMMENT_CONTAINS_NEWLINE = 2,
-  OBJ_INFO_CONTAINS_NEWLINE = 3,
+  COMMENT_CONTAINS_INVALID_CHARACTERS = 2,
+  OBJ_INFO_CONTAINS_INVALID_CHARACTERS = 3,
   ELEMENT_HAS_NO_PROPERTIES = 4,
   PROPERTY_HAS_NO_INSTANCES = 5,
   EMPTY_NAME_SPECIFIED = 6,
-  NAME_CONTAINED_INVALID_CHARACTERS = 7,
+  NAME_CONTAINS_INVALID_CHARACTERS = 7,
   LIST_INDEX_TOO_SMALL = 8,
   ASCII_FLOAT_NOT_FINITE = 9,
   NOT_ENOUGH_VALUES = 10,
@@ -54,10 +54,10 @@ std::string ErrorCategory::message(int condition) const {
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
       return "Output stream must be in good state";
-    case ErrorCode::COMMENT_CONTAINS_NEWLINE:
-      return "A comment may not contain line feed or carriage return";
-    case ErrorCode::OBJ_INFO_CONTAINS_NEWLINE:
-      return "An obj_info may not contain line feed or carriage return";
+    case ErrorCode::COMMENT_CONTAINS_INVALID_CHARACTERS:
+      return "A comment may only contain graphic characters and spaces";
+    case ErrorCode::OBJ_INFO_CONTAINS_INVALID_CHARACTERS:
+      return "An obj_info may only contain graphic characters and spaces";
     case ErrorCode::ELEMENT_HAS_NO_PROPERTIES:
       return "An element must have at least one associated property";
     case ErrorCode::PROPERTY_HAS_NO_INSTANCES:
@@ -65,7 +65,7 @@ std::string ErrorCategory::message(int condition) const {
              "instances";
     case ErrorCode::EMPTY_NAME_SPECIFIED:
       return "Names of properties and elements may not be empty";
-    case ErrorCode::NAME_CONTAINED_INVALID_CHARACTERS:
+    case ErrorCode::NAME_CONTAINS_INVALID_CHARACTERS:
       return "Names of properties and elements may only contain graphic "
              "characters";
     case ErrorCode::LIST_INDEX_TOO_SMALL:
@@ -136,7 +136,7 @@ std::error_code ValidateName(const std::string& name) {
 
   for (char c : name) {
     if (!std::isgraph(c)) {
-      return ErrorCode::NAME_CONTAINED_INVALID_CHARACTERS;
+      return ErrorCode::NAME_CONTAINS_INVALID_CHARACTERS;
     }
   }
 
@@ -145,7 +145,7 @@ std::error_code ValidateName(const std::string& name) {
 
 bool ValidateComment(const std::string& comment) {
   for (char c : comment) {
-    if (c == '\r' || c == '\n') {
+    if (!std::isgraph(c) && c != ' ') {
       return false;
     }
   }
@@ -452,7 +452,7 @@ std::error_code WriteHeader(
 
   for (const auto& comment : comments) {
     if (!ValidateComment(comment)) {
-      return ErrorCode::COMMENT_CONTAINS_NEWLINE;
+      return ErrorCode::COMMENT_CONTAINS_INVALID_CHARACTERS;
     }
 
     if (!output.write(comment_prefix.data(), comment_prefix.size()) ||
@@ -463,7 +463,7 @@ std::error_code WriteHeader(
 
   for (const auto& info : object_info) {
     if (!ValidateComment(info)) {
-      return ErrorCode::OBJ_INFO_CONTAINS_NEWLINE;
+      return ErrorCode::OBJ_INFO_CONTAINS_INVALID_CHARACTERS;
     }
 
     if (!output.write(obj_info_prefix.data(), obj_info_prefix.size()) ||

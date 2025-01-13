@@ -469,17 +469,17 @@ TEST(Validate, NoInstances) {
 TEST(Validate, BadComment) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).message(),
-            "A comment may not contain line feed or carriage return");
+            "A comment may only contain graphic characters and spaces");
   EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).message(),
-            "A comment may not contain line feed or carriage return");
+            "A comment may only contain graphic characters and spaces");
 }
 
 TEST(Validate, BadObjInfo) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).message(),
-            "An obj_info may not contain line feed or carriage return");
+            "An obj_info may only contain graphic characters and spaces");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).message(),
-            "An obj_info may not contain line feed or carriage return");
+            "An obj_info may only contain graphic characters and spaces");
 }
 
 TEST(Validate, NoProperties) {
