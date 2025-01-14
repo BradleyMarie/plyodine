@@ -149,23 +149,6 @@ using ConvertFunc = std::error_code (*)(Context&);
 using Handler = std::function<std::error_code(Context&)>;
 using OnConversionErrorFunc = std::function<std::error_code(
     const std::string&, const std::string&, std::error_code)>;
-using PropertyCallback =
-    std::variant<std::function<std::error_code(int8_t)>,
-                 std::function<std::error_code(std::span<const int8_t>)>,
-                 std::function<std::error_code(uint8_t)>,
-                 std::function<std::error_code(std::span<const uint8_t>)>,
-                 std::function<std::error_code(int16_t)>,
-                 std::function<std::error_code(std::span<const int16_t>)>,
-                 std::function<std::error_code(uint16_t)>,
-                 std::function<std::error_code(std::span<const uint16_t>)>,
-                 std::function<std::error_code(int32_t)>,
-                 std::function<std::error_code(std::span<const int32_t>)>,
-                 std::function<std::error_code(uint32_t)>,
-                 std::function<std::error_code(std::span<const uint32_t>)>,
-                 std::function<std::error_code(float)>,
-                 std::function<std::error_code(std::span<const float>)>,
-                 std::function<std::error_code(double)>,
-                 std::function<std::error_code(std::span<const double>)>>;
 using ReadFunc = std::error_code (*)(std::istream&, Context&);
 
 std::error_code ReadNextLine(std::istream& stream, Context& context) {
@@ -446,6 +429,7 @@ Handler MakeHandler(
   };
 }
 
+template <typename PropertyCallback>
 Handler MakeHandler(const PropertyCallback& callback) {
   return std::visit(
       [](const auto& true_callback) -> Handler {
@@ -547,6 +531,7 @@ std::error_code PropertyParser::Parse(std::istream& stream,
   return std::error_code();
 }
 
+template <typename PropertyCallback>
 PropertyCallback MakeEmptyCallback(PlyHeader::Property::Type data_type,
                                    bool is_list) {
   static const PropertyCallback empty_callbacks[16] = {
@@ -595,7 +580,8 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
             .first;
     for (const auto& property : element.properties) {
       insertion_iterator->second[property.name] =
-          MakeEmptyCallback(property.data_type, property.list_type.has_value());
+          MakeEmptyCallback<PropertyCallback>(property.data_type,
+                                              property.list_type.has_value());
     }
   }
 
