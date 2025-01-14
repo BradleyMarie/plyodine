@@ -113,14 +113,8 @@ enum class Format {
   BINARY_LITTLE_ENDIAN = 2
 };
 
-enum class ListType {
-  UINT8 = 0,
-  UINT16 = 1,
-  UINT32 = 2,
-};
-
-using GetPropertyListSizeFunc = int (PlyWriter::*)(const std::string&,
-                                                   const std::string&) const;
+using GetPropertyListSizeFunc =
+    std::function<int(const std::string&, const std::string&)>;
 using WriteFunc =
     std::move_only_function<std::error_code(std::ostream&, std::stringstream&)>;
 
@@ -235,7 +229,7 @@ std::error_code Serialize(std::ostream& stream, std::stringstream& storage,
 }
 
 template <Format F, typename T>
-WriteFunc MakeWriteFuncImpl(std::generator<T> generator, ListType list_type) {
+WriteFunc MakeWriteFuncImpl(std::generator<T> generator, int list_type) {
   static constexpr uint32_t list_capacities[3] = {
       std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint16_t>::max(),
       std::numeric_limits<uint32_t>::max()};
@@ -262,21 +256,21 @@ WriteFunc MakeWriteFuncImpl(std::generator<T> generator, ListType list_type) {
       }
 
       switch (list_type) {
-        case ListType::UINT8:
+        case 0:
           if (std::error_code error =
                   Serialize<F>(stream, token, static_cast<uint8_t>(size));
               error) {
             return error;
           }
           break;
-        case ListType::UINT16:
+        case 1:
           if (std::error_code error =
                   Serialize<F>(stream, token, static_cast<uint16_t>(size));
               error) {
             return error;
           }
           break;
-        case ListType::UINT32:
+        case 2:
           if (std::error_code error =
                   Serialize<F>(stream, token, static_cast<uint32_t>(size));
               error) {
@@ -310,7 +304,7 @@ WriteFunc MakeWriteFuncImpl(std::generator<T> generator, ListType list_type) {
 }
 
 template <Format F, typename Variant>
-WriteFunc MakeWriteFunc(Variant generator, ListType list_type) {
+WriteFunc MakeWriteFunc(Variant generator, int list_type) {
   return std::visit(
       [list_type](auto& gen) {
         return MakeWriteFuncImpl<F>(std::move(gen), list_type);
@@ -319,34 +313,22 @@ WriteFunc MakeWriteFunc(Variant generator, ListType list_type) {
 }
 
 struct Property {
-  ListType list_type;
+  int list_type;
   int data_type_index;
   WriteFunc write_func;
 };
 
 template <Format F, typename T>
 std::map<std::string, std::map<std::string, Property>> BuildProperties(
-    const PlyWriter& ply_writer, GetPropertyListSizeFunc get_property_list_size,
+    GetPropertyListSizeFunc get_property_list_size,
     std::map<std::string, std::map<std::string, T>>& generators) {
   std::map<std::string, std::map<std::string, Property>> result;
   for (auto& [element_name, elements] : generators) {
     std::map<std::string, Property>& properties = result[element_name];
     for (auto& [property_name, generator] : elements) {
-      ListType list_type = ListType::UINT32;
+      int list_type = 2;
       if (generator.index() & 1u) {
-        int list_size_type =
-            (ply_writer.*get_property_list_size)(element_name, property_name);
-        switch (list_size_type) {
-          case 0:
-            list_type = ListType::UINT8;
-            break;
-          case 1:
-            list_type = ListType::UINT16;
-            break;
-          case 2:
-            list_type = ListType::UINT32;
-            break;
-        }
+        list_type = get_property_list_size(element_name, property_name);
       }
       properties.try_emplace(property_name, list_type, generator.index(),
                              MakeWriteFunc<F>(std::move(generator), list_type));
@@ -502,6 +484,24 @@ std::error_code WriteFile(
   return std::error_code();
 }
 
+template <typename T>
+GetPropertyListSizeFunc MakeGetPropertyListSizeFunc(
+    const PlyWriter& ply_writer,
+    T (PlyWriter::*get_property_list_size)(const std::string&,
+                                           const std::string&) const) {
+  return
+      [&ply_writer, get_property_list_size](const std::string& element_name,
+                                            const std::string& property_name) {
+        int list_type = static_cast<int>(
+            (ply_writer.*get_property_list_size)(element_name, property_name));
+        if (list_type < 0 || list_type > 2) {
+          list_type = 2;
+        }
+
+        return list_type;
+      };
+}
+
 }  // namespace
 
 std::error_code PlyWriter::WriteTo(std::ostream& stream) const {
@@ -540,11 +540,10 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
     return error;
   }
 
-  auto properties =
-      BuildProperties<Format::ASCII>(*ply_writer,
-                                     reinterpret_cast<GetPropertyListSizeFunc>(
-                                         &PlyWriter::GetPropertyListSizeType),
-                                     property_generators);
+  auto properties = BuildProperties<Format::ASCII>(
+      MakeGetPropertyListSizeFunc(*ply_writer,
+                                  &PlyWriter::GetPropertyListSizeType),
+      property_generators);
 
   return WriteFile(stream, Format::ASCII, num_element_instances, properties,
                    comments, object_info);
@@ -579,9 +578,8 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
   }
 
   auto properties = BuildProperties<Format::BINARY_BIG_ENDIAN>(
-      *ply_writer,
-      reinterpret_cast<GetPropertyListSizeFunc>(
-          &PlyWriter::GetPropertyListSizeType),
+      MakeGetPropertyListSizeFunc(*ply_writer,
+                                  &PlyWriter::GetPropertyListSizeType),
       property_generators);
 
   return WriteFile(stream, Format::BINARY_BIG_ENDIAN, num_element_instances,
@@ -617,9 +615,8 @@ std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
   }
 
   auto properties = BuildProperties<Format::BINARY_LITTLE_ENDIAN>(
-      *ply_writer,
-      reinterpret_cast<GetPropertyListSizeFunc>(
-          &PlyWriter::GetPropertyListSizeType),
+      MakeGetPropertyListSizeFunc(*ply_writer,
+                                  &PlyWriter::GetPropertyListSizeType),
       property_generators);
 
   return WriteFile(stream, Format::BINARY_LITTLE_ENDIAN, num_element_instances,
