@@ -10,7 +10,6 @@
 #include <ios>
 #include <limits>
 #include <map>
-#include <memory>
 #include <ostream>
 #include <span>
 #include <sstream>
@@ -229,20 +228,14 @@ std::error_code Serialize(std::ostream& stream, std::stringstream& storage,
 }
 
 template <Format F, typename T>
-WriteFunc MakeWriteFuncImpl(std::generator<T> generator, int list_type) {
+WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
   static constexpr uint32_t list_capacities[3] = {
       std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint16_t>::max(),
       std::numeric_limits<uint32_t>::max()};
 
-  auto boxed_generator =
-      std::make_unique<std::generator<T>>(std::move(generator));
-  auto start = boxed_generator->begin();
-  auto stop = boxed_generator->end();
-
-  return [generator = std::move(boxed_generator), iter = std::move(start),
-          end = std::move(stop),
-          list_type](std::ostream& stream,
-                     std::stringstream& token) mutable -> std::error_code {
+  return [iter = generator.begin(), end = generator.end(), list_type](
+             std::ostream& stream,
+             std::stringstream& token) mutable -> std::error_code {
     if (iter == end) {
       return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
     }
@@ -304,11 +297,9 @@ WriteFunc MakeWriteFuncImpl(std::generator<T> generator, int list_type) {
 }
 
 template <Format F, typename Variant>
-WriteFunc MakeWriteFunc(Variant generator, int list_type) {
+WriteFunc MakeWriteFunc(Variant& generator, int list_type) {
   return std::visit(
-      [list_type](auto& gen) {
-        return MakeWriteFuncImpl<F>(std::move(gen), list_type);
-      },
+      [list_type](auto& gen) { return MakeWriteFuncImpl<F>(gen, list_type); },
       generator);
 }
 
@@ -331,7 +322,7 @@ std::map<std::string, std::map<std::string, Property>> BuildProperties(
         list_type = get_property_list_size(element_name, property_name);
       }
       properties.try_emplace(property_name, list_type, generator.index(),
-                             MakeWriteFunc<F>(std::move(generator), list_type));
+                             MakeWriteFunc<F>(generator, list_type));
     }
   }
 
