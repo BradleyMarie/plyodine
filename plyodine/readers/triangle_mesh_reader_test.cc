@@ -43,8 +43,9 @@ class TestTriangleMeshReader final
     }
   }
 
-  void AddFace(const std::array<FaceIndexType, 3>& face) override {
-    faces.push_back(face);
+  void AddTriangle(
+      const std::array<FaceIndexType, 3>& vertex_indices) override {
+    faces.push_back(vertex_indices);
   }
 
   std::vector<std::array<LocationType, 3u>> positions;
@@ -62,11 +63,11 @@ TEST(TriangleMeshReader, DefaultErrorCondition) {
 
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 16; i++) {
+  for (int i = 1; i <= 12; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(17),
+  EXPECT_NE(error_catgegory.default_error_condition(13),
             std::errc::invalid_argument);
 }
 
@@ -74,8 +75,7 @@ TEST(TriangleMeshReader, Empty) {
   std::stringstream input("ply\rformat ascii 1.0\rend_header\r");
 
   TestTriangleMeshReader<float, float, float, uint32_t> reader;
-  EXPECT_EQ(reader.ReadFrom(input).message(),
-            "Element vertex must have properties x, y, and z");
+  EXPECT_EQ(reader.ReadFrom(input).message(), "Element vertex not found");
 }
 
 TEST(TriangleMeshReader, PositionBadType) {
@@ -94,11 +94,16 @@ TEST(TriangleMeshReader, PositionBadType) {
                          "list uchar uint",
                          "list uchar float",
                          "list uchar double"};
-  for (const auto& name : names) {
+  for (size_t i = 0; i < 3; i++) {
     for (const auto& type : types) {
-      std::stringstream input(
-          "ply\rformat ascii 1.0\relement vertex 1\rproperty " + type + " " +
-          name + "\rend_header\r");
+      std::string properties[3] = {"property float x\r", "property float y\r",
+                                   "property float z\r"};
+      properties[i] = "property " + type + " " + names[i] + "\r";
+
+      std::stringstream input("ply\rformat ascii 1.0\relement vertex 1\r" +
+                              properties[0] + properties[1] + properties[2] +
+                              "element face 1\rproperty list uchar uchar "
+                              "vertex_indices\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
       EXPECT_EQ(reader.ReadFrom(input).message(),
                 "The type of properties x, y, and z, on vertex elements must "
@@ -117,7 +122,9 @@ TEST(TriangleMeshReader, PositionMissing) {
         input_string += properties[j];
       }
     }
-    input_string += "end_header\r";
+    input_string +=
+        "element face 1\rproperty list uchar uchar "
+        "vertex_indices\rend_header\r";
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
     EXPECT_EQ(reader.ReadFrom(input).message(),
@@ -144,8 +151,11 @@ TEST(TriangleMeshReader, NormalBadType) {
   for (const auto& name : names) {
     for (const auto& type : types) {
       std::stringstream input(
-          "ply\rformat ascii 1.0\relement vertex 1\rproperty " + type + " " +
-          name + "\rend_header\r");
+          "ply\rformat ascii 1.0\relement vertex 1\rproperty float x\rproperty "
+          "float y\rproperty float z\rproperty " +
+          type + " " + name +
+          "\relement face 1\rproperty list uchar uchar "
+          "vertex_indices\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
       EXPECT_EQ(
           reader.ReadFrom(input).message(),
@@ -175,8 +185,11 @@ TEST(TriangleMeshReader, UVBadType) {
   for (const auto& name : names) {
     for (const auto& type : types) {
       std::stringstream input(
-          "ply\rformat ascii 1.0\relement vertex 1\rproperty " + type + " " +
-          name + "\rend_header\r");
+          "ply\rformat ascii 1.0\relement vertex 1\rproperty float x\rproperty "
+          "float y\rproperty float z\rproperty " +
+          type + " " + name +
+          "\relement face 1\rproperty list uchar uchar "
+          "vertex_indices\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
       EXPECT_EQ(
           reader.ReadFrom(input).message(),
@@ -194,8 +207,9 @@ TEST(TriangleMeshReader, VertexIndicesBadType) {
   for (const auto& name : names) {
     for (const auto& type : types) {
       std::stringstream input(
-          "ply\rformat ascii 1.0\relement face 1\rproperty " + type + " " +
-          name + "\rend_header\r");
+          "ply\rformat ascii 1.0\relement vertex 1\rproperty float x\rproperty "
+          "float y\rproperty float z\relement face 1\rproperty " +
+          type + " " + name + "\rend_header\r");
       TestTriangleMeshReader<float, float, float, uint32_t> reader;
       EXPECT_EQ(reader.ReadFrom(input).message(),
                 "The type of property vertex_indices on face elements must be "
@@ -204,10 +218,18 @@ TEST(TriangleMeshReader, VertexIndicesBadType) {
   }
 }
 
-TEST(TriangleMeshReader, VertexIndicesMissing) {
+TEST(TriangleMeshReader, FaceMissing) {
   std::stringstream input(
       "ply\rformat ascii 1.0\relement vertex 1\rproperty float x\rproperty "
       "float y\rproperty float z\rend_header\r");
+  TestTriangleMeshReader<float, float, float, uint32_t> reader;
+  EXPECT_EQ(reader.ReadFrom(input).message(), "Element face not found");
+}
+
+TEST(TriangleMeshReader, VertexIndicesMissing) {
+  std::stringstream input(
+      "ply\rformat ascii 1.0\relement vertex 1\rproperty float x\rproperty "
+      "float y\rproperty float z\relement face 1\rend_header\r");
   TestTriangleMeshReader<float, float, float, uint32_t> reader;
   EXPECT_EQ(reader.ReadFrom(input).message(),
             "Element face must have property vertex_indices");
@@ -293,16 +315,8 @@ TEST(TriangleMeshReader, OutOfRangePosition) {
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-    if (i == 0) {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for x");
-    } else if (i == 1) {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for y");
-    } else {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for z");
-    }
+    EXPECT_EQ(reader.ReadFrom(input).message(),
+              "Input contained a non-finite position");
   }
 }
 
@@ -327,21 +341,12 @@ TEST(TriangleMeshReader, OutOfRangeNormal) {
         input_string += " ";
       }
     }
-    input_string += "\r";
 
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-    if (i == 0) {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for nx");
-    } else if (i == 1) {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for ny");
-    } else {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for nz");
-    }
+    EXPECT_EQ(reader.ReadFrom(input).message(),
+              "Input contained a non-finite normal");
   }
 }
 
@@ -366,18 +371,12 @@ TEST(TriangleMeshReader, UVs) {
         input_string += " ";
       }
     }
-    input_string += "\r";
 
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-    if (i == 0) {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for u");
-    } else {
-      EXPECT_EQ(reader.ReadFrom(input).message(),
-                "Input contained a non-finite value for v");
-    }
+    EXPECT_EQ(reader.ReadFrom(input).message(),
+              "Input contained a non-finite texture coordinate");
   }
 }
 
@@ -439,7 +438,7 @@ TEST(TriangleMeshReader, VertexIndexTooBigForIndexType) {
   for (size_t i = 0; i < 3; i++) {
     std::string input_string =
         "ply\rformat ascii 1.0\relement vertex 256\rproperty float x\rproperty "
-        "float y\rproperty float z\relement face 1\rproperty list uchar uchar "
+        "float y\rproperty float z\relement face 1\rproperty list uchar ushort "
         "vertex_indices\rend_header\r";
     for (size_t j = 0; j < 256u; j++) {
       input_string += "0.0 0.0 0.0\r";
@@ -450,7 +449,7 @@ TEST(TriangleMeshReader, VertexIndexTooBigForIndexType) {
       if (i != j) {
         input_string += std::to_string(j);
       } else {
-        input_string += "128";
+        input_string += "256";
       }
 
       if (j != 2) {
@@ -460,7 +459,7 @@ TEST(TriangleMeshReader, VertexIndexTooBigForIndexType) {
     input_string += "\r";
 
     std::stringstream input(input_string);
-    TestTriangleMeshReader<float, float, float, int8_t> reader;
+    TestTriangleMeshReader<float, float, float, uint8_t> reader;
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
               "A vertex index was out of range");

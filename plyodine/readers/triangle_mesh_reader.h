@@ -21,37 +21,103 @@
 
 namespace plyodine {
 
-template <std::floating_point LocationType, std::floating_point NormalType,
-          std::floating_point UVType, std::integral FaceIndexType>
+// A PLY reader that reads a PLY input as a triangle mesh. It is expected that
+// most PLY readers with standard usage will derive from this class instead of
+// implementing PlyReader directly.
+//
+// This reader is capable of reading the vertices, faces, normal, and texture
+// coordinates from a model with automatic conversion in to the client's desired
+// precision.
+//
+// The elements and properties this reader looks for in a model are as follows.
+//
+// element "vertex" - Required - The element representing a vertex
+//   property [fp] "x" - Required - The vertex X coordinate
+//   property [fp] "y" - Required - The vertex Y coordinate
+//   property [fp] "z" - Required - The vertex Z coordinate
+//   property [fp] "nx" - Optional - The vertex normal X length
+//   property [fp] "ny" - Optional - The vertex normal Y length
+//   property [fp] "nz" - Optional - The vertex normal Z length
+//   property [fp] "texture_s" - Optional - The vertex texture U coordinate
+//   property [fp] "texture_t" - Optional - The vertex texture V coordinate
+//   property [fp] "texture_u" - Optional - The vertex texture U coordinate
+//   property [fp] "texture_v" - Optional - The vertex texture V coordinate
+//   property [fp] "s" - Optional - The vertex texture U coordinate
+//   property [fp] "t" - Optional - The vertex texture V coordinate
+//   property [fp] "u" - Optional - The vertex texture U coordinate
+//   property [fp] "v" - Optional - The vertex texture V coordinate
+//
+// element "face" - Required - The element representing a face
+//   property list [int] [int] "vertex_indices" - The vertex indices of the face
+//
+// `TriangleMeshReader` requires at least 3 vertex indices in order for each
+// face and providing fewer than that will cause that face to be ignored. If
+// more than 3 indices are provided, they will be interpreted as a triangle fan.
+//
+// For normal, which are optional, `TriangleMeshReader` will ignore the normal
+// unless all three of the axes are present. Similarly for texture coordinates,
+// `TriangleMeshReader` will ignore the coordinates unless both U and V are
+// present. Additionally, in the event that multiple aliases are present for the
+// same texture coordinate only one alias will be used for that coordinate and
+// the others will be ignored. The exact alias selected is not defined.
+//
+// NOTE: `TriangleMeshReader` is flexible in the exact types used by the model
+// for each property as long as the types match the integer/floating point
+// requirements listed above.
+//
+// NOTE: The interface of this class is not yet fully stable and as such this
+// class should be considered experimental. It is possible that breaking changes
+// may be made to this class in the future which will not be reflected in the
+// plyodine major version number.
+template <std::floating_point PositionType = float,
+          std::floating_point NormalType = float,
+          std::floating_point UVType = float,
+          std::unsigned_integral VertexIndexType = uint32_t>
+  requires(sizeof(PositionType) <= sizeof(double) &&
+           sizeof(NormalType) <= sizeof(double) &&
+           sizeof(UVType) <= sizeof(double) &&
+           sizeof(VertexIndexType) <= sizeof(uint32_t))
 class TriangleMeshReader : public PlyReader {
  protected:
-  virtual void Start() = 0;
+  // This function may be implemented by derived classes to identify the start
+  // of parsing
+  virtual void Start() {}
 
-  virtual void AddVertex(const std::array<LocationType, 3> &position,
+  // This function is implemented by derived classes in order to receive the
+  // vertex data from the model.
+  //
+  // `position` - The X, Y, and Z coordinates of the vertex position.
+  //
+  // `maybe_normal` - If the model contains the properties required, the X, Y,
+  // and Z length of the normal, otherwise nullptr.
+  //
+  // `maybe_uv` - If the model contains the properties required, the U and V
+  // texture coordinates of the normal, otherwise nullptr.
+  virtual void AddVertex(const std::array<PositionType, 3> &position,
                          const std::array<NormalType, 3> *maybe_normal,
                          const std::array<UVType, 2> *maybe_uv) = 0;
 
-  virtual void AddFace(const std::array<FaceIndexType, 3> &face) = 0;
+  // This function is implemented by derived classes in order to receive the
+  // vertex indices of each triangle in the model.
+  virtual void AddTriangle(
+      const std::array<VertexIndexType, 3> &vertex_indices) = 0;
 
  private:
   enum class ErrorCode : int {
     MIN_VALUE = 1,
-    INVALID_VERTEX_TYPE = 1,
-    INVALID_VERTEX_INDEX_TYPE = 2,
-    INVALID_NORMAL_TYPE = 3,
-    INVALID_TEXTURE_COORDINATE_TYPE = 4,
-    MISSING_VERTEX_DIMENSION = 5,
-    MISSING_VERTEX_INDICES = 6,
-    VERTEX_X_NOT_FINITE = 7,
-    VERTEX_Y_NOT_FINITE = 8,
-    VERTEX_Z_NOT_FINITE = 9,
-    NORMAL_X_NOT_FINITE = 10,
-    NORMAL_Y_NOT_FINITE = 12,
-    NORMAL_Z_NOT_FINITE = 13,
-    TEXTURE_U_NOT_FINITE = 14,
-    TEXTURE_V_NOT_FINITE = 15,
-    VERTEX_INDEX_OUT_OF_RANGE = 16,
-    MAX_VALUE = 16,
+    MISSING_VERTEX_ELEMENT = 1,
+    MISSING_FACE_ELEMENT = 2,
+    MISSING_POSITION_DIMENSION = 3,
+    INVALID_POSITION_TYPE = 4,
+    MISSING_VERTEX_INDICES = 5,
+    INVALID_VERTEX_INDEX_TYPE = 6,
+    INVALID_NORMAL_TYPE = 7,
+    INVALID_TEXTURE_COORDINATE_TYPE = 8,
+    POSITION_NOT_FINITE = 9,
+    VERTEX_INDEX_OUT_OF_RANGE = 10,
+    NORMAL_NOT_FINITE = 11,
+    TEXTURE_COORDINATE_NOT_FINITE = 12,
+    MAX_VALUE = 12,
   };
 
   static class ErrorCategory final : public std::error_category {
@@ -62,9 +128,17 @@ class TriangleMeshReader : public PlyReader {
     std::string message(int condition) const override {
       ErrorCode error_code{condition};
       switch (error_code) {
-        case ErrorCode::INVALID_VERTEX_TYPE:
+        case ErrorCode::MISSING_VERTEX_ELEMENT:
+          return "Element vertex not found";
+        case ErrorCode::MISSING_FACE_ELEMENT:
+          return "Element face not found";
+        case ErrorCode::MISSING_POSITION_DIMENSION:
+          return "Element vertex must have properties x, y, and z";
+        case ErrorCode::INVALID_POSITION_TYPE:
           return "The type of properties x, y, and z, on vertex elements must "
                  "be either float or double";
+        case ErrorCode::MISSING_VERTEX_INDICES:
+          return "Element face must have property vertex_indices";
         case ErrorCode::INVALID_VERTEX_INDEX_TYPE:
           return "The type of property vertex_indices on face elements must be "
                  "an integral list type";
@@ -75,28 +149,14 @@ class TriangleMeshReader : public PlyReader {
           return "The type of properties texture_s, texture_t, texture_u, "
                  "texture_v, s, t, u, and v on vertex elements must be either "
                  "float or double";
-        case ErrorCode::MISSING_VERTEX_DIMENSION:
-          return "Element vertex must have properties x, y, and z";
-        case ErrorCode::MISSING_VERTEX_INDICES:
-          return "Element face must have property vertex_indices";
-        case ErrorCode::VERTEX_X_NOT_FINITE:
-          return "Input contained a non-finite value for x";
-        case ErrorCode::VERTEX_Y_NOT_FINITE:
-          return "Input contained a non-finite value for y";
-        case ErrorCode::VERTEX_Z_NOT_FINITE:
-          return "Input contained a non-finite value for z";
-        case ErrorCode::NORMAL_X_NOT_FINITE:
-          return "Input contained a non-finite value for nx";
-        case ErrorCode::NORMAL_Y_NOT_FINITE:
-          return "Input contained a non-finite value for ny";
-        case ErrorCode::NORMAL_Z_NOT_FINITE:
-          return "Input contained a non-finite value for nz";
-        case ErrorCode::TEXTURE_U_NOT_FINITE:
-          return "Input contained a non-finite value for u";
-        case ErrorCode::TEXTURE_V_NOT_FINITE:
-          return "Input contained a non-finite value for v";
+        case ErrorCode::POSITION_NOT_FINITE:
+          return "Input contained a non-finite position";
         case ErrorCode::VERTEX_INDEX_OUT_OF_RANGE:
           return "A vertex index was out of range";
+        case ErrorCode::NORMAL_NOT_FINITE:
+          return "Input contained a non-finite normal";
+        case ErrorCode::TEXTURE_COORDINATE_NOT_FINITE:
+          return "Input contained a non-finite texture coordinate";
       }
 
       return "Unknown Error";
@@ -113,302 +173,253 @@ class TriangleMeshReader : public PlyReader {
     }
   } error_category;
 
-  std::error_code MakeError(ErrorCode error_code) {
+  static std::error_code MakeError(ErrorCode error_code) {
     return std::error_code(static_cast<int>(error_code), error_category);
+  }
+
+  static bool FloatingPointCallback(const PropertyCallback &callback) {
+    return std::holds_alternative<FloatPropertyCallback>(callback) ||
+           std::holds_alternative<DoublePropertyCallback>(callback);
   }
 
   std::error_code MaybeAddVertex() {
     current_vertex_index_ += 1u;
 
     if (current_vertex_index_ == handle_vertex_index_) {
-      AddVertex(xyz_, normals_, uvs_);
+      AddVertex(xyz_, normal_, uv_);
       current_vertex_index_ = 0u;
     }
 
     return std::error_code();
   }
 
-  template <size_t index, typename T>
-  std::error_code AddPosition(T value) {
-    xyz_[index] = static_cast<LocationType>(value);
+  std::error_code AddVertexPositionCallback(
+      std::map<std::string, PropertyCallback> &callbacks, size_t index) {
+    static const std::string property_names[3] = {"x", "y", "z"};
 
-    if (!std::isfinite(xyz_[index])) {
-      if constexpr (index == 0) {
-        return MakeError(ErrorCode::VERTEX_X_NOT_FINITE);
-      } else if constexpr (index == 1) {
-        return MakeError(ErrorCode::VERTEX_Y_NOT_FINITE);
-      } else {
-        return MakeError(ErrorCode::VERTEX_Z_NOT_FINITE);
-      }
+    auto iter = callbacks.find(property_names[index]);
+    if (iter == callbacks.end()) {
+      return MakeError(ErrorCode::MISSING_POSITION_DIMENSION);
     }
 
-    return MaybeAddVertex();
+    if (!FloatingPointCallback(iter->second)) {
+      return MakeError(ErrorCode::INVALID_POSITION_TYPE);
+    }
+
+    iter->second = std::function<std::error_code(PositionType)>(
+        [index, this](PositionType value) -> std::error_code {
+          if (!std::isfinite(value)) {
+            return MakeError(ErrorCode::POSITION_NOT_FINITE);
+          }
+
+          xyz_[index] = value;
+
+          return MaybeAddVertex();
+        });
+
+    return std::error_code();
   }
 
-  template <size_t index, typename T>
-  std::error_code AddNormal(T value) {
-    normals_storage_[index] = static_cast<LocationType>(value);
-
-    if (!std::isfinite(normals_storage_[index])) {
-      if constexpr (index == 0) {
-        return MakeError(ErrorCode::NORMAL_X_NOT_FINITE);
-      } else if constexpr (index == 1) {
-        return MakeError(ErrorCode::NORMAL_Y_NOT_FINITE);
-      } else {
-        return MakeError(ErrorCode::NORMAL_Z_NOT_FINITE);
-      }
+  std::error_code AddVertexIndicesCallback(
+      std::map<std::string, PropertyCallback> &callbacks,
+      uintmax_t num_vertices) {
+    auto iter = callbacks.find("vertex_indices");
+    if (iter == callbacks.end()) {
+      return MakeError(ErrorCode::MISSING_VERTEX_INDICES);
     }
 
-    return MaybeAddVertex();
+    if (!std::holds_alternative<CharPropertyListCallback>(iter->second) &&
+        !std::holds_alternative<UCharPropertyListCallback>(iter->second) &&
+        !std::holds_alternative<ShortPropertyListCallback>(iter->second) &&
+        !std::holds_alternative<UShortPropertyListCallback>(iter->second) &&
+        !std::holds_alternative<IntPropertyListCallback>(iter->second) &&
+        !std::holds_alternative<UIntPropertyListCallback>(iter->second)) {
+      return MakeError(ErrorCode::INVALID_VERTEX_INDEX_TYPE);
+    }
+
+    iter->second =
+        std::function<std::error_code(std::span<const VertexIndexType>)>(
+            [num_vertices, this](std::span<const VertexIndexType> indices) {
+              if (indices.size() < 3) {
+                return std::error_code();
+              }
+
+              if (num_vertices < indices[0] || num_vertices < indices[1]) {
+                return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
+              }
+
+              std::array<VertexIndexType, 3> faces;
+              faces[0] = static_cast<VertexIndexType>(indices[0]);
+              for (size_t i = 2u; i < indices.size(); i++) {
+                if (num_vertices < indices[i]) {
+                  return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
+                }
+
+                faces[1] = static_cast<VertexIndexType>(indices[i - 1u]);
+                faces[2] = static_cast<VertexIndexType>(indices[i]);
+
+                if (faces[0] != faces[1] && faces[1] != faces[2] &&
+                    faces[2] != faces[0]) {
+                  AddTriangle(faces);
+                }
+              }
+
+              return std::error_code();
+            });
+
+    return std::error_code();
   }
 
-  template <size_t index, typename T>
-  std::error_code AddUV(T value) {
-    uv_storage_[index] = static_cast<LocationType>(value);
+  void AddVertexNormalCallback(PropertyCallback &callbacks, size_t index) {
+    callbacks = std::function<std::error_code(NormalType)>(
+        [index, this](NormalType value) -> std::error_code {
+          if (!std::isfinite(value)) {
+            return MakeError(ErrorCode::NORMAL_NOT_FINITE);
+          }
 
-    if (!std::isfinite(uv_storage_[index])) {
-      if constexpr (index == 0) {
-        return MakeError(ErrorCode::TEXTURE_U_NOT_FINITE);
-      } else {
-        return MakeError(ErrorCode::TEXTURE_V_NOT_FINITE);
-      }
-    }
+          normal_storage_[index] = value;
 
-    return MaybeAddVertex();
+          return MaybeAddVertex();
+        });
   }
 
-  template <typename T>
-  std::error_code ValidateVertexIndex(T index) {
-    if constexpr (std::is_signed_v<T>) {
-      if (index < 0) {
-        return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
-      }
+  std::error_code AddVertexNormalCallbacks(
+      std::map<std::string, PropertyCallback> &callbacks) {
+    auto x_iter = callbacks.find("nx");
+    auto y_iter = callbacks.find("ny");
+    auto z_iter = callbacks.find("nz");
+
+    bool success = true;
+    if (x_iter == callbacks.end()) {
+      success = false;
+    } else if (!FloatingPointCallback(x_iter->second)) {
+      return MakeError(ErrorCode::INVALID_NORMAL_TYPE);
     }
 
-    uintmax_t unsigned_index = static_cast<uintmax_t>(index);
-
-    if (unsigned_index >= num_vertices_) {
-      return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
+    if (y_iter == callbacks.end()) {
+      success = false;
+    } else if (!FloatingPointCallback(y_iter->second)) {
+      return MakeError(ErrorCode::INVALID_NORMAL_TYPE);
     }
 
-    if (unsigned_index >
-        static_cast<uintmax_t>(std::numeric_limits<FaceIndexType>::max())) {
-      return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
+    if (z_iter == callbacks.end()) {
+      success = false;
+    } else if (!FloatingPointCallback(z_iter->second)) {
+      return MakeError(ErrorCode::INVALID_NORMAL_TYPE);
+    }
+
+    if (success) {
+      AddVertexNormalCallback(x_iter->second, 0);
+      AddVertexNormalCallback(y_iter->second, 1);
+      AddVertexNormalCallback(z_iter->second, 2);
+
+      normal_ = &normal_storage_;
+      handle_vertex_index_ += 3;
     }
 
     return std::error_code();
   }
 
-  template <typename T>
-  std::error_code AddVertexIndices(std::span<const T> value) {
-    if (value.size() >= 3) {
-      if (std::error_code error = ValidateVertexIndex(value[0]); error) {
-        return error;
+  void AddVertexUVCallback(PropertyCallback &callbacks, size_t index) {
+    callbacks = std::function<std::error_code(UVType)>(
+        [index, this](UVType value) -> std::error_code {
+          if (!std::isfinite(value)) {
+            return MakeError(ErrorCode::TEXTURE_COORDINATE_NOT_FINITE);
+          }
+
+          uv_storage_[index] = value;
+
+          return MaybeAddVertex();
+        });
+  }
+
+  std::error_code AddVertexUVCallbacks(
+      std::map<std::string, PropertyCallback> &callbacks) {
+    auto texture_s_iter = callbacks.find("texture_s");
+    auto texture_t_iter = callbacks.find("texture_t");
+    auto texture_u_iter = callbacks.find("texture_u");
+    auto texture_v_iter = callbacks.find("texture_v");
+    auto s_iter = callbacks.find("s");
+    auto t_iter = callbacks.find("t");
+    auto u_iter = callbacks.find("u");
+    auto v_iter = callbacks.find("v");
+
+    auto selected_u_iter = callbacks.end();
+    if (texture_s_iter != callbacks.end()) {
+      if (!FloatingPointCallback(texture_s_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
       }
 
-      if (std::error_code error = ValidateVertexIndex(value[1]); error) {
-        return error;
+      selected_u_iter = texture_s_iter;
+    }
+
+    if (texture_u_iter != callbacks.end()) {
+      if (!FloatingPointCallback(texture_u_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
       }
 
-      std::array<FaceIndexType, 3> faces;
-      faces[0] = static_cast<FaceIndexType>(value[0]);
-      for (size_t i = 2u; i < value.size(); i++) {
-        if (std::error_code error = ValidateVertexIndex(value[i]); error) {
-          return error;
-        }
+      selected_u_iter = texture_u_iter;
+    }
 
-        faces[1] = static_cast<FaceIndexType>(value[i - 1u]);
-        faces[2] = static_cast<FaceIndexType>(value[i]);
-        AddFace(faces);
+    if (s_iter != callbacks.end()) {
+      if (!FloatingPointCallback(s_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
       }
+
+      selected_u_iter = s_iter;
+    }
+
+    if (u_iter != callbacks.end()) {
+      if (!FloatingPointCallback(u_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+      }
+
+      selected_u_iter = u_iter;
+    }
+
+    auto selected_v_iter = callbacks.end();
+    if (texture_t_iter != callbacks.end()) {
+      if (!FloatingPointCallback(texture_t_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+      }
+
+      selected_v_iter = texture_t_iter;
+    }
+
+    if (texture_v_iter != callbacks.end()) {
+      if (!FloatingPointCallback(texture_v_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+      }
+
+      selected_v_iter = texture_v_iter;
+    }
+
+    if (t_iter != callbacks.end()) {
+      if (!FloatingPointCallback(t_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+      }
+
+      selected_v_iter = t_iter;
+    }
+
+    if (v_iter != callbacks.end()) {
+      if (!FloatingPointCallback(v_iter->second)) {
+        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+      }
+
+      selected_v_iter = v_iter;
+    }
+
+    if (selected_u_iter != callbacks.end() &&
+        selected_v_iter != callbacks.end()) {
+      AddVertexUVCallback(selected_u_iter->second, 0);
+      AddVertexUVCallback(selected_v_iter->second, 1);
+
+      uv_ = &uv_storage_;
+      handle_vertex_index_ += 2;
     }
 
     return std::error_code();
-  }
-
-  static const PropertyCallback *LookupProperty(
-      const std::map<std::string, std::map<std::string, PropertyCallback>>
-          &callbacks,
-      const std::string &element_name, const std::string &property_name) {
-    auto element_iter = callbacks.find(element_name);
-    if (element_iter == callbacks.end()) {
-      return nullptr;
-    }
-
-    auto property_iter = element_iter->second.find(property_name);
-    if (property_iter == element_iter->second.end()) {
-      return nullptr;
-    }
-
-    return &property_iter->second;
-  }
-
-  template <size_t index>
-  std::expected<std::optional<PropertyCallback>, std::error_code>
-  LocationPropertyIndex(
-      const std::map<std::string, std::map<std::string, PropertyCallback>>
-          &callbacks,
-      const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(callbacks, element_name, property_name);
-
-    if (property) {
-      auto *float_callback = std::get_if<FloatPropertyCallback>(property);
-      if (float_callback) {
-        return FloatPropertyCallback([this](float value) {
-          return TriangleMeshReader::AddPosition<index, float>(value);
-        });
-      }
-
-      auto *double_callback = std::get_if<DoublePropertyCallback>(property);
-      if (double_callback) {
-        return DoublePropertyCallback([this](double value) {
-          return TriangleMeshReader::AddPosition<index, double>(value);
-        });
-      }
-
-      return std::unexpected(MakeError(ErrorCode::INVALID_VERTEX_TYPE));
-    }
-
-    return std::nullopt;
-  }
-
-  template <size_t index>
-  std::expected<std::optional<PropertyCallback>, std::error_code>
-  NormalPropertyIndex(
-      const std::map<std::string, std::map<std::string, PropertyCallback>>
-          &callbacks,
-      const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(callbacks, element_name, property_name);
-
-    if (property) {
-      auto *float_callback = std::get_if<FloatPropertyCallback>(property);
-      if (float_callback) {
-        return FloatPropertyCallback([this](float value) {
-          return TriangleMeshReader::AddNormal<index, float>(value);
-        });
-      }
-
-      auto *double_callback = std::get_if<DoublePropertyCallback>(property);
-      if (double_callback) {
-        return DoublePropertyCallback([this](double value) {
-          return TriangleMeshReader::AddNormal<index, double>(value);
-        });
-      }
-
-      return std::unexpected(MakeError(ErrorCode::INVALID_NORMAL_TYPE));
-    }
-
-    return std::nullopt;
-  }
-
-  template <size_t index>
-  std::expected<std::optional<std::pair<std::string, PropertyCallback>>,
-                std::error_code>
-  UVPropertyIndex(
-      const std::map<std::string, std::map<std::string, PropertyCallback>>
-          &callbacks,
-      const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(callbacks, element_name, property_name);
-
-    if (property) {
-      auto *float_callback = std::get_if<FloatPropertyCallback>(property);
-      if (float_callback) {
-        return std::make_pair(
-            property_name, FloatPropertyCallback([this](float value) {
-              return TriangleMeshReader::AddUV<index, float>(value);
-            }));
-      }
-
-      auto *double_callback = std::get_if<DoublePropertyCallback>(property);
-      if (double_callback) {
-        return std::make_pair(
-            property_name, DoublePropertyCallback([this](double value) {
-              return TriangleMeshReader::AddUV<index, double>(value);
-            }));
-      }
-
-      return std::unexpected(
-          MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE));
-    }
-
-    return std::nullopt;
-  }
-
-  template <size_t index>
-  std::expected<std::optional<std::pair<std::string, PropertyCallback>>,
-                std::error_code>
-  UVPropertyIndex(
-      std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
-      const std::string &element_name,
-      const std::vector<std::string> &property_names) {
-    for (const auto &property_name : property_names) {
-      auto face_property_index =
-          UVPropertyIndex<index>(callbacks, element_name, property_name);
-      if (!face_property_index || *face_property_index) {
-        return face_property_index;
-      }
-    }
-
-    return std::nullopt;
-  }
-
-  std::expected<std::optional<PropertyCallback>, std::error_code>
-  FacePropertyIndex(
-      std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
-      const std::string &element_name, const std::string &property_name) {
-    auto property = LookupProperty(callbacks, element_name, property_name);
-
-    if (property) {
-      auto *int8_callback = std::get_if<CharPropertyListCallback>(property);
-      if (int8_callback) {
-        return CharPropertyListCallback([this](std::span<const int8_t> value) {
-          return TriangleMeshReader::AddVertexIndices<int8_t>(value);
-        });
-      }
-
-      auto *uint8_callback = std::get_if<UCharPropertyListCallback>(property);
-      if (uint8_callback) {
-        return UCharPropertyListCallback(
-            [this](std::span<const uint8_t> value) {
-              return TriangleMeshReader::AddVertexIndices<uint8_t>(value);
-            });
-      }
-
-      auto *int16_callback = std::get_if<ShortPropertyListCallback>(property);
-      if (int16_callback) {
-        return ShortPropertyListCallback(
-            [this](std::span<const int16_t> value) {
-              return TriangleMeshReader::AddVertexIndices<int16_t>(value);
-            });
-      }
-
-      auto *uint16_callback = std::get_if<UShortPropertyListCallback>(property);
-      if (uint16_callback) {
-        return UShortPropertyListCallback(
-            [this](std::span<const uint16_t> value) {
-              return TriangleMeshReader::AddVertexIndices<uint16_t>(value);
-            });
-      }
-
-      auto *int32_callback = std::get_if<IntPropertyListCallback>(property);
-      if (int32_callback) {
-        return IntPropertyListCallback([this](std::span<const int32_t> value) {
-          return TriangleMeshReader::AddVertexIndices<int32_t>(value);
-        });
-      }
-
-      auto *uint32_callback = std::get_if<UIntPropertyListCallback>(property);
-      if (uint32_callback) {
-        return UIntPropertyListCallback(
-            [this](std::span<const uint32_t> value) {
-              return TriangleMeshReader::AddVertexIndices<uint32_t>(value);
-            });
-      }
-
-      return std::unexpected(MakeError(ErrorCode::INVALID_VERTEX_INDEX_TYPE));
-    }
-
-    return std::nullopt;
   }
 
   std::error_code Start(
@@ -416,91 +427,81 @@ class TriangleMeshReader : public PlyReader {
       std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
       std::vector<std::string> comments,
       std::vector<std::string> object_info) final {
+    current_vertex_index_ = 0;
+    handle_vertex_index_ = 3;
+    normal_ = nullptr;
+    uv_ = nullptr;
+
+    auto vertex_callbacks = callbacks.find("vertex");
+    if (vertex_callbacks == callbacks.end()) {
+      return MakeError(ErrorCode::MISSING_VERTEX_ELEMENT);
+    }
+
+    auto face_callbacks = callbacks.find("face");
+    if (face_callbacks == callbacks.end()) {
+      return MakeError(ErrorCode::MISSING_FACE_ELEMENT);
+    }
+
+    if (std::error_code error =
+            AddVertexPositionCallback(vertex_callbacks->second, 0);
+        error) {
+      return error;
+    }
+
+    if (std::error_code error =
+            AddVertexPositionCallback(vertex_callbacks->second, 1);
+        error) {
+      return error;
+    }
+
+    if (std::error_code error =
+            AddVertexPositionCallback(vertex_callbacks->second, 2);
+        error) {
+      return error;
+    }
+
+    if (std::error_code error = AddVertexIndicesCallback(
+            face_callbacks->second, num_element_instances["vertex"]);
+        error) {
+      return error;
+    }
+
+    if (std::error_code error =
+            AddVertexNormalCallbacks(vertex_callbacks->second);
+        error) {
+      return error;
+    }
+
+    if (std::error_code error = AddVertexUVCallbacks(vertex_callbacks->second);
+        error) {
+      return error;
+    }
+
     Start();
 
-    auto x = LocationPropertyIndex<0>(callbacks, "vertex", "x");
-    if (!x) {
-      return x.error();
+    return std::error_code();
+  }
+
+  std::error_code OnConversionFailure(const std::string &element,
+                                      const std::string &property,
+                                      ConversionFailureReason reason) override {
+    if (property == "x" || property == "y" || property == "z") {
+      return MakeError(ErrorCode::POSITION_NOT_FINITE);
     }
 
-    auto y = LocationPropertyIndex<1>(callbacks, "vertex", "y");
-    if (!y) {
-      return y.error();
+    if (property == "vertex_indices") {
+      return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
     }
 
-    auto z = LocationPropertyIndex<2>(callbacks, "vertex", "z");
-    if (!z) {
-      return z.error();
+    if (property == "nx" || property == "ny" || property == "nz") {
+      return MakeError(ErrorCode::NORMAL_NOT_FINITE);
     }
 
-    auto nx = NormalPropertyIndex<0>(callbacks, "vertex", "nx");
-    if (!nx) {
-      return nx.error();
+    if (property == "texture_s" || property == "texture_t" ||
+        property == "texture_u" || property == "texture_v" || property == "s" ||
+        property == "t" || property == "u" || property == "v") {
+      return MakeError(ErrorCode::TEXTURE_COORDINATE_NOT_FINITE);
     }
-
-    auto ny = NormalPropertyIndex<1>(callbacks, "vertex", "ny");
-    if (!ny) {
-      return ny.error();
-    }
-
-    auto nz = NormalPropertyIndex<2>(callbacks, "vertex", "nz");
-    if (!nz) {
-      return nz.error();
-    }
-
-    auto u = UVPropertyIndex<0>(callbacks, "vertex",
-                                {"u", "s", "texture_u", "texture_s"});
-    if (!u) {
-      return u.error();
-    }
-
-    auto v = UVPropertyIndex<1>(callbacks, "vertex",
-                                {"v", "t", "texture_v", "texture_t"});
-    if (!v) {
-      return v.error();
-    }
-
-    auto vertex_indices =
-        FacePropertyIndex(callbacks, "face", "vertex_indices");
-    if (!vertex_indices) {
-      return vertex_indices.error();
-    }
-
-    if (!*x || !*y || !*z) {
-      return MakeError(ErrorCode::MISSING_VERTEX_DIMENSION);
-    }
-
-    num_vertices_ = num_element_instances.find("vertex")->second;
-
-    callbacks["vertex"]["x"] = **x;
-    callbacks["vertex"]["y"] = **y;
-    callbacks["vertex"]["z"] = **z;
-
-    if (*nx && *ny && *nz) {
-      normals_ = &normals_storage_;
-      callbacks["vertex"]["nx"] = **nx;
-      callbacks["vertex"]["ny"] = **ny;
-      callbacks["vertex"]["nz"] = **nz;
-    } else {
-      normals_ = nullptr;
-    }
-
-    if (*u && *v) {
-      uvs_ = &uv_storage_;
-      callbacks["vertex"][(*u)->first] = (*u)->second;
-      callbacks["vertex"][(*v)->first] = (*v)->second;
-    } else {
-      uvs_ = nullptr;
-    }
-
-    handle_vertex_index_ = callbacks["vertex"].size();
-    current_vertex_index_ = 0u;
-
-    if (!*vertex_indices) {
-      return MakeError(ErrorCode::MISSING_VERTEX_INDICES);
-    }
-
-    callbacks["face"]["vertex_indices"] = **vertex_indices;
 
     return std::error_code();
   }
@@ -509,20 +510,24 @@ class TriangleMeshReader : public PlyReader {
   size_t handle_vertex_index_;
   size_t current_vertex_index_;
 
-  std::array<NormalType, 3> *normals_ = nullptr;
-  std::array<UVType, 2> *uvs_ = nullptr;
+  std::array<NormalType, 3> *normal_ = nullptr;
+  std::array<UVType, 2> *uv_ = nullptr;
 
-  std::array<LocationType, 3> xyz_ = {0.0, 0.0, 0.0};
-  std::array<NormalType, 3> normals_storage_ = {0.0, 0.0, 0.0};
+  std::array<PositionType, 3> xyz_ = {0.0, 0.0, 0.0};
+  std::array<NormalType, 3> normal_storage_ = {0.0, 0.0, 0.0};
   std::array<UVType, 2> uv_storage_ = {0.0, 0.0};
 };
 
-template <std::floating_point LocationType, std::floating_point NormalType,
-          std::floating_point UVType, std::integral FaceIndexType>
-TriangleMeshReader<LocationType, NormalType, UVType,
-                   FaceIndexType>::ErrorCategory
-    TriangleMeshReader<LocationType, NormalType, UVType,
-                       FaceIndexType>::error_category;
+template <std::floating_point PositionType, std::floating_point NormalType,
+          std::floating_point UVType, std::unsigned_integral VertexIndexType>
+  requires(sizeof(PositionType) <= sizeof(double) &&
+           sizeof(NormalType) <= sizeof(double) &&
+           sizeof(UVType) <= sizeof(double) &&
+           sizeof(VertexIndexType) <= sizeof(uint32_t))
+TriangleMeshReader<PositionType, NormalType, UVType,
+                   VertexIndexType>::ErrorCategory
+    TriangleMeshReader<PositionType, NormalType, UVType,
+                       VertexIndexType>::error_category;
 
 }  // namespace plyodine
 

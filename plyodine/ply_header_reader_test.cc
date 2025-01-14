@@ -205,7 +205,7 @@ TEST(ReadPlyHeader, ElementNoName) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_name_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too few prameters to element", result.error().message());
+  EXPECT_EQ("Too few parameters to element", result.error().message());
 }
 
 TEST(ReadPlyHeader, ElementNameRepeated) {
@@ -219,7 +219,7 @@ TEST(ReadPlyHeader, ElementCountNone) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_count_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too few prameters to element", result.error().message());
+  EXPECT_EQ("Too few parameters to element", result.error().message());
 }
 
 TEST(ReadPlyHeader, ElementCountBad) {
@@ -247,7 +247,7 @@ TEST(ReadPlyHeader, ElementCountTooMany) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_too_many.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too many prameters to element", result.error().message());
+  EXPECT_EQ("Too many parameters to element", result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyTypes) {
@@ -313,7 +313,7 @@ TEST(ReadPlyHeader, PropertyTooMany) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_property_too_many.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too many prameters to property", result.error().message());
+  EXPECT_EQ("Too many parameters to property", result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListNameNone) {
@@ -366,7 +366,7 @@ TEST(ReadPlyHeader, PropertyListTooMany) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_property_list_too_many.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too many prameters to property", result.error().message());
+  EXPECT_EQ("Too many parameters to property", result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListTypes) {

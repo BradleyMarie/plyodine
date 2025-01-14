@@ -98,9 +98,9 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::PROPERTY_SPECIFIED_DUPLICATE_NAME:
       return "An element contains two properties with the same name";
     case ErrorCode::PROPERTY_SPECIFIER_TOO_LONG:
-      return "Too many prameters to property";
+      return "Too many parameters to property";
     case ErrorCode::ELEMENT_SPECIFIER_TOO_SHORT:
-      return "Too few prameters to element";
+      return "Too few parameters to element";
     case ErrorCode::ELEMENT_SPECIFIED_DUPLICATE_NAME:
       return "Two elements have the same name";
     case ErrorCode::ELEMENT_COUNT_OUT_OF_RANGE:
@@ -108,7 +108,7 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::ELEMENT_COUNT_PARSING_FAILED:
       return "Failed to parse element count";
     case ErrorCode::ELEMENT_SPECIFIER_TOO_LONG:
-      return "Too many prameters to element";
+      return "Too many parameters to element";
     case ErrorCode::END_INVALID:
       return "The last line of the header may only contain the end_header "
              "keyword";

@@ -574,14 +574,11 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
   for (const auto& element : header->elements) {
     num_element_instances[element.name] = element.num_in_file;
 
-    auto insertion_iterator =
-        actual_callbacks
-            .emplace(element.name, std::map<std::string, PropertyCallback>())
-            .first;
+    std::map<std::string, PropertyCallback>& property_callbacks =
+        actual_callbacks[element.name];
     for (const auto& property : element.properties) {
-      insertion_iterator->second[property.name] =
-          MakeEmptyCallback<PropertyCallback>(property.data_type,
-                                              property.list_type.has_value());
+      property_callbacks[property.name] = MakeEmptyCallback<PropertyCallback>(
+          property.data_type, property.list_type.has_value());
     }
   }
 

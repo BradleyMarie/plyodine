@@ -17,6 +17,11 @@
 namespace plyodine {
 
 // A PLY writer that works with values that are fully present in memory.
+//
+// NOTE: The interface of this class is not yet fully stable and as such this
+// class should be considered experimental. It is possible that breaking changes
+// may be made to this class in the future which will not be reflected in the
+// plyodine major version number.
 class InMemoryWriter final : public PlyWriter {
  public:
   // Add a comment to the file
