@@ -1,6 +1,5 @@
 #include "plyodine/ply_writer.h"
 
-#include <algorithm>
 #include <bit>
 #include <cctype>
 #include <cmath>
@@ -108,26 +107,22 @@ struct is_error_code_enum<ErrorCode> : true_type {};
 namespace plyodine {
 namespace {
 
-using PropertyGenerator = std::variant<
-    std::generator<int8_t>, std::generator<std::span<const int8_t>>,
-    std::generator<uint8_t>, std::generator<std::span<const uint8_t>>,
-    std::generator<int16_t>, std::generator<std::span<const int16_t>>,
-    std::generator<uint16_t>, std::generator<std::span<const uint16_t>>,
-    std::generator<int32_t>, std::generator<std::span<const int32_t>>,
-    std::generator<uint32_t>, std::generator<std::span<const uint32_t>>,
-    std::generator<float>, std::generator<std::span<const float>>,
-    std::generator<double>, std::generator<std::span<const double>>>;
-
-using GetPropertyListSizeProxy = int (PlyWriter::*)(const std::string&,
-                                                    const std::string&) const;
-
-struct ListTypeParameters {
-  std::string_view prefix;
-  std::error_code (*serialize_ascii)(std::ostream& output,
-                                     std::stringstream& storage, size_t size);
-  std::error_code (*serialize_big_endian)(std::ostream& output, size_t size);
-  std::error_code (*serialize_little_endian)(std::ostream& output, size_t size);
+enum class Format {
+  ASCII = 0,
+  BINARY_BIG_ENDIAN = 1,
+  BINARY_LITTLE_ENDIAN = 2
 };
+
+enum class ListType {
+  UINT8 = 0,
+  UINT16 = 1,
+  UINT32 = 2,
+};
+
+using GetPropertyListSizeFunc = int (PlyWriter::*)(const std::string&,
+                                                   const std::string&) const;
+using WriteFunc =
+    std::move_only_function<std::error_code(std::ostream&, std::stringstream&)>;
 
 std::error_code ValidateName(const std::string& name) {
   if (name.empty()) {
@@ -154,10 +149,10 @@ bool ValidateComment(const std::string& comment) {
 }
 
 template <std::integral T>
-std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
+std::error_code SerializeASCII(std::ostream& stream, std::stringstream& storage,
                                T value) {
-  output << +value;
-  if (!output) {
+  stream << +value;
+  if (!stream) {
     return std::io_errc::stream;
   }
 
@@ -165,7 +160,7 @@ std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
 }
 
 template <std::floating_point T>
-std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
+std::error_code SerializeASCII(std::ostream& stream, std::stringstream& storage,
                                T value) {
   if (!std::isfinite(value)) {
     return ErrorCode::ASCII_FLOAT_NOT_FINITE;
@@ -187,56 +182,22 @@ std::error_code SerializeASCII(std::ostream& output, std::stringstream& storage,
     }
   }
 
-  if (!output.write(result.data(), result.size())) {
+  if (!stream.write(result.data(), result.size())) {
     return std::io_errc::stream;
   }
 
   return std::error_code();
 }
 
-template <typename T>
-std::error_code SerializeListSizeASCII(std::ostream& output,
-                                       std::stringstream& storage,
-                                       size_t size) {
-  if (std::numeric_limits<T>::max() < size) {
-    return ErrorCode::LIST_INDEX_TOO_SMALL;
-  }
-
-  return SerializeASCII(output, storage, static_cast<T>(size));
-}
-
-template <typename T>
-std::error_code SerializeListASCII(std::ostream& output,
-                                   std::stringstream& storage,
-                                   const ListTypeParameters& parameters,
-                                   std::span<const T> values) {
-  if (std::error_code error =
-          parameters.serialize_ascii(output, storage, values.size());
-      error) {
-    return error;
-  }
-
-  for (const auto& entry : values) {
-    if (!output.put(' ')) {
-      return std::io_errc::stream;
-    }
-
-    if (std::error_code error = SerializeASCII(output, storage, entry); error) {
-      return error;
-    }
-  }
-
-  return std::error_code();
-}
-
 template <std::endian Endianness, std::integral T>
-std::error_code SerializeBinary(std::ostream& output, T value) {
+std::error_code SerializeBinary(std::ostream& stream,
+                                std::stringstream& storage, T value) {
   if (Endianness != std::endian::native) {
     value = std::byteswap(value);
   }
 
-  output.write(reinterpret_cast<char*>(&value), sizeof(value));
-  if (!output) {
+  stream.write(reinterpret_cast<char*>(&value), sizeof(value));
+  if (!stream) {
     return std::io_errc::stream;
   }
 
@@ -244,7 +205,8 @@ std::error_code SerializeBinary(std::ostream& output, T value) {
 }
 
 template <std::endian Endianness, std::floating_point T>
-std::error_code SerializeBinary(std::ostream& output, T value) {
+std::error_code SerializeBinary(std::ostream& stream,
+                                std::stringstream& storage, T value) {
   auto entry = std::bit_cast<
       std::conditional_t<std::is_same_v<T, float>, uint32_t, uintmax_t>>(value);
 
@@ -252,70 +214,91 @@ std::error_code SerializeBinary(std::ostream& output, T value) {
     entry = std::byteswap(entry);
   }
 
-  output.write(reinterpret_cast<char*>(&entry), sizeof(entry));
-  if (!output) {
+  stream.write(reinterpret_cast<char*>(&entry), sizeof(entry));
+  if (!stream) {
     return std::io_errc::stream;
   }
 
   return std::error_code();
 }
 
-template <std::endian Endianness, typename T>
-std::error_code SerializeListSizeBinary(std::ostream& output, size_t size) {
-  if (std::numeric_limits<T>::max() < size) {
-    return ErrorCode::LIST_INDEX_TOO_SMALL;
-  }
-
-  return SerializeBinary<Endianness>(output, static_cast<T>(size));
-}
-
-template <std::endian Endianness, typename T>
-std::error_code SerializeListBinary(std::ostream& output,
-                                    const ListTypeParameters& parameters,
-                                    std::span<const T> values) {
-  if constexpr (Endianness == std::endian::big) {
-    if (std::error_code error =
-            parameters.serialize_big_endian(output, values.size());
-        error) {
-      return error;
-    }
+template <Format format, typename T>
+std::error_code Serialize(std::ostream& stream, std::stringstream& storage,
+                          T value) {
+  if constexpr (format == Format::ASCII) {
+    return SerializeASCII(stream, storage, value);
+  } else if constexpr (format == Format::BINARY_BIG_ENDIAN) {
+    return SerializeBinary<std::endian::big>(stream, storage, value);
   } else {
-    if (std::error_code error =
-            parameters.serialize_little_endian(output, values.size());
-        error) {
-      return error;
-    }
+    return SerializeBinary<std::endian::little>(stream, storage, value);
   }
-
-  for (const auto& entry : values) {
-    if (std::error_code error = SerializeBinary<Endianness>(output, entry);
-        error) {
-      return error;
-    }
-  }
-
-  return std::error_code();
 }
 
-template <typename T>
-std::move_only_function<std::error_code()> MakeASCIISerializer(
-    std::ostream& stream, std::stringstream& storage,
-    std::generator<T>& generator, const ListTypeParameters* list_parameters) {
-  return [&stream, &storage, iter = generator.begin(), end = generator.end(),
-          list_parameters]() mutable -> std::error_code {
+template <Format F, typename T>
+WriteFunc MakeWriteFuncImpl(std::generator<T> generator, ListType list_type) {
+  static constexpr uint32_t list_capacities[3] = {
+      std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint16_t>::max(),
+      std::numeric_limits<uint32_t>::max()};
+
+  auto boxed_generator =
+      std::make_unique<std::generator<T>>(std::move(generator));
+  auto start = boxed_generator->begin();
+  auto stop = boxed_generator->end();
+
+  return [generator = std::move(boxed_generator), iter = std::move(start),
+          end = std::move(stop),
+          list_type](std::ostream& stream,
+                     std::stringstream& token) mutable -> std::error_code {
     if (iter == end) {
       return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
     }
 
-    if constexpr (std::is_arithmetic_v<T>) {
-      if (std::error_code error = SerializeASCII(stream, storage, *iter);
-          error) {
-        return error;
+    T value = *iter;
+
+    if constexpr (!std::is_arithmetic_v<T>) {
+      size_t size = value.size();
+      if (size > list_capacities[static_cast<size_t>(list_type)]) {
+        return ErrorCode::LIST_INDEX_TOO_SMALL;
+      }
+
+      switch (list_type) {
+        case ListType::UINT8:
+          if (std::error_code error =
+                  Serialize<F>(stream, token, static_cast<uint8_t>(size));
+              error) {
+            return error;
+          }
+          break;
+        case ListType::UINT16:
+          if (std::error_code error =
+                  Serialize<F>(stream, token, static_cast<uint16_t>(size));
+              error) {
+            return error;
+          }
+          break;
+        case ListType::UINT32:
+          if (std::error_code error =
+                  Serialize<F>(stream, token, static_cast<uint32_t>(size));
+              error) {
+            return error;
+          }
+          break;
+      }
+
+      for (size_t i = 0; i < value.size(); i++) {
+        if constexpr (F == Format::ASCII) {
+          if (!stream.put(' ')) {
+            return std::io_errc::stream;
+          }
+        }
+
+        if (std::error_code error = Serialize<F>(stream, token, value[i]);
+            error) {
+          return error;
+        }
       }
     } else {
-      if (std::error_code error =
-              SerializeListASCII(stream, storage, *list_parameters, *iter);
-          error) {
+      if (std::error_code error = Serialize<F>(stream, token, value); error) {
         return error;
       }
     }
@@ -326,98 +309,47 @@ std::move_only_function<std::error_code()> MakeASCIISerializer(
   };
 }
 
-std::move_only_function<std::error_code()> MakeASCIISerializer(
-    std::ostream& stream, std::stringstream& storage,
-    PropertyGenerator& generator, const ListTypeParameters* list_parameters) {
+template <Format F, typename Variant>
+WriteFunc MakeWriteFunc(Variant generator, ListType list_type) {
   return std::visit(
-      [&](auto& value) -> std::move_only_function<std::error_code()> {
-        return MakeASCIISerializer(stream, storage, value, list_parameters);
+      [list_type](auto& gen) {
+        return MakeWriteFuncImpl<F>(std::move(gen), list_type);
       },
       generator);
 }
 
-template <std::endian Endianness, typename T>
-std::move_only_function<std::error_code()> MakeBinarySerializer(
-    std::ostream& stream, std::generator<T>& generator,
-    const ListTypeParameters* list_parameters) {
-  return [&stream, iter = generator.begin(), end = generator.end(),
-          list_parameters]() mutable -> std::error_code {
-    if (iter == end) {
-      return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
-    }
-
-    if constexpr (std::is_arithmetic_v<T>) {
-      if (std::error_code error = SerializeBinary<Endianness>(stream, *iter);
-          error) {
-        return error;
-      }
-    } else {
-      if (std::error_code error =
-              SerializeListBinary<Endianness>(stream, *list_parameters, *iter);
-          error) {
-        return error;
-      }
-    }
-
-    iter++;
-
-    return std::error_code();
-  };
-}
-
-template <std::endian Endianness>
-std::move_only_function<std::error_code()> MakeBinarySerializer(
-    std::ostream& stream, PropertyGenerator& generator,
-    const ListTypeParameters* list_parameters) {
-  return std::visit(
-      [&](auto& value) -> std::move_only_function<std::error_code()> {
-        return MakeBinarySerializer<Endianness>(stream, value, list_parameters);
-      },
-      generator);
-}
-
-static constexpr ListTypeParameters kListParameters[3]{
-    {"list uchar ", SerializeListSizeASCII<uint8_t>,
-     SerializeListSizeBinary<std::endian::big, uint8_t>,
-     SerializeListSizeBinary<std::endian::little, uint8_t>},
-    {"list ushort ", SerializeListSizeASCII<uint16_t>,
-     SerializeListSizeBinary<std::endian::big, uint16_t>,
-     SerializeListSizeBinary<std::endian::little, uint16_t>},
-    {"list uint ", SerializeListSizeASCII<uint32_t>,
-     SerializeListSizeBinary<std::endian::big, uint32_t>,
-     SerializeListSizeBinary<std::endian::little, uint32_t>},
+struct Property {
+  ListType list_type;
+  int data_type_index;
+  WriteFunc write_func;
 };
 
-static constexpr int kNumListParameters = std::size(kListParameters);
-
-std::map<std::string,
-         std::map<std::string,
-                  std::pair<PropertyGenerator, const ListTypeParameters*>>>
-BuildGenerators(std::map<std::string, std::map<std::string, PropertyGenerator>>
-                    property_generators,
-                const PlyWriter& ply_writer,
-                GetPropertyListSizeProxy get_property_list_type) {
-  std::map<std::string,
-           std::map<std::string,
-                    std::pair<PropertyGenerator, const ListTypeParameters*>>>
-      result;
-  for (auto& [element_name, elements] : property_generators) {
-    std::map<std::string,
-             std::pair<PropertyGenerator, const ListTypeParameters*>>&
-        element_generators = result[element_name];
+template <Format F, typename T>
+std::map<std::string, std::map<std::string, Property>> BuildProperties(
+    const PlyWriter& ply_writer, GetPropertyListSizeFunc get_property_list_size,
+    std::map<std::string, std::map<std::string, T>>& generators) {
+  std::map<std::string, std::map<std::string, Property>> result;
+  for (auto& [element_name, elements] : generators) {
+    std::map<std::string, Property>& properties = result[element_name];
     for (auto& [property_name, generator] : elements) {
-      const ListTypeParameters* name_and_capacity = nullptr;
+      ListType list_type = ListType::UINT32;
       if (generator.index() & 1u) {
         int list_size_type =
-            (ply_writer.*get_property_list_type)(element_name, property_name);
-        if (list_size_type < 0 || list_size_type > kNumListParameters) {
-          list_size_type = kNumListParameters;
+            (ply_writer.*get_property_list_size)(element_name, property_name);
+        switch (list_size_type) {
+          case 0:
+            list_type = ListType::UINT8;
+            break;
+          case 1:
+            list_type = ListType::UINT16;
+            break;
+          case 2:
+            list_type = ListType::UINT32;
+            break;
         }
-        name_and_capacity =
-            &kListParameters[static_cast<size_t>(list_size_type)];
       }
-      element_generators.try_emplace(property_name, std::move(generator),
-                                     name_and_capacity);
+      properties.try_emplace(property_name, list_type, generator.index(),
+                             MakeWriteFunc<F>(std::move(generator), list_type));
     }
   }
 
@@ -425,12 +357,9 @@ BuildGenerators(std::map<std::string, std::map<std::string, PropertyGenerator>>
 }
 
 std::error_code WriteHeader(
-    std::ostream& output, std::string_view format,
+    std::ostream& stream, std::string_view format,
     std::map<std::string, uintmax_t>& num_element_instances,
-    const std::map<std::string,
-                   std::map<std::string, std::pair<PropertyGenerator,
-                                                   const ListTypeParameters*>>>&
-        generators_and_list_details,
+    const std::map<std::string, std::map<std::string, Property>>& elements,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
   static constexpr std::string_view header_prefix = "ply\rformat ";
@@ -442,11 +371,13 @@ std::error_code WriteHeader(
   static constexpr std::string_view data_type_names[8] = {
       "char ", "uchar ", "short ", "ushort ",
       "int ",  "uint ",  "float ", "double "};
+  static constexpr std::string_view list_type_prefixes[3] = {
+      "list uchar ", "list ushort ", "list uint "};
   static constexpr std::string_view header_suffix = "end_header\r";
 
-  if (!output.write(header_prefix.data(), header_prefix.size()) ||
-      !output.write(format.data(), format.size()) ||
-      !output.write(version_suffix.data(), version_suffix.size())) {
+  if (!stream.write(header_prefix.data(), header_prefix.size()) ||
+      !stream.write(format.data(), format.size()) ||
+      !stream.write(version_suffix.data(), version_suffix.size())) {
     return std::io_errc::stream;
   }
 
@@ -455,8 +386,8 @@ std::error_code WriteHeader(
       return ErrorCode::COMMENT_CONTAINS_INVALID_CHARACTERS;
     }
 
-    if (!output.write(comment_prefix.data(), comment_prefix.size()) ||
-        !output.write(comment.data(), comment.size()) || !output.put('\r')) {
+    if (!stream.write(comment_prefix.data(), comment_prefix.size()) ||
+        !stream.write(comment.data(), comment.size()) || !stream.put('\r')) {
       return std::io_errc::stream;
     }
   }
@@ -466,20 +397,19 @@ std::error_code WriteHeader(
       return ErrorCode::OBJ_INFO_CONTAINS_INVALID_CHARACTERS;
     }
 
-    if (!output.write(obj_info_prefix.data(), obj_info_prefix.size()) ||
-        !output.write(info.data(), info.size()) || !output.put('\r')) {
+    if (!stream.write(obj_info_prefix.data(), obj_info_prefix.size()) ||
+        !stream.write(info.data(), info.size()) || !stream.put('\r')) {
       return std::io_errc::stream;
     }
   }
 
   for (const auto& [element_name, _] : num_element_instances) {
-    if (!generators_and_list_details.contains(element_name)) {
+    if (!elements.contains(element_name)) {
       return ErrorCode::ELEMENT_HAS_NO_PROPERTIES;
     }
   }
 
-  for (const auto& [element_name, element_generators] :
-       generators_and_list_details) {
+  for (const auto& [element_name, properties] : elements) {
     if (std::error_code error = ValidateName(element_name); error) {
       return error;
     }
@@ -489,40 +419,84 @@ std::error_code WriteHeader(
       return ErrorCode::PROPERTY_HAS_NO_INSTANCES;
     }
 
-    if (!output.write(element_prefix.data(), element_prefix.size()) ||
-        !output.write(element_name.data(), element_name.size()) ||
-        !output.put(' ') || !(output << num_instances) || !output.put('\r')) {
+    if (!stream.write(element_prefix.data(), element_prefix.size()) ||
+        !stream.write(element_name.data(), element_name.size()) ||
+        !stream.put(' ') || !(stream << num_instances) || !stream.put('\r')) {
       return std::io_errc::stream;
     }
 
-    for (const auto& [property_name, generator_and_details] :
-         element_generators) {
+    for (const auto& [property_name, property] : properties) {
       if (std::error_code error = ValidateName(property_name); error) {
         return error;
       }
 
-      if (!output.write(property_prefix.data(), property_prefix.size())) {
+      if (!stream.write(property_prefix.data(), property_prefix.size())) {
         return std::io_errc::stream;
       }
-
-      if (generator_and_details.second != nullptr &&
-          !output.write(generator_and_details.second->prefix.data(),
-                        generator_and_details.second->prefix.size())) {
+      if ((property.data_type_index & 1u) &&
+          !stream.write(
+              list_type_prefixes[static_cast<size_t>(property.list_type)]
+                  .data(),
+              list_type_prefixes[static_cast<size_t>(property.list_type)]
+                  .size())) {
         return std::io_errc::stream;
       }
 
       const std::string_view& data_type_name =
-          data_type_names[generator_and_details.first.index() >> 1u];
-      if (!output.write(data_type_name.data(), data_type_name.size()) ||
-          !output.write(property_name.data(), property_name.size()) ||
-          !output.put('\r')) {
+          data_type_names[property.data_type_index >> 1u];
+      if (!stream.write(data_type_name.data(), data_type_name.size()) ||
+          !stream.write(property_name.data(), property_name.size()) ||
+          !stream.put('\r')) {
         return std::io_errc::stream;
       }
     }
   }
 
-  if (!output.write(header_suffix.data(), header_suffix.size())) {
+  if (!stream.write(header_suffix.data(), header_suffix.size())) {
     return std::io_errc::stream;
+  }
+
+  return std::error_code();
+}
+
+std::error_code WriteFile(
+    std::ostream& stream, Format format,
+    std::map<std::string, uintmax_t>& num_element_instances,
+    std::map<std::string, std::map<std::string, Property>>& elements,
+    const std::vector<std::string>& comments,
+    const std::vector<std::string>& object_info) {
+  static constexpr std::string_view format_strings[3] = {
+      "ascii", "binary_big_endian", "binary_little_endian"};
+
+  if (std::error_code error =
+          WriteHeader(stream, format_strings[static_cast<size_t>(format)],
+                      num_element_instances, elements, comments, object_info);
+      error) {
+    return error;
+  }
+
+  std::stringstream storage;
+  for (auto& [element_name, properties] : elements) {
+    uintmax_t count = num_element_instances[element_name];
+    for (uintmax_t i = 0; i < count; i++) {
+      bool first = true;
+      for (auto& [property_name, property] : properties) {
+        if (!first && format == Format::ASCII && !stream.put(' ')) {
+          return std::io_errc::stream;
+        }
+
+        if (std::error_code error = property.write_func(stream, storage);
+            error) {
+          return error;
+        }
+
+        first = false;
+      }
+
+      if (format == Format::ASCII && !stream.put('\r')) {
+        return std::io_errc::stream;
+      }
+    }
   }
 
   return std::error_code();
@@ -566,47 +540,14 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
     return error;
   }
 
-  auto generators_with_capacities =
-      BuildGenerators(std::move(property_generators), *ply_writer,
-                      reinterpret_cast<GetPropertyListSizeProxy>(
-                          &PlyWriter::GetPropertyListSizeType));
+  auto properties =
+      BuildProperties<Format::ASCII>(*ply_writer,
+                                     reinterpret_cast<GetPropertyListSizeFunc>(
+                                         &PlyWriter::GetPropertyListSizeType),
+                                     property_generators);
 
-  if (std::error_code error =
-          WriteHeader(stream, "ascii", num_element_instances,
-                      generators_with_capacities, comments, object_info)) {
-    return error;
-  }
-
-  std::stringstream storage;
-  for (auto& [element_name, elements] : generators_with_capacities) {
-    std::vector<std::move_only_function<std::error_code()>> add_next_property;
-    for (auto& [_, generator_and_list_details] : elements) {
-      add_next_property.push_back(
-          MakeASCIISerializer(stream, storage, generator_and_list_details.first,
-                              generator_and_list_details.second));
-    }
-
-    for (uintmax_t i = 0; i < num_element_instances[element_name]; i++) {
-      bool first = true;
-      for (auto& add_next_property_func : add_next_property) {
-        if (!first && !stream.put(' ')) {
-          return std::io_errc::stream;
-        }
-
-        if (std::error_code error = add_next_property_func(); error) {
-          return error;
-        }
-
-        first = false;
-      }
-
-      if (!stream.put('\r')) {
-        return std::io_errc::stream;
-      }
-    }
-  }
-
-  return std::error_code();
+  return WriteFile(stream, Format::ASCII, num_element_instances, properties,
+                   comments, object_info);
 }
 
 std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
@@ -637,35 +578,14 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
     return error;
   }
 
-  auto generators_with_capacities =
-      BuildGenerators(std::move(property_generators), *ply_writer,
-                      reinterpret_cast<GetPropertyListSizeProxy>(
-                          &PlyWriter::GetPropertyListSizeType));
+  auto properties = BuildProperties<Format::BINARY_BIG_ENDIAN>(
+      *ply_writer,
+      reinterpret_cast<GetPropertyListSizeFunc>(
+          &PlyWriter::GetPropertyListSizeType),
+      property_generators);
 
-  if (std::error_code error =
-          WriteHeader(stream, "binary_big_endian", num_element_instances,
-                      generators_with_capacities, comments, object_info)) {
-    return error;
-  }
-
-  for (auto& [element_name, elements] : generators_with_capacities) {
-    std::vector<std::move_only_function<std::error_code()>> add_next_property;
-    for (auto& [_, generator_and_list_details] : elements) {
-      add_next_property.push_back(MakeBinarySerializer<std::endian::big>(
-          stream, generator_and_list_details.first,
-          generator_and_list_details.second));
-    }
-
-    for (uintmax_t i = 0; i < num_element_instances[element_name]; i++) {
-      for (auto& add_next_property_func : add_next_property) {
-        if (std::error_code error = add_next_property_func(); error) {
-          return error;
-        }
-      }
-    }
-  }
-
-  return std::error_code();
+  return WriteFile(stream, Format::BINARY_BIG_ENDIAN, num_element_instances,
+                   properties, comments, object_info);
 }
 
 std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
@@ -696,35 +616,14 @@ std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
     return error;
   }
 
-  auto generators_with_capacities =
-      BuildGenerators(std::move(property_generators), *ply_writer,
-                      reinterpret_cast<GetPropertyListSizeProxy>(
-                          &PlyWriter::GetPropertyListSizeType));
+  auto properties = BuildProperties<Format::BINARY_LITTLE_ENDIAN>(
+      *ply_writer,
+      reinterpret_cast<GetPropertyListSizeFunc>(
+          &PlyWriter::GetPropertyListSizeType),
+      property_generators);
 
-  if (std::error_code error =
-          WriteHeader(stream, "binary_little_endian", num_element_instances,
-                      generators_with_capacities, comments, object_info)) {
-    return error;
-  }
-
-  for (auto& [element_name, elements] : generators_with_capacities) {
-    std::vector<std::move_only_function<std::error_code()>> add_next_property;
-    for (auto& [_, generator_and_list_details] : elements) {
-      add_next_property.push_back(MakeBinarySerializer<std::endian::little>(
-          stream, generator_and_list_details.first,
-          generator_and_list_details.second));
-    }
-
-    for (uintmax_t i = 0; i < num_element_instances[element_name]; i++) {
-      for (auto& add_next_property_func : add_next_property) {
-        if (std::error_code error = add_next_property_func(); error) {
-          return error;
-        }
-      }
-    }
-  }
-
-  return std::error_code();
+  return WriteFile(stream, Format::BINARY_LITTLE_ENDIAN, num_element_instances,
+                   properties, comments, object_info);
 }
 
 // Static assertions to ensure float types are properly sized
