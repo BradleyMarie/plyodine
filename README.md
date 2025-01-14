@@ -12,9 +12,9 @@ its flexibility and simplicity. Famously, PLY is used to distribute the 3D
 models in the
 [Stanford 3D Scanning Repository](http://graphics.stanford.edu/data/3Dscanrep/).
 
-PLYodine supports reading from and writing to PLY streams in binary big-endian,
-binary little-endian, and ASCII modes. PLYodine uses stream based readers and
-writers meaning that they can both support streams larger than can fit into
+PLYodine supports reading from and writing to PLY streams in ASCII, binary
+big-endian, and binary little-endian modes. PLYodine uses stream based readers
+and writers meaning that they can both support streams larger than can fit into
 memory.
 
 While PLYodine does not aim to deliver the absolute highest performance, it does
@@ -35,7 +35,7 @@ bazel_dep(name = "plyodine")
 git_override(
     module_name = "plyodine",
     remote = "https://github.com/bradleymarie/plyodine.git",
-    commit = "7323685df340b61df0e8a6d4427ae31d2eb2273b",
+    commit = "d4d4912a97201126eb8870fa5a645e685f5e9581",
 )
 ```
 
@@ -84,13 +84,12 @@ present in memory.
 
 ## Examples
 
-Currently, there is no example code written for PLYodine; however, since
-PLYodine has good unit test coverage you can use the test code as a reference
-for how to work with the library.
+Currently, there is no example code written for PLYodine; however, the code in
+the `readers` and `writers` directories can be used as a reference when working
+with the `PlyReader` and `PlyWriter` classes respectively.
 
-Additionally, the code in the `readers` and `writers` directories can be used
-as a reference when working with the `PlyReader` and `PlyWriter` classes
-respectively.
+Additionally, there is good documentation of the PLYodine interface in its
+various header files.
 
 ## Versioning
 
