@@ -5,16 +5,11 @@
 #include <cmath>
 #include <concepts>
 #include <cstdint>
-#include <expected>
 #include <functional>
-#include <istream>
 #include <map>
-#include <optional>
 #include <span>
 #include <string>
 #include <system_error>
-#include <type_traits>
-#include <variant>
 #include <vector>
 
 #include "plyodine/ply_reader.h"
