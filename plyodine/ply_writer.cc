@@ -28,12 +28,14 @@ enum class ErrorCode {
   INVALID_COMMENT = 2,
   INVALID_OBJ_INFO = 3,
   MISSING_PROPERTIES = 4,
-  EMPTY_NAME = 5,
-  INVALID_CHARACTERS_IN_NAME = 6,
-  LIST_SIZE_OVERFLOWED = 7,
-  INVALID_ASCII_FLOAT = 8,
-  MISSING_DATA = 9,
-  MAX_VALUE = 9,
+  INVALID_ELEMENT_NAME = 5,
+  INVALID_PROPERTY_NAME = 6,
+  UCHAR_LIST_OVERFLOWED = 7,
+  USHORT_LIST_OVERFLOWED = 8,
+  UINT_LIST_OVERFLOWED = 9,
+  INVALID_ASCII_FLOAT = 10,
+  MISSING_DATA = 11,
+  MAX_VALUE = 11,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -50,27 +52,36 @@ std::string ErrorCategory::message(int condition) const {
   ErrorCode error_code{condition};
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
-      return "Output stream must be in good state";
+      return "The stream was not in 'good' state";
     case ErrorCode::INVALID_COMMENT:
-      return "A comment may only contain graphic characters and spaces";
+      return "A comment string contained invalid characters (must contain only "
+             "ASCII space and ASCII graphic characters)";
     case ErrorCode::INVALID_OBJ_INFO:
-      return "An obj_info may only contain graphic characters and spaces";
+      return "An obj_info string contained invalid characters (must contain "
+             "only ASCII space and ASCII graphic characters)";
     case ErrorCode::MISSING_PROPERTIES:
-      return "An element must have properties";
-    case ErrorCode::EMPTY_NAME:
-      return "Names of properties and elements may not be empty";
-    case ErrorCode::INVALID_CHARACTERS_IN_NAME:
-      return "Names of properties and elements may only contain graphic "
-             "characters";
-    case ErrorCode::LIST_SIZE_OVERFLOWED:
-      return "The list was too big to be represented with the selected size "
-             "type";
+      return "An element had no properties";
+    case ErrorCode::INVALID_ELEMENT_NAME:
+      return "An element had an invalid name (must be non-empty and contain "
+             "only ASCII graphic characters)";
+    case ErrorCode::INVALID_PROPERTY_NAME:
+      return "A property had an invalid name (must be non-empty and contain "
+             "only ASCII graphic characters)";
+    case ErrorCode::UCHAR_LIST_OVERFLOWED:
+      return "A property list with size type 'uchar' exceeded its maximum "
+             "supported length (255 entries)";
+    case ErrorCode::USHORT_LIST_OVERFLOWED:
+      return "A property list with size type 'ushort' exceeded its maximum "
+             "supported length (65,535 entries)";
+    case ErrorCode::UINT_LIST_OVERFLOWED:
+      return "A property list with size type 'uint' exceeded its maximum "
+             "supported length (4,294,967,295 entries)";
     case ErrorCode::INVALID_ASCII_FLOAT:
-      return "Only finite floating point values may be serialized to an ASCII "
-             "output";
+      return "A non-finite floating-point value cannot be serialized to an "
+             "ASCII output";
     case ErrorCode::MISSING_DATA:
-      return "A property generator did not produce enough values to cover all "
-             "every associated element instance in the output";
+      return "A property generator did not produce enough data for all "
+             "instances of its element";
   };
 
   return "Unknown Error";
@@ -113,14 +124,14 @@ using GetPropertyListSizeFunc =
 using WriteFunc =
     std::move_only_function<std::error_code(std::ostream&, std::stringstream&)>;
 
-std::error_code ValidateName(const std::string& name) {
+std::error_code ValidateName(const std::string& name, ErrorCode error) {
   if (name.empty()) {
-    return ErrorCode::EMPTY_NAME;
+    return error;
   }
 
   for (char c : name) {
     if (!std::isgraph(c)) {
-      return ErrorCode::INVALID_CHARACTERS_IN_NAME;
+      return error;
     }
   }
 
@@ -228,12 +239,15 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
   static constexpr uint32_t list_capacities[3] = {
       std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint16_t>::max(),
       std::numeric_limits<uint32_t>::max()};
+  static constexpr ErrorCode list_errors[3] = {
+      ErrorCode::UCHAR_LIST_OVERFLOWED, ErrorCode::USHORT_LIST_OVERFLOWED,
+      ErrorCode::UINT_LIST_OVERFLOWED};
 
   return [iter = generator.begin(), end = generator.end(), list_type](
              std::ostream& stream,
              std::stringstream& token) mutable -> std::error_code {
     if (iter == end) {
-      return std::error_code(ErrorCode::MISSING_DATA);
+      return ErrorCode::MISSING_DATA;
     }
 
     T value = *iter;
@@ -241,7 +255,7 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
     if constexpr (!std::is_arithmetic_v<T>) {
       size_t size = value.size();
       if (size > list_capacities[static_cast<size_t>(list_type)]) {
-        return ErrorCode::LIST_SIZE_OVERFLOWED;
+        return list_errors[static_cast<size_t>(list_type)];
       }
 
       switch (list_type) {
@@ -377,7 +391,9 @@ std::error_code WriteHeader(
       return ErrorCode::MISSING_PROPERTIES;
     }
 
-    if (std::error_code error = ValidateName(element_name); error) {
+    if (std::error_code error =
+            ValidateName(element_name, ErrorCode::INVALID_ELEMENT_NAME);
+        error) {
       return error;
     }
 
@@ -389,7 +405,9 @@ std::error_code WriteHeader(
     }
 
     for (const auto& [property_name, property] : properties) {
-      if (std::error_code error = ValidateName(property_name); error) {
+      if (std::error_code error =
+              ValidateName(property_name, ErrorCode::INVALID_PROPERTY_NAME);
+          error) {
         return error;
       }
 
@@ -494,7 +512,7 @@ std::error_code PlyWriter::WriteTo(std::ostream& stream) const {
 }
 
 std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
-  if (!stream) {
+  if (!stream.good()) {
     return ErrorCode::BAD_STREAM;
   }
 
@@ -531,7 +549,7 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
 }
 
 std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
-  if (!stream) {
+  if (!stream.good()) {
     return ErrorCode::BAD_STREAM;
   }
 
@@ -568,7 +586,7 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
 }
 
 std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
-  if (!stream) {
+  if (!stream.good()) {
     return ErrorCode::BAD_STREAM;
   }
 

@@ -96,13 +96,15 @@ class TestWriter final : public PlyWriter {
       const std::map<std::string, std::map<std::string, Property>>& properties,
       std::span<const std::string> comments,
       std::span<const std::string> object_info, bool start_fails = false,
-      bool insert_invalid_element = false, bool should_delegate = false)
+      bool insert_invalid_element = false, bool should_delegate = false,
+      uint32_t max_size = std::numeric_limits<uint32_t>::max())
       : properties_(properties),
         comments_(comments),
         object_info_(object_info),
         start_fails_(start_fails),
         insert_invalid_element_(insert_invalid_element),
-        should_delegate_(should_delegate) {}
+        should_delegate_(should_delegate),
+        max_size_(max_size) {}
 
   std::unique_ptr<const PlyWriter> DelegateTo() const {
     if (!should_delegate_) {
@@ -238,6 +240,8 @@ class TestWriter final : public PlyWriter {
         },
         properties_.at(element_name).at(property_name));
 
+    max_size = std::min(max_size, static_cast<size_t>(max_size_));
+
     if (max_size <= std::numeric_limits<uint8_t>::max()) {
       return PlyWriter::ListSizeType::UCHAR;
     }
@@ -277,6 +281,7 @@ class TestWriter final : public PlyWriter {
   bool start_fails_;
   bool insert_invalid_element_;
   bool should_delegate_;
+  uint32_t max_size_;
 };
 
 std::error_code WriteTo(
@@ -383,11 +388,11 @@ TEST(Validate, DefaultErrorCondition) {
       writer.WriteTo(output).category();
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 9; i++) {
+  for (int i = 1; i <= 11; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(10),
+  EXPECT_NE(error_catgegory.default_error_condition(12),
             std::errc::invalid_argument);
 }
 
@@ -396,13 +401,13 @@ TEST(Validate, BadStream) {
   std::stringstream output(std::ios::out | std::ios::binary);
   output.clear(std::ios::badbit);
 
-  EXPECT_EQ("Output stream must be in good state",
+  EXPECT_EQ("The stream was not in 'good' state",
             writer.WriteTo(output).message());
-  EXPECT_EQ("Output stream must be in good state",
+  EXPECT_EQ("The stream was not in 'good' state",
             writer.WriteToASCII(output).message());
-  EXPECT_EQ("Output stream must be in good state",
+  EXPECT_EQ("The stream was not in 'good' state",
             writer.WriteToBigEndian(output).message());
-  EXPECT_EQ("Output stream must be in good state",
+  EXPECT_EQ("The stream was not in 'good' state",
             writer.WriteToLittleEndian(output).message());
 }
 
@@ -427,10 +432,11 @@ TEST(Validate, StartFails) {
 TEST(Validate, BadElementNames) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {{"", {{"prop", {}}}}}).message(),
-            "Names of properties and elements may not be empty");
-  EXPECT_EQ(
-      WriteToASCII(output, {{" ", {{"prop", {}}}}}).message(),
-      "Names of properties and elements may only contain graphic characters");
+            "An element had an invalid name (must be non-empty and contain "
+            "only ASCII graphic characters)");
+  EXPECT_EQ(WriteToASCII(output, {{" ", {{"prop", {}}}}}).message(),
+            "An element had an invalid name (must be non-empty and contain "
+            "only ASCII graphic characters)");
 }
 
 TEST(Validate, EmptyPropertyNames) {
@@ -441,7 +447,8 @@ TEST(Validate, EmptyPropertyNames) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, properties).message(),
-            "Names of properties and elements may not be empty");
+            "A property had an invalid name (must be non-empty and contain "
+            "only ASCII graphic characters)");
 }
 
 TEST(Validate, NonGraphicPropertyNames) {
@@ -451,28 +458,68 @@ TEST(Validate, NonGraphicPropertyNames) {
   properties["vertex"][" "] = a;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(
-      WriteToASCII(output, properties).message(),
-      "Names of properties and elements may only contain graphic characters");
+  EXPECT_EQ(WriteToASCII(output, properties).message(),
+            "A property had an invalid name (must be non-empty and contain "
+            "only ASCII graphic characters)");
 }
 
 TEST(Validate, BadComment) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).message(),
-            "A comment may only contain graphic characters and spaces");
+            "A comment string contained invalid characters (must contain only "
+            "ASCII space and ASCII graphic characters)");
   EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).message(),
-            "A comment may only contain graphic characters and spaces");
+            "A comment string contained invalid characters (must contain only "
+            "ASCII space and ASCII graphic characters)");
 }
 
 TEST(Validate, BadObjInfo) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).message(),
-            "An obj_info may only contain graphic characters and spaces");
+            "An obj_info string contained invalid characters (must contain "
+            "only ASCII space and ASCII graphic characters)");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).message(),
-            "An obj_info may only contain graphic characters and spaces");
+            "An obj_info string contained invalid characters (must contain "
+            "only ASCII space and ASCII graphic characters)");
 }
 
-TEST(Validate, ListTooBig) {
+TEST(Validate, ListTooBigUInt8) {
+  float value;
+  std::span<const float> entries(
+      &value, static_cast<size_t>(std::numeric_limits<uint8_t>::max()) +
+                  static_cast<size_t>(1u));
+  std::vector<std::span<const float>> list({entries});
+
+  std::stringstream output(std::ios::out | std::ios::binary);
+
+  std::map<std::string, std::map<std::string, Property>> properties = {
+      {"element", {{"node0", {list}}}}};
+  TestWriter writer(properties, {}, {}, false, false, false,
+                    std::numeric_limits<uint8_t>::max());
+  EXPECT_EQ(writer.WriteToASCII(output).message(),
+            "A property list with size type 'uchar' exceeded its maximum "
+            "supported length (255 entries)");
+}
+
+TEST(Validate, ListTooBigUInt16) {
+  float value;
+  std::span<const float> entries(
+      &value, static_cast<size_t>(std::numeric_limits<uint16_t>::max()) +
+                  static_cast<size_t>(1u));
+  std::vector<std::span<const float>> list({entries});
+
+  std::stringstream output(std::ios::out | std::ios::binary);
+
+  std::map<std::string, std::map<std::string, Property>> properties = {
+      {"element", {{"node0", {list}}}}};
+  TestWriter writer(properties, {}, {}, false, false, false,
+                    std::numeric_limits<uint16_t>::max());
+  EXPECT_EQ(writer.WriteToASCII(output).message(),
+            "A property list with size type 'ushort' exceeded its maximum "
+            "supported length (65,535 entries)");
+}
+
+TEST(Validate, ListTooBigUInt32) {
   if constexpr (std::numeric_limits<uint32_t>::max() <
                 std::numeric_limits<size_t>::max()) {
     float value;
@@ -484,7 +531,8 @@ TEST(Validate, ListTooBig) {
     std::stringstream output(std::ios::out | std::ios::binary);
     EXPECT_EQ(
         WriteToASCII(output, {{"element", {{"node0", {list}}}}}).message(),
-        "The list was too big to be represented with the selected size type");
+        "A property list with size type 'uint' exceeded its maximum supported "
+        "length (4,294,967,295 entries)");
   }
 }
 
@@ -498,8 +546,8 @@ TEST(Validate, UnbalancedProperties) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, properties).message(),
-            "A property generator did not produce enough values to cover all "
-            "every associated element instance in the output");
+            "A property generator did not produce enough data for all "
+            "instances of its element");
 }
 
 TEST(All, DefaultListSize) {
@@ -538,8 +586,7 @@ TEST(All, NoInstances) {
 TEST(All, NoProperties) {
   TestWriter writer({}, {}, {}, false, true);
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(writer.WriteTo(output).message(),
-            "An element must have properties");
+  EXPECT_EQ(writer.WriteTo(output).message(), "An element had no properties");
 }
 
 TEST(ASCII, Empty) {
@@ -559,9 +606,9 @@ TEST(ASCII, NonFinite) {
   data["vertex"]["a"] = a;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(
-      WriteToASCII(output, data).message(),
-      "Only finite floating point values may be serialized to an ASCII output");
+  EXPECT_EQ(WriteToASCII(output, data).message(),
+            "A non-finite floating-point value cannot be serialized to an "
+            "ASCII output");
 }
 
 TEST(ASCII, NonFiniteList) {
@@ -571,9 +618,9 @@ TEST(ASCII, NonFiniteList) {
   data["vertex"]["a"] = al;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(
-      WriteToASCII(output, data).message(),
-      "Only finite floating point values may be serialized to an ASCII output");
+  EXPECT_EQ(WriteToASCII(output, data).message(),
+            "A non-finite floating-point value cannot be serialized to an "
+            "ASCII output");
 }
 
 TEST(ASCII, TestData) {
