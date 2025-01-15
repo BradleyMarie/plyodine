@@ -49,12 +49,14 @@ namespace plyodine {
 // face and providing fewer than that will cause that face to be ignored. If
 // more than 3 indices are provided, they will be interpreted as a triangle fan.
 //
-// For normal, which are optional, `TriangleMeshReader` will ignore the normal
-// unless all three of the axes are present. Similarly for texture coordinates,
-// `TriangleMeshReader` will ignore the coordinates unless both U and V are
-// present. Additionally, in the event that multiple aliases are present for the
-// same texture coordinate only one alias will be used for that coordinate and
-// the others will be ignored. The exact alias selected is not defined.
+// For normals and texture coordinates, which are both optional,
+// `TriangleMeshReader` will not emit either unless all of its coordinates are
+// present (X, Y, and Z for normals and U and V for texture coordinates).
+// If only a subset of the required coordinates are present, those coordinates
+// will still be validated in isolation. Additionally, in the event that
+// multiple aliases are present for the same texture coordinate only one alias
+// will be selected for that coordinate and the will have their values validated
+// then discarded. The exact ordering of the alias selection is not defined.
 //
 // NOTE: `TriangleMeshReader` is flexible in the exact types used by the model
 // for each property as long as the types match the integer/floating point
@@ -102,22 +104,57 @@ class TriangleMeshReader : public PlyReader {
     MIN_VALUE = 1,
     MISSING_VERTEX_ELEMENT = 1,
     MISSING_FACE_ELEMENT = 2,
-    MISSING_POSITION_DIMENSION = 3,
-    INVALID_POSITION_TYPE = 4,
-    MISSING_VERTEX_INDICES = 5,
-    INVALID_VERTEX_INDEX_TYPE = 6,
-    INVALID_NORMAL_TYPE = 7,
-    INVALID_TEXTURE_COORDINATE_TYPE = 8,
-    POSITION_NOT_FINITE = 9,
-    POSITION_CONVERSION_FAILED = 10,
-    VERTEX_INDEX_OUT_OF_RANGE = 11,
-    VERTEX_INDEX_CONVERSION_UNDERFLOWED = 12,
-    VERTEX_INDEX_CONVERSION_OVERFLOWED = 13,
-    NORMAL_NOT_FINITE = 14,
-    NORMAL_CONVERSION_FAILED = 15,
-    TEXTURE_COORDINATE_NOT_FINITE = 16,
-    TEXTURE_COORDINATE_CONVERSION_FAILED = 17,
-    MAX_VALUE = 17,
+    MISSING_PROPERTY_X = 3,
+    INVALID_PROPERTY_X_TYPE = 4,
+    MISSING_PROPERTY_Y = 5,
+    INVALID_PROPERTY_Y_TYPE = 6,
+    MISSING_PROPERTY_Z = 7,
+    INVALID_PROPERTY_Z_TYPE = 8,
+    MISSING_PROPERTY_VERTEX_INDICES = 9,
+    INVALID_PROPERTY_VERTEX_INDEX_TYPE = 10,
+    INVALID_PROPERTY_NX_TYPE = 11,
+    INVALID_PROPERTY_NY_TYPE = 12,
+    INVALID_PROPERTY_NZ_TYPE = 13,
+    INVALID_PROPERTY_TEXTURE_S_TYPE = 14,
+    INVALID_PROPERTY_TEXTURE_T_TYPE = 15,
+    INVALID_PROPERTY_TEXTURE_U_TYPE = 16,
+    INVALID_PROPERTY_TEXTURE_V_TYPE = 17,
+    INVALID_PROPERTY_S_TYPE = 18,
+    INVALID_PROPERTY_T_TYPE = 19,
+    INVALID_PROPERTY_U_TYPE = 20,
+    INVALID_PROPERTY_V_TYPE = 21,
+    INVALID_PROPERTY_X_VALUE = 22,
+    INVALID_PROPERTY_Y_VALUE = 23,
+    INVALID_PROPERTY_Z_VALUE = 24,
+    INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS = 25,
+    INVALID_PROPERTY_NX_VALUE = 26,
+    INVALID_PROPERTY_NY_VALUE = 27,
+    INVALID_PROPERTY_NZ_VALUE = 28,
+    INVALID_PROPERTY_TEXTURE_S_VALUE = 29,
+    INVALID_PROPERTY_TEXTURE_T_VALUE = 30,
+    INVALID_PROPERTY_TEXTURE_U_VALUE = 31,
+    INVALID_PROPERTY_TEXTURE_V_VALUE = 32,
+    INVALID_PROPERTY_S_VALUE = 33,
+    INVALID_PROPERTY_T_VALUE = 34,
+    INVALID_PROPERTY_U_VALUE = 35,
+    INVALID_PROPERTY_V_VALUE = 36,
+    OVERFLOWED_PROPERTY_X_TYPE = 37,
+    OVERFLOWED_PROPERTY_Y_TYPE = 38,
+    OVERFLOWED_PROPERTY_Z_TYPE = 39,
+    INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE = 40,
+    OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE = 41,
+    OVERFLOWED_PROPERTY_NX_TYPE = 42,
+    OVERFLOWED_PROPERTY_NY_TYPE = 43,
+    OVERFLOWED_PROPERTY_NZ_TYPE = 44,
+    OVERFLOWED_PROPERTY_TEXTURE_S_TYPE = 45,
+    OVERFLOWED_PROPERTY_TEXTURE_T_TYPE = 46,
+    OVERFLOWED_PROPERTY_TEXTURE_U_TYPE = 47,
+    OVERFLOWED_PROPERTY_TEXTURE_V_TYPE = 48,
+    OVERFLOWED_PROPERTY_S_TYPE = 49,
+    OVERFLOWED_PROPERTY_T_TYPE = 50,
+    OVERFLOWED_PROPERTY_U_TYPE = 51,
+    OVERFLOWED_PROPERTY_V_TYPE = 52,
+    MAX_VALUE = 52,
   };
 
   static class ErrorCategory final : public std::error_category {
@@ -129,47 +166,146 @@ class TriangleMeshReader : public PlyReader {
       ErrorCode error_code{condition};
       switch (error_code) {
         case ErrorCode::MISSING_VERTEX_ELEMENT:
-          return "Element vertex not found";
+          return "The input did not contain required element 'vertex'";
         case ErrorCode::MISSING_FACE_ELEMENT:
-          return "Element face not found";
-        case ErrorCode::MISSING_POSITION_DIMENSION:
-          return "Element vertex must have properties x, y, and z";
-        case ErrorCode::INVALID_POSITION_TYPE:
-          return "The type of properties x, y, and z, on vertex elements must "
-                 "be either float or double";
-        case ErrorCode::MISSING_VERTEX_INDICES:
-          return "Element face must have property vertex_indices";
-        case ErrorCode::INVALID_VERTEX_INDEX_TYPE:
-          return "The type of property vertex_indices on face elements must be "
-                 "an integral list type";
-        case ErrorCode::INVALID_NORMAL_TYPE:
-          return "The type of properties nx, ny, and nz, on vertex elements "
-                 "must be either float or double";
-        case ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE:
-          return "The type of properties texture_s, texture_t, texture_u, "
-                 "texture_v, s, t, u, and v on vertex elements must be either "
-                 "float or double";
-        case ErrorCode::POSITION_NOT_FINITE:
-          return "Input contained a non-finite position";
-        case ErrorCode::POSITION_CONVERSION_FAILED:
-          return "Input contained a position that could not fit finitely into "
-                 "its destination type";
-        case ErrorCode::VERTEX_INDEX_OUT_OF_RANGE:
-          return "A vertex index was out of range";
-        case ErrorCode::VERTEX_INDEX_CONVERSION_UNDERFLOWED:
-          return "A vertex index was negative";
-        case ErrorCode::VERTEX_INDEX_CONVERSION_OVERFLOWED:
-          return "A vertex index was too large to fit into its destination "
-                 "type";
-        case ErrorCode::NORMAL_NOT_FINITE:
-          return "Input contained a non-finite normal";
-        case ErrorCode::NORMAL_CONVERSION_FAILED:
-          return "Input contained a normal that could not fit finitely into "
-                 "its destination type";
-        case ErrorCode::TEXTURE_COORDINATE_NOT_FINITE:
-          return "Input contained a non-finite texture coordinate";
-        case ErrorCode::TEXTURE_COORDINATE_CONVERSION_FAILED:
-          return "Input contained a texture coordinate that could not fit "
+          return "The input did not contain required element 'face'";
+        case ErrorCode::MISSING_PROPERTY_X:
+          return "The element 'vertex' did not contain required property 'x'";
+        case ErrorCode::INVALID_PROPERTY_X_TYPE:
+          return "The type of property 'x' on element 'vertex' was not 'float' "
+                 "or 'double'";
+        case ErrorCode::MISSING_PROPERTY_Y:
+          return "The element 'vertex' did not contain required property 'y'";
+        case ErrorCode::INVALID_PROPERTY_Y_TYPE:
+          return "The type of property 'y' on element 'vertex' was not 'float' "
+                 "or 'double'";
+        case ErrorCode::MISSING_PROPERTY_Z:
+          return "The element 'vertex' did not contain required property 'z'";
+        case ErrorCode::INVALID_PROPERTY_Z_TYPE:
+          return "The type of property 'z' on element 'vertex' was not 'float' "
+                 "or 'double'";
+        case ErrorCode::MISSING_PROPERTY_VERTEX_INDICES:
+          return "The element 'face' did not contain required property "
+                 "'vertex_indices'";
+        case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_TYPE:
+          return "The data type of property list 'vertex_indices' on element "
+                 "'face' was not 'char', 'uchar', 'short', 'ushort', 'int', or "
+                 "'uint'";
+        case ErrorCode::INVALID_PROPERTY_NX_TYPE:
+          return "The type of property 'nx' on element 'vertex' was not "
+                 "'float' or 'double'";
+        case ErrorCode::INVALID_PROPERTY_NY_TYPE:
+          return "The type of property 'ny' on element 'vertex' was not "
+                 "'float' or 'double'";
+        case ErrorCode::INVALID_PROPERTY_NZ_TYPE:
+          return "The type of property 'nz' on element 'vertex' was not "
+                 "'float' or 'double'";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_S_TYPE:
+          return "The type of property 'texture_s' on element 'vertex' was not "
+                 "'float' or 'double'";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_T_TYPE:
+          return "The type of property 'texture_t' on element 'vertex' was not "
+                 "'float' or 'double'";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_U_TYPE:
+          return "The type of property 'texture_u' on element 'vertex' was not "
+                 "'float' or 'double'";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_V_TYPE:
+          return "The type of property 'texture_v' on element 'vertex' was not "
+                 "'float' or 'double'";
+        case ErrorCode::INVALID_PROPERTY_S_TYPE:
+          return "The type of property 's' on element 'vertex' was not 'float' "
+                 "or 'double'";
+        case ErrorCode::INVALID_PROPERTY_T_TYPE:
+          return "The type of property 't' on element 'vertex' was not 'float' "
+                 "or 'double'";
+        case ErrorCode::INVALID_PROPERTY_U_TYPE:
+          return "The type of property 'u' on element 'vertex' was not 'float' "
+                 "or 'double'";
+        case ErrorCode::INVALID_PROPERTY_V_TYPE:
+          return "The type of property 'v' on element 'vertex' was not 'float' "
+                 "or 'double'";
+        case ErrorCode::INVALID_PROPERTY_X_VALUE:
+          return "A value of property 'x' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_Y_VALUE:
+          return "A value of property 'y' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_Z_VALUE:
+          return "A value of property 'z' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS:
+          return "A value of property list 'vertex_indices' on element 'face' "
+                 "exceeded the number of 'vertex' elements";
+        case ErrorCode::INVALID_PROPERTY_NX_VALUE:
+          return "A value of property 'nx' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_NY_VALUE:
+          return "A value of property 'ny' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_NZ_VALUE:
+          return "A value of property 'nz' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_S_VALUE:
+          return "A value of property 'texture_s' on element 'vertex' was not "
+                 "finite";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_T_VALUE:
+          return "A value of property 'texture_t' on element 'vertex' was not "
+                 "finite";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_U_VALUE:
+          return "A value of property 'texture_u' on element 'vertex' was not "
+                 "finite";
+        case ErrorCode::INVALID_PROPERTY_TEXTURE_V_VALUE:
+          return "A value of property 'texture_v' on element 'vertex' was not "
+                 "finite";
+        case ErrorCode::INVALID_PROPERTY_S_VALUE:
+          return "A value of property 's' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_T_VALUE:
+          return "A value of property 'y' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_U_VALUE:
+          return "A value of property 'u' on element 'vertex' was not finite";
+        case ErrorCode::INVALID_PROPERTY_V_VALUE:
+          return "A value of property 'v' on element 'vertex' was not finite";
+        case ErrorCode::OVERFLOWED_PROPERTY_X_TYPE:
+          return "A value of property 'x' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_Y_TYPE:
+          return "A value of property 'y' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_Z_TYPE:
+          return "A value of property 'z' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE:
+          return "A value of property list 'vertex_indices' on element 'face' "
+                 "was negative";
+        case ErrorCode::OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE:
+          return "A value of property list 'vertex_indices' on element 'face' "
+                 "could not into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_NX_TYPE:
+          return "A value of property 'nx' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_NY_TYPE:
+          return "A value of property 'ny' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_NZ_TYPE:
+          return "A value of property 'nz' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_S_TYPE:
+          return "A value of property 'texture_s' on element 'vertex' could "
+                 "not fit finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_T_TYPE:
+          return "A value of property 'texture_t' on element 'vertex' could "
+                 "not fit finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_U_TYPE:
+          return "A value of property 'texture_u' on element 'vertex' could "
+                 "not fit finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_V_TYPE:
+          return "A value of property 'texture_v' on element 'vertex' could "
+                 "not fit finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_S_TYPE:
+          return "A value of property 's' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_T_TYPE:
+          return "A value of property 't' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_U_TYPE:
+          return "A value of property 'u' on element 'vertex' could not fit "
+                 "finitely into its destination type";
+        case ErrorCode::OVERFLOWED_PROPERTY_V_TYPE:
+          return "A value of property 'v' on element 'vertex' could not fit "
                  "finitely into its destination type";
       }
 
@@ -210,20 +346,30 @@ class TriangleMeshReader : public PlyReader {
   std::error_code AddVertexPositionCallback(
       std::map<std::string, PropertyCallback> &callbacks, size_t index) {
     static const std::string property_names[3] = {"x", "y", "z"};
+    static const ErrorCode missing_error_codes[3] = {
+        ErrorCode::MISSING_PROPERTY_X, ErrorCode::MISSING_PROPERTY_Y,
+        ErrorCode::MISSING_PROPERTY_Z};
+    static const ErrorCode invalid_type_error_codes[3] = {
+        ErrorCode::INVALID_PROPERTY_X_TYPE, ErrorCode::INVALID_PROPERTY_Y_TYPE,
+        ErrorCode::INVALID_PROPERTY_Z_TYPE};
+    static const ErrorCode invalid_value_error_codes[3] = {
+        ErrorCode::INVALID_PROPERTY_X_VALUE,
+        ErrorCode::INVALID_PROPERTY_Y_VALUE,
+        ErrorCode::INVALID_PROPERTY_Z_VALUE};
 
     auto iter = callbacks.find(property_names[index]);
     if (iter == callbacks.end()) {
-      return MakeError(ErrorCode::MISSING_POSITION_DIMENSION);
+      return MakeError(missing_error_codes[index]);
     }
 
     if (!FloatingPointCallback(iter->second)) {
-      return MakeError(ErrorCode::INVALID_POSITION_TYPE);
+      return MakeError(invalid_type_error_codes[index]);
     }
 
     iter->second = std::function<std::error_code(PositionType)>(
         [index, this](PositionType value) -> std::error_code {
           if (!std::isfinite(value)) {
-            return MakeError(ErrorCode::POSITION_NOT_FINITE);
+            return MakeError(invalid_value_error_codes[index]);
           }
 
           xyz_[index] = value;
@@ -239,7 +385,7 @@ class TriangleMeshReader : public PlyReader {
       uintmax_t num_vertices) {
     auto iter = callbacks.find("vertex_indices");
     if (iter == callbacks.end()) {
-      return MakeError(ErrorCode::MISSING_VERTEX_INDICES);
+      return MakeError(ErrorCode::MISSING_PROPERTY_VERTEX_INDICES);
     }
 
     if (!std::holds_alternative<CharPropertyListCallback>(iter->second) &&
@@ -248,47 +394,58 @@ class TriangleMeshReader : public PlyReader {
         !std::holds_alternative<UShortPropertyListCallback>(iter->second) &&
         !std::holds_alternative<IntPropertyListCallback>(iter->second) &&
         !std::holds_alternative<UIntPropertyListCallback>(iter->second)) {
-      return MakeError(ErrorCode::INVALID_VERTEX_INDEX_TYPE);
+      return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_TYPE);
     }
 
-    iter->second =
-        std::function<std::error_code(std::span<const VertexIndexType>)>(
-            [num_vertices, this](std::span<const VertexIndexType> indices) {
-              if (indices.size() < 3) {
-                return std::error_code();
-              }
+    iter->second = std::function<std::error_code(
+        std::span<const VertexIndexType>)>(
+        [num_vertices, this](std::span<const VertexIndexType> indices) {
+          if (indices.size() < 3) {
+            return std::error_code();
+          }
 
-              if (num_vertices < indices[0] || num_vertices < indices[1]) {
-                return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
-              }
+          if (num_vertices < indices[0] || num_vertices < indices[1]) {
+            return MakeError(
+                ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS);
+          }
 
-              std::array<VertexIndexType, 3> faces;
-              faces[0] = static_cast<VertexIndexType>(indices[0]);
-              for (size_t i = 2u; i < indices.size(); i++) {
-                if (num_vertices < indices[i]) {
-                  return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
-                }
+          std::array<VertexIndexType, 3> faces;
+          faces[0] = static_cast<VertexIndexType>(indices[0]);
+          for (size_t i = 2u; i < indices.size(); i++) {
+            if (num_vertices < indices[i]) {
+              return MakeError(
+                  ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS);
+            }
 
-                faces[1] = static_cast<VertexIndexType>(indices[i - 1u]);
-                faces[2] = static_cast<VertexIndexType>(indices[i]);
+            faces[1] = static_cast<VertexIndexType>(indices[i - 1u]);
+            faces[2] = static_cast<VertexIndexType>(indices[i]);
 
-                if (faces[0] != faces[1] && faces[1] != faces[2] &&
-                    faces[2] != faces[0]) {
-                  AddTriangle(faces);
-                }
-              }
+            if (faces[0] != faces[1] && faces[1] != faces[2] &&
+                faces[2] != faces[0]) {
+              AddTriangle(faces);
+            }
+          }
 
-              return std::error_code();
-            });
+          return std::error_code();
+        });
 
     return std::error_code();
   }
 
   void AddVertexNormalCallback(PropertyCallback &callbacks, size_t index) {
+    static const ErrorCode invalid_value_error_codes[3] = {
+        ErrorCode::INVALID_PROPERTY_NX_VALUE,
+        ErrorCode::INVALID_PROPERTY_NY_VALUE,
+        ErrorCode::INVALID_PROPERTY_NZ_VALUE};
+
     callbacks = std::function<std::error_code(NormalType)>(
         [index, this](NormalType value) -> std::error_code {
           if (!std::isfinite(value)) {
-            return MakeError(ErrorCode::NORMAL_NOT_FINITE);
+            return MakeError(invalid_value_error_codes[index]);
+          }
+
+          if (normal_storage_.size() <= index) {
+            return std::error_code();
           }
 
           normal_storage_[index] = value;
@@ -307,19 +464,25 @@ class TriangleMeshReader : public PlyReader {
     if (x_iter == callbacks.end()) {
       success = false;
     } else if (!FloatingPointCallback(x_iter->second)) {
-      return MakeError(ErrorCode::INVALID_NORMAL_TYPE);
+      return MakeError(ErrorCode::INVALID_PROPERTY_NX_TYPE);
+    } else {
+      AddVertexNormalCallback(x_iter->second, 3);
     }
 
     if (y_iter == callbacks.end()) {
       success = false;
     } else if (!FloatingPointCallback(y_iter->second)) {
-      return MakeError(ErrorCode::INVALID_NORMAL_TYPE);
+      return MakeError(ErrorCode::INVALID_PROPERTY_NY_TYPE);
+    } else {
+      AddVertexNormalCallback(x_iter->second, 3);
     }
 
     if (z_iter == callbacks.end()) {
       success = false;
     } else if (!FloatingPointCallback(z_iter->second)) {
-      return MakeError(ErrorCode::INVALID_NORMAL_TYPE);
+      return MakeError(ErrorCode::INVALID_PROPERTY_NZ_TYPE);
+    } else {
+      AddVertexNormalCallback(x_iter->second, 3);
     }
 
     if (success) {
@@ -334,11 +497,16 @@ class TriangleMeshReader : public PlyReader {
     return std::error_code();
   }
 
-  void AddVertexUVCallback(PropertyCallback &callbacks, size_t index) {
+  void AddVertexUVCallback(PropertyCallback &callbacks, ErrorCode error_code,
+                           size_t index) {
     callbacks = std::function<std::error_code(UVType)>(
-        [index, this](UVType value) -> std::error_code {
+        [error_code, index, this](UVType value) -> std::error_code {
           if (!std::isfinite(value)) {
-            return MakeError(ErrorCode::TEXTURE_COORDINATE_NOT_FINITE);
+            return MakeError(error_code);
+          }
+
+          if (uv_storage_.size() <= index) {
+            return std::error_code();
           }
 
           uv_storage_[index] = value;
@@ -358,76 +526,102 @@ class TriangleMeshReader : public PlyReader {
     auto u_iter = callbacks.find("u");
     auto v_iter = callbacks.find("v");
 
+    ErrorCode selected_u_error;
     auto selected_u_iter = callbacks.end();
     if (texture_s_iter != callbacks.end()) {
       if (!FloatingPointCallback(texture_s_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_TEXTURE_S_TYPE);
       }
 
       selected_u_iter = texture_s_iter;
+      selected_u_error = ErrorCode::INVALID_PROPERTY_TEXTURE_S_VALUE;
+
+      AddVertexUVCallback(selected_u_iter->second, selected_u_error, 2);
     }
 
     if (texture_u_iter != callbacks.end()) {
       if (!FloatingPointCallback(texture_u_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_TEXTURE_U_TYPE);
       }
 
       selected_u_iter = texture_u_iter;
+      selected_u_error = ErrorCode::INVALID_PROPERTY_TEXTURE_T_VALUE;
+
+      AddVertexUVCallback(selected_u_iter->second, selected_u_error, 2);
     }
 
     if (s_iter != callbacks.end()) {
       if (!FloatingPointCallback(s_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_S_TYPE);
       }
 
       selected_u_iter = s_iter;
+      selected_u_error = ErrorCode::INVALID_PROPERTY_S_VALUE;
+
+      AddVertexUVCallback(selected_u_iter->second, selected_u_error, 2);
     }
 
     if (u_iter != callbacks.end()) {
       if (!FloatingPointCallback(u_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_U_TYPE);
       }
 
       selected_u_iter = u_iter;
+      selected_u_error = ErrorCode::INVALID_PROPERTY_U_VALUE;
+
+      AddVertexUVCallback(selected_u_iter->second, selected_u_error, 2);
     }
 
+    ErrorCode selected_v_error;
     auto selected_v_iter = callbacks.end();
     if (texture_t_iter != callbacks.end()) {
       if (!FloatingPointCallback(texture_t_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_TEXTURE_T_TYPE);
       }
 
       selected_v_iter = texture_t_iter;
+      selected_v_error = ErrorCode::INVALID_PROPERTY_TEXTURE_T_VALUE;
+
+      AddVertexUVCallback(selected_v_iter->second, selected_v_error, 2);
     }
 
     if (texture_v_iter != callbacks.end()) {
       if (!FloatingPointCallback(texture_v_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_TEXTURE_V_TYPE);
       }
 
       selected_v_iter = texture_v_iter;
+      selected_v_error = ErrorCode::INVALID_PROPERTY_TEXTURE_V_VALUE;
+
+      AddVertexUVCallback(selected_v_iter->second, selected_v_error, 2);
     }
 
     if (t_iter != callbacks.end()) {
       if (!FloatingPointCallback(t_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_T_TYPE);
       }
 
       selected_v_iter = t_iter;
+      selected_v_error = ErrorCode::INVALID_PROPERTY_T_VALUE;
+
+      AddVertexUVCallback(selected_v_iter->second, selected_v_error, 2);
     }
 
     if (v_iter != callbacks.end()) {
       if (!FloatingPointCallback(v_iter->second)) {
-        return MakeError(ErrorCode::INVALID_TEXTURE_COORDINATE_TYPE);
+        return MakeError(ErrorCode::INVALID_PROPERTY_V_TYPE);
       }
 
       selected_v_iter = v_iter;
+      selected_v_error = ErrorCode::INVALID_PROPERTY_V_VALUE;
+
+      AddVertexUVCallback(selected_v_iter->second, selected_v_error, 2);
     }
 
     if (selected_u_iter != callbacks.end() &&
         selected_v_iter != callbacks.end()) {
-      AddVertexUVCallback(selected_u_iter->second, 0);
-      AddVertexUVCallback(selected_v_iter->second, 1);
+      AddVertexUVCallback(selected_u_iter->second, selected_u_error, 0);
+      AddVertexUVCallback(selected_v_iter->second, selected_v_error, 1);
 
       uv_ = &uv_storage_;
       handle_vertex_index_ += 2;
@@ -499,28 +693,40 @@ class TriangleMeshReader : public PlyReader {
   std::error_code OnConversionFailure(const std::string &element,
                                       const std::string &property,
                                       ConversionFailureReason reason) override {
-    if (reason == ConversionFailureReason::UNSIGNED_INTEGER_UNDERFLOW) {
-      return MakeError(ErrorCode::VERTEX_INDEX_CONVERSION_UNDERFLOWED);
+    if (property == "x") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_X_TYPE);
+    } else if (property == "y") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_Y_TYPE);
+    } else if (property == "z") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_Z_TYPE);
+    } else if (property == "vertex_indices") {
+      if (reason == ConversionFailureReason::INTEGER_OVERFLOW) {
+        return MakeError(ErrorCode::OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE);
+      }
+      return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE);
+    } else if (property == "nx") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_NX_TYPE);
+    } else if (property == "ny") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_NY_TYPE);
+    } else if (property == "nz") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_NZ_TYPE);
+    } else if (property == "texture_s") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_S_TYPE);
+    } else if (property == "texture_t") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_T_TYPE);
+    } else if (property == "texture_u") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_U_TYPE);
+    } else if (property == "texture_v") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_V_TYPE);
+    } else if (property == "s") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_S_TYPE);
+    } else if (property == "t") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_T_TYPE);
+    } else if (property == "u") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_U_TYPE);
+    } else if (property == "v") {
+      return MakeError(ErrorCode::OVERFLOWED_PROPERTY_V_TYPE);
     }
-
-    if (property == "x" || property == "y" || property == "z") {
-      return MakeError(ErrorCode::POSITION_CONVERSION_FAILED);
-    }
-
-    if (property == "vertex_indices") {
-      return MakeError(ErrorCode::VERTEX_INDEX_CONVERSION_OVERFLOWED);
-    }
-
-    if (property == "nx" || property == "ny" || property == "nz") {
-      return MakeError(ErrorCode::NORMAL_CONVERSION_FAILED);
-    }
-
-    if (property == "texture_s" || property == "texture_t" ||
-        property == "texture_u" || property == "texture_v" || property == "s" ||
-        property == "t" || property == "u" || property == "v") {
-      return MakeError(ErrorCode::TEXTURE_COORDINATE_CONVERSION_FAILED);
-    }
-
     return std::error_code();
   }
 
