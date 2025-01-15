@@ -254,7 +254,7 @@ class TriangleMeshReader : public PlyReader {
         case ErrorCode::INVALID_PROPERTY_S_VALUE:
           return "A value of property 's' on element 'vertex' was not finite";
         case ErrorCode::INVALID_PROPERTY_T_VALUE:
-          return "A value of property 'y' on element 'vertex' was not finite";
+          return "A value of property 't' on element 'vertex' was not finite";
         case ErrorCode::INVALID_PROPERTY_U_VALUE:
           return "A value of property 'u' on element 'vertex' was not finite";
         case ErrorCode::INVALID_PROPERTY_V_VALUE:
@@ -474,7 +474,7 @@ class TriangleMeshReader : public PlyReader {
     } else if (!FloatingPointCallback(y_iter->second)) {
       return MakeError(ErrorCode::INVALID_PROPERTY_NY_TYPE);
     } else {
-      AddVertexNormalCallback(x_iter->second, 3);
+      AddVertexNormalCallback(y_iter->second, 3);
     }
 
     if (z_iter == callbacks.end()) {
@@ -482,7 +482,7 @@ class TriangleMeshReader : public PlyReader {
     } else if (!FloatingPointCallback(z_iter->second)) {
       return MakeError(ErrorCode::INVALID_PROPERTY_NZ_TYPE);
     } else {
-      AddVertexNormalCallback(x_iter->second, 3);
+      AddVertexNormalCallback(z_iter->second, 3);
     }
 
     if (success) {
@@ -545,7 +545,7 @@ class TriangleMeshReader : public PlyReader {
       }
 
       selected_u_iter = texture_u_iter;
-      selected_u_error = ErrorCode::INVALID_PROPERTY_TEXTURE_T_VALUE;
+      selected_u_error = ErrorCode::INVALID_PROPERTY_TEXTURE_U_VALUE;
 
       AddVertexUVCallback(selected_u_iter->second, selected_u_error, 2);
     }

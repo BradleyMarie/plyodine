@@ -447,56 +447,117 @@ TEST(TriangleMeshReader, CouldNotFitNormal) {
   }
 }
 
-TEST(TriangleMeshReader, OutOfRangeUVs) {
-  std::string names[] = {"u", "v"};
-  for (size_t i = 0; i < 2; i++) {
-    std::string input_string =
-        "ply\rformat " + Endianness() +
-        " 1.0\relement vertex 1\rproperty double x\rproperty "
-        "double y\rproperty double z\rproperty double u\rproperty "
-        "double v\relement face 0\rproperty list uchar uchar "
-        "vertex_indices\rend_header\r" +
-        ZeroDouble() + ZeroDouble() + ZeroDouble();
+TEST(TriangleMeshReader, ValidatesNormalWhenMissing) {
+  std::string names[] = {"nx", "ny", "nz"};
 
-    for (size_t j = 0; j < 2; j++) {
-      if (i == j) {
-        input_string += InfiniteDouble();
-      } else {
-        input_string += ZeroDouble();
-      }
-    }
+  for (size_t i = 0; i < 3; i++) {
+    std::string input_string =
+        "ply\rformat ascii 1.0\relement vertex 1\rproperty double x\rproperty "
+        "double y\rproperty double z\rproperty double " +
+        names[i] +
+        "\relement face 0\rproperty list uchar "
+        "uchar vertex_indices\rend_header\r0.0 0.0 0.0 "
+        "1000000000000000000000000000000000000000000000000000000000.0";
 
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
               "A value of property '" + names[i] +
-                  "' on element 'vertex' was not finite");
+                  "' on element 'vertex' could not fit finitely into its "
+                  "destination type");
+  }
+}
+
+TEST(TriangleMeshReader, OutOfRangeUVs) {
+  std::string u_names[] = {"texture_s", "texture_u", "s", "u"};
+  std::string v_names[] = {"texture_t", "texture_v", "t", "v"};
+  for (size_t i = 0; i < 4; i++) {
+    for (size_t j = 0; j < 4; j++) {
+      if (i == j) {
+        continue;
+      }
+
+      std::string input_string =
+          "ply\rformat " + Endianness() +
+          " 1.0\relement vertex 1\rproperty double x\rproperty "
+          "double y\rproperty double z\rproperty double " +
+          u_names[i] +
+          "\rproperty "
+          "double " +
+          v_names[j] +
+          "\relement face 0\rproperty list uchar uchar "
+          "vertex_indices\rend_header\r" +
+          ZeroDouble() + ZeroDouble() + ZeroDouble();
+
+      std::stringstream input_u(input_string + InfiniteDouble() + ZeroDouble());
+      std::stringstream input_v(input_string + ZeroDouble() + InfiniteDouble());
+      TestTriangleMeshReader<float, float, float, uint32_t> reader;
+
+      EXPECT_EQ(reader.ReadFrom(input_u).message(),
+                "A value of property '" + u_names[i] +
+                    "' on element 'vertex' was not finite");
+      EXPECT_EQ(reader.ReadFrom(input_v).message(),
+                "A value of property '" + v_names[j] +
+                    "' on element 'vertex' was not finite");
+    }
   }
 }
 
 TEST(TriangleMeshReader, CouldNotFitUVs) {
-  std::string names[] = {"u", "v"};
-  std::string position[] = {
-      "1.0", "1000000000000000000000000000000000000000000000000000000000.0"};
+  std::string u_names[] = {"texture_s", "texture_u", "s", "u"};
+  std::string v_names[] = {"texture_t", "texture_v", "t", "v"};
 
-  for (size_t i = 0; i < 2; i++) {
+  for (size_t i = 0; i < 4; i++) {
+    for (size_t j = 0; j < 4; j++) {
+      if (i == j) {
+        continue;
+      }
+
+      std::string input_string =
+          "ply\rformat ascii 1.0\relement vertex 1\rproperty double "
+          "x\rproperty "
+          "double y\rproperty double z\rproperty double " +
+          u_names[i] +
+          "\rproperty "
+          "double " +
+          v_names[j] +
+          "\relement face 0\rproperty list uchar uchar "
+          "vertex_indices\rend_header\r0.0 0.0 0.0 ";
+
+      std::stringstream input_u(
+          input_string +
+          "1000000000000000000000000000000000000000000000000000000000.0 1.0 ");
+      std::stringstream input_v(
+          input_string +
+          "1.0 1000000000000000000000000000000000000000000000000000000000.0");
+      TestTriangleMeshReader<float, float, float, uint32_t> reader;
+
+      EXPECT_EQ(reader.ReadFrom(input_u).message(),
+                "A value of property '" + u_names[i] +
+                    "' on element 'vertex' could not fit finitely into its "
+                    "destination type");
+      EXPECT_EQ(reader.ReadFrom(input_v).message(),
+                "A value of property '" + v_names[j] +
+                    "' on element 'vertex' could not fit finitely into its "
+                    "destination type");
+    }
+  }
+}
+
+TEST(TriangleMeshReader, ValidatesUVsWhenMissing) {
+  std::string names[] = {
+      "texture_s", "texture_t", "texture_u", "texture_v", "s", "t", "u", "v",
+  };
+
+  for (size_t i = 0; i < 8; i++) {
     std::string input_string =
         "ply\rformat ascii 1.0\relement vertex 1\rproperty double x\rproperty "
-        "double y\rproperty double z\rproperty double u\rproperty "
-        "double v\relement face 0\rproperty list uchar uchar "
-        "vertex_indices\rend_header\r0.0 0.0 0.0 ";
-    for (size_t j = 0; j < 2; j++) {
-      if (i == j) {
-        input_string += position[1];
-      } else {
-        input_string += position[0];
-      }
-
-      if (j != 2) {
-        input_string += " ";
-      }
-    }
+        "double y\rproperty double z\rproperty double " +
+        names[i] +
+        "\relement face 0\rproperty list uchar "
+        "uchar vertex_indices\rend_header\r0.0 0.0 0.0 "
+        "1000000000000000000000000000000000000000000000000000000000.0";
 
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
