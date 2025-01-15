@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -54,6 +55,31 @@ class TestTriangleMeshReader final
   std::vector<std::array<FaceIndexType, 3u>> faces;
 };
 
+std::string InfiniteDouble() {
+  double f = std::numeric_limits<double>::infinity();
+
+  std::string as_string(sizeof(double), '\0');
+  memcpy(as_string.data(), &f, sizeof(double));
+
+  return as_string;
+}
+
+std::string ZeroDouble() {
+  double f = 0.0;
+
+  std::string as_string(sizeof(double), '\0');
+  memcpy(as_string.data(), &f, sizeof(double));
+
+  return as_string;
+}
+
+std::string Endianness() {
+  if (std::endian::native == std::endian::big) {
+    return "binary_big_endian";
+  }
+  return "binary_little_endian";
+}
+
 TEST(TriangleMeshReader, DefaultErrorCondition) {
   std::stringstream input("ply\rformat ascii 1.0\rend_header\r");
 
@@ -63,11 +89,11 @@ TEST(TriangleMeshReader, DefaultErrorCondition) {
 
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 12; i++) {
+  for (int i = 1; i <= 17; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(13),
+  EXPECT_NE(error_catgegory.default_error_condition(18),
             std::errc::invalid_argument);
 }
 
@@ -291,6 +317,29 @@ TEST(TriangleMeshReader, PropertyTypes) {
 }
 
 TEST(TriangleMeshReader, OutOfRangePosition) {
+  for (size_t i = 0; i < 3; i++) {
+    std::string input_string =
+        "ply\rformat " + Endianness() +
+        " 1.0\relement vertex 1\rproperty double x\rproperty "
+        "double y\rproperty double z\relement face 0\rproperty list uchar "
+        "uchar vertex_indices\rend_header\r";
+    for (size_t j = 0; j < 3; j++) {
+      if (i == j) {
+        input_string += InfiniteDouble();
+      } else {
+        input_string += ZeroDouble();
+      }
+    }
+
+    std::stringstream input(input_string);
+    TestTriangleMeshReader<float, float, float, uint32_t> reader;
+
+    EXPECT_EQ(reader.ReadFrom(input).message(),
+              "Input contained a non-finite position");
+  }
+}
+
+TEST(TriangleMeshReader, CouldNotFitPosition) {
   std::string position[] = {
       "1.0", "1000000000000000000000000000000000000000000000000000000000.0"};
 
@@ -316,11 +365,38 @@ TEST(TriangleMeshReader, OutOfRangePosition) {
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
-              "Input contained a non-finite position");
+              "Input contained a position that could not fit finitely into its "
+              "destination type");
   }
 }
 
 TEST(TriangleMeshReader, OutOfRangeNormal) {
+  for (size_t i = 0; i < 3; i++) {
+    std::string input_string =
+        "ply\rformat " + Endianness() +
+        " 1.0\relement vertex 1\rproperty double x\rproperty "
+        "double y\rproperty double z\rproperty double nx\rproperty "
+        "double ny\rproperty double nz\relement face 0\rproperty list uchar "
+        "uchar vertex_indices\rend_header\r" +
+        ZeroDouble() + ZeroDouble() + ZeroDouble();
+
+    for (size_t j = 0; j < 3; j++) {
+      if (i == j) {
+        input_string += InfiniteDouble();
+      } else {
+        input_string += ZeroDouble();
+      }
+    }
+
+    std::stringstream input(input_string);
+    TestTriangleMeshReader<float, float, float, uint32_t> reader;
+
+    EXPECT_EQ(reader.ReadFrom(input).message(),
+              "Input contained a non-finite normal");
+  }
+}
+
+TEST(TriangleMeshReader, CouldNotFitNormal) {
   std::string position[] = {
       "1.0", "1000000000000000000000000000000000000000000000000000000000.0"};
 
@@ -346,11 +422,38 @@ TEST(TriangleMeshReader, OutOfRangeNormal) {
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
-              "Input contained a non-finite normal");
+              "Input contained a normal that could not fit finitely into its "
+              "destination type");
   }
 }
 
-TEST(TriangleMeshReader, UVs) {
+TEST(TriangleMeshReader, OutOfRangeUVs) {
+  for (size_t i = 0; i < 2; i++) {
+    std::string input_string =
+        "ply\rformat " + Endianness() +
+        " 1.0\relement vertex 1\rproperty double x\rproperty "
+        "double y\rproperty double z\rproperty double u\rproperty "
+        "double v\relement face 0\rproperty list uchar uchar "
+        "vertex_indices\rend_header\r" +
+        ZeroDouble() + ZeroDouble() + ZeroDouble();
+
+    for (size_t j = 0; j < 2; j++) {
+      if (i == j) {
+        input_string += InfiniteDouble();
+      } else {
+        input_string += ZeroDouble();
+      }
+    }
+
+    std::stringstream input(input_string);
+    TestTriangleMeshReader<float, float, float, uint32_t> reader;
+
+    EXPECT_EQ(reader.ReadFrom(input).message(),
+              "Input contained a non-finite texture coordinate");
+  }
+}
+
+TEST(TriangleMeshReader, CouldNotFitUVs) {
   std::string position[] = {
       "1.0", "1000000000000000000000000000000000000000000000000000000000.0"};
 
@@ -376,7 +479,8 @@ TEST(TriangleMeshReader, UVs) {
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
-              "Input contained a non-finite texture coordinate");
+              "Input contained a texture coordinate that could not fit "
+              "finitely into its destination type");
   }
 }
 
@@ -402,8 +506,7 @@ TEST(TriangleMeshReader, VertexIndexTooLow) {
     std::stringstream input(input_string);
     TestTriangleMeshReader<float, float, float, uint32_t> reader;
 
-    EXPECT_EQ(reader.ReadFrom(input).message(),
-              "A vertex index was out of range");
+    EXPECT_EQ(reader.ReadFrom(input).message(), "A vertex index was negative");
   }
 }
 
@@ -462,7 +565,7 @@ TEST(TriangleMeshReader, VertexIndexTooBigForIndexType) {
     TestTriangleMeshReader<float, float, float, uint8_t> reader;
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
-              "A vertex index was out of range");
+              "A vertex index was too large to fit into its destination type");
   }
 }
 

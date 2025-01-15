@@ -109,10 +109,15 @@ class TriangleMeshReader : public PlyReader {
     INVALID_NORMAL_TYPE = 7,
     INVALID_TEXTURE_COORDINATE_TYPE = 8,
     POSITION_NOT_FINITE = 9,
-    VERTEX_INDEX_OUT_OF_RANGE = 10,
-    NORMAL_NOT_FINITE = 11,
-    TEXTURE_COORDINATE_NOT_FINITE = 12,
-    MAX_VALUE = 12,
+    POSITION_CONVERSION_FAILED = 10,
+    VERTEX_INDEX_OUT_OF_RANGE = 11,
+    VERTEX_INDEX_CONVERSION_UNDERFLOWED = 12,
+    VERTEX_INDEX_CONVERSION_OVERFLOWED = 13,
+    NORMAL_NOT_FINITE = 14,
+    NORMAL_CONVERSION_FAILED = 15,
+    TEXTURE_COORDINATE_NOT_FINITE = 16,
+    TEXTURE_COORDINATE_CONVERSION_FAILED = 17,
+    MAX_VALUE = 17,
   };
 
   static class ErrorCategory final : public std::error_category {
@@ -146,12 +151,26 @@ class TriangleMeshReader : public PlyReader {
                  "float or double";
         case ErrorCode::POSITION_NOT_FINITE:
           return "Input contained a non-finite position";
+        case ErrorCode::POSITION_CONVERSION_FAILED:
+          return "Input contained a position that could not fit finitely into "
+                 "its destination type";
         case ErrorCode::VERTEX_INDEX_OUT_OF_RANGE:
           return "A vertex index was out of range";
+        case ErrorCode::VERTEX_INDEX_CONVERSION_UNDERFLOWED:
+          return "A vertex index was negative";
+        case ErrorCode::VERTEX_INDEX_CONVERSION_OVERFLOWED:
+          return "A vertex index was too large to fit into its destination "
+                 "type";
         case ErrorCode::NORMAL_NOT_FINITE:
           return "Input contained a non-finite normal";
+        case ErrorCode::NORMAL_CONVERSION_FAILED:
+          return "Input contained a normal that could not fit finitely into "
+                 "its destination type";
         case ErrorCode::TEXTURE_COORDINATE_NOT_FINITE:
           return "Input contained a non-finite texture coordinate";
+        case ErrorCode::TEXTURE_COORDINATE_CONVERSION_FAILED:
+          return "Input contained a texture coordinate that could not fit "
+                 "finitely into its destination type";
       }
 
       return "Unknown Error";
@@ -480,22 +499,26 @@ class TriangleMeshReader : public PlyReader {
   std::error_code OnConversionFailure(const std::string &element,
                                       const std::string &property,
                                       ConversionFailureReason reason) override {
+    if (reason == ConversionFailureReason::UNSIGNED_INTEGER_UNDERFLOW) {
+      return MakeError(ErrorCode::VERTEX_INDEX_CONVERSION_UNDERFLOWED);
+    }
+
     if (property == "x" || property == "y" || property == "z") {
-      return MakeError(ErrorCode::POSITION_NOT_FINITE);
+      return MakeError(ErrorCode::POSITION_CONVERSION_FAILED);
     }
 
     if (property == "vertex_indices") {
-      return MakeError(ErrorCode::VERTEX_INDEX_OUT_OF_RANGE);
+      return MakeError(ErrorCode::VERTEX_INDEX_CONVERSION_OVERFLOWED);
     }
 
     if (property == "nx" || property == "ny" || property == "nz") {
-      return MakeError(ErrorCode::NORMAL_NOT_FINITE);
+      return MakeError(ErrorCode::NORMAL_CONVERSION_FAILED);
     }
 
     if (property == "texture_s" || property == "texture_t" ||
         property == "texture_u" || property == "texture_v" || property == "s" ||
         property == "t" || property == "u" || property == "v") {
-      return MakeError(ErrorCode::TEXTURE_COORDINATE_NOT_FINITE);
+      return MakeError(ErrorCode::TEXTURE_COORDINATE_CONVERSION_FAILED);
     }
 
     return std::error_code();
