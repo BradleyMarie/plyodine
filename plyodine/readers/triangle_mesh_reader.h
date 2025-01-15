@@ -90,14 +90,14 @@ class TriangleMeshReader : public PlyReader {
   //
   // `maybe_uv` - If the model contains the properties required, the U and V
   // texture coordinates of the normal, otherwise nullptr.
-  virtual void AddVertex(const std::array<PositionType, 3> &position,
-                         const std::array<NormalType, 3> *maybe_normal,
-                         const std::array<UVType, 2> *maybe_uv) = 0;
+  virtual void AddVertex(const std::array<PositionType, 3>& position,
+                         const std::array<NormalType, 3>* maybe_normal,
+                         const std::array<UVType, 2>* maybe_uv) = 0;
 
   // This function is implemented by derived classes in order to receive the
   // vertex indices of each triangle in the model.
   virtual void AddTriangle(
-      const std::array<VertexIndexType, 3> &vertex_indices) = 0;
+      const std::array<VertexIndexType, 3>& vertex_indices) = 0;
 
  private:
   enum class ErrorCode {
@@ -158,7 +158,7 @@ class TriangleMeshReader : public PlyReader {
   };
 
   static class ErrorCategory final : public std::error_category {
-    const char *name() const noexcept override {
+    const char* name() const noexcept override {
       return "plyodine::TriangleMeshReader";
     }
 
@@ -327,7 +327,7 @@ class TriangleMeshReader : public PlyReader {
     return std::error_code(static_cast<int>(error_code), error_category);
   }
 
-  static bool FloatingPointCallback(const PropertyCallback &callback) {
+  static bool FloatingPointCallback(const PropertyCallback& callback) {
     return std::holds_alternative<FloatPropertyCallback>(callback) ||
            std::holds_alternative<DoublePropertyCallback>(callback);
   }
@@ -344,7 +344,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::error_code AddVertexPositionCallback(
-      std::map<std::string, PropertyCallback> &callbacks, size_t index) {
+      std::map<std::string, PropertyCallback>& callbacks, size_t index) {
     static const std::string property_names[3] = {"x", "y", "z"};
     static const ErrorCode missing_error_codes[3] = {
         ErrorCode::MISSING_PROPERTY_X, ErrorCode::MISSING_PROPERTY_Y,
@@ -381,7 +381,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::error_code AddVertexIndicesCallback(
-      std::map<std::string, PropertyCallback> &callbacks,
+      std::map<std::string, PropertyCallback>& callbacks,
       uintmax_t num_vertices) {
     auto iter = callbacks.find("vertex_indices");
     if (iter == callbacks.end()) {
@@ -432,7 +432,7 @@ class TriangleMeshReader : public PlyReader {
     return std::error_code();
   }
 
-  void AddVertexNormalCallback(PropertyCallback &callbacks, size_t index) {
+  void AddVertexNormalCallback(PropertyCallback& callbacks, size_t index) {
     static const ErrorCode invalid_value_error_codes[3] = {
         ErrorCode::INVALID_PROPERTY_NX_VALUE,
         ErrorCode::INVALID_PROPERTY_NY_VALUE,
@@ -455,7 +455,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::error_code AddVertexNormalCallbacks(
-      std::map<std::string, PropertyCallback> &callbacks) {
+      std::map<std::string, PropertyCallback>& callbacks) {
     auto x_iter = callbacks.find("nx");
     auto y_iter = callbacks.find("ny");
     auto z_iter = callbacks.find("nz");
@@ -497,7 +497,7 @@ class TriangleMeshReader : public PlyReader {
     return std::error_code();
   }
 
-  void AddVertexUVCallback(PropertyCallback &callbacks, ErrorCode error_code,
+  void AddVertexUVCallback(PropertyCallback& callbacks, ErrorCode error_code,
                            size_t index) {
     callbacks = std::function<std::error_code(UVType)>(
         [error_code, index, this](UVType value) -> std::error_code {
@@ -516,7 +516,7 @@ class TriangleMeshReader : public PlyReader {
   }
 
   std::error_code AddVertexUVCallbacks(
-      std::map<std::string, PropertyCallback> &callbacks) {
+      std::map<std::string, PropertyCallback>& callbacks) {
     auto texture_s_iter = callbacks.find("texture_s");
     auto texture_t_iter = callbacks.find("texture_t");
     auto texture_u_iter = callbacks.find("texture_u");
@@ -632,7 +632,7 @@ class TriangleMeshReader : public PlyReader {
 
   std::error_code Start(
       std::map<std::string, uintmax_t> num_element_instances,
-      std::map<std::string, std::map<std::string, PropertyCallback>> &callbacks,
+      std::map<std::string, std::map<std::string, PropertyCallback>>& callbacks,
       std::vector<std::string> comments,
       std::vector<std::string> object_info) final {
     current_vertex_index_ = 0;
@@ -690,8 +690,8 @@ class TriangleMeshReader : public PlyReader {
     return std::error_code();
   }
 
-  std::error_code OnConversionFailure(const std::string &element,
-                                      const std::string &property,
+  std::error_code OnConversionFailure(const std::string& element,
+                                      const std::string& property,
                                       ConversionFailureReason reason) override {
     if (property == "x") {
       return MakeError(ErrorCode::OVERFLOWED_PROPERTY_X_TYPE);
@@ -734,8 +734,8 @@ class TriangleMeshReader : public PlyReader {
   size_t handle_vertex_index_;
   size_t current_vertex_index_;
 
-  std::array<NormalType, 3> *normal_ = nullptr;
-  std::array<UVType, 2> *uv_ = nullptr;
+  std::array<NormalType, 3>* normal_ = nullptr;
+  std::array<UVType, 2>* uv_ = nullptr;
 
   std::array<PositionType, 3> xyz_ = {0.0, 0.0, 0.0};
   std::array<NormalType, 3> normal_storage_ = {0.0, 0.0, 0.0};
