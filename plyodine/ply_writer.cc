@@ -28,14 +28,17 @@ enum class ErrorCode {
   INVALID_COMMENT = 2,
   INVALID_OBJ_INFO = 3,
   MISSING_PROPERTIES = 4,
-  INVALID_ELEMENT_NAME = 5,
-  INVALID_PROPERTY_NAME = 6,
-  UCHAR_LIST_OVERFLOWED = 7,
-  USHORT_LIST_OVERFLOWED = 8,
-  UINT_LIST_OVERFLOWED = 9,
-  INVALID_ASCII_FLOAT = 10,
-  MISSING_DATA = 11,
-  MAX_VALUE = 11,
+  MISSING_ELEMENT_NAME = 5,
+  INVALID_ELEMENT_NAME = 6,
+  MISSING_PROPERTY_NAME = 7,
+  INVALID_PROPERTY_NAME = 8,
+  OVERFLOWED_UCHAR_LIST = 9,
+  OVERFLOWED_USHORT_LIST = 10,
+  OVERFLOWED_UINT_LIST = 11,
+  INVALID_ASCII_FLOAT = 12,
+  INVALID_ASCII_FLOAT_LIST = 13,
+  MISSING_DATA = 14,
+  MAX_VALUE = 14,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -61,24 +64,31 @@ std::string ErrorCategory::message(int condition) const {
              "only ASCII space and ASCII graphic characters)";
     case ErrorCode::MISSING_PROPERTIES:
       return "An element had no properties";
+    case ErrorCode::MISSING_ELEMENT_NAME:
+      return "An element had an empty name";
     case ErrorCode::INVALID_ELEMENT_NAME:
-      return "An element had an invalid name (must be non-empty and contain "
-             "only ASCII graphic characters)";
+      return "An element name contained characters (must contain only ASCII "
+             "graphic characters)";
+    case ErrorCode::MISSING_PROPERTY_NAME:
+      return "A property had an empty name";
     case ErrorCode::INVALID_PROPERTY_NAME:
-      return "A property had an invalid name (must be non-empty and contain "
-             "only ASCII graphic characters)";
-    case ErrorCode::UCHAR_LIST_OVERFLOWED:
+      return "A property name contained characters (must contain only ASCII "
+             "graphic characters)";
+    case ErrorCode::OVERFLOWED_UCHAR_LIST:
       return "A property list with size type 'uchar' exceeded its maximum "
              "supported length (255 entries)";
-    case ErrorCode::USHORT_LIST_OVERFLOWED:
+    case ErrorCode::OVERFLOWED_USHORT_LIST:
       return "A property list with size type 'ushort' exceeded its maximum "
              "supported length (65,535 entries)";
-    case ErrorCode::UINT_LIST_OVERFLOWED:
+    case ErrorCode::OVERFLOWED_UINT_LIST:
       return "A property list with size type 'uint' exceeded its maximum "
              "supported length (4,294,967,295 entries)";
     case ErrorCode::INVALID_ASCII_FLOAT:
-      return "A non-finite floating-point value cannot be serialized to an "
-             "ASCII output";
+      return "A non-finite floating-point property value cannot be written to "
+             "an ASCII output";
+    case ErrorCode::INVALID_ASCII_FLOAT_LIST:
+      return "A non-finite floating-point property list value cannot be "
+             "written to an ASCII output";
     case ErrorCode::MISSING_DATA:
       return "A property generator did not produce enough data for all "
              "instances of its element";
@@ -124,14 +134,15 @@ using GetPropertyListSizeFunc =
 using WriteFunc =
     std::move_only_function<std::error_code(std::ostream&, std::stringstream&)>;
 
-std::error_code ValidateName(const std::string& name, ErrorCode error) {
+std::error_code ValidateName(const std::string& name, ErrorCode empty_error,
+                             ErrorCode invalid_chars_error) {
   if (name.empty()) {
-    return error;
+    return empty_error;
   }
 
   for (char c : name) {
     if (!std::isgraph(c)) {
-      return error;
+      return invalid_chars_error;
     }
   }
 
@@ -240,8 +251,8 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
       std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint16_t>::max(),
       std::numeric_limits<uint32_t>::max()};
   static constexpr ErrorCode list_errors[3] = {
-      ErrorCode::UCHAR_LIST_OVERFLOWED, ErrorCode::USHORT_LIST_OVERFLOWED,
-      ErrorCode::UINT_LIST_OVERFLOWED};
+      ErrorCode::OVERFLOWED_UCHAR_LIST, ErrorCode::OVERFLOWED_USHORT_LIST,
+      ErrorCode::OVERFLOWED_UINT_LIST};
 
   return [iter = generator.begin(), end = generator.end(), list_type](
              std::ostream& stream,
@@ -291,6 +302,10 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
 
         if (std::error_code error = Serialize<F>(stream, token, value[i]);
             error) {
+          if (error == ErrorCode::INVALID_ASCII_FLOAT) {
+            return ErrorCode::INVALID_ASCII_FLOAT_LIST;
+          }
+
           return error;
         }
       }
@@ -392,7 +407,8 @@ std::error_code WriteHeader(
     }
 
     if (std::error_code error =
-            ValidateName(element_name, ErrorCode::INVALID_ELEMENT_NAME);
+            ValidateName(element_name, ErrorCode::MISSING_ELEMENT_NAME,
+                         ErrorCode::INVALID_ELEMENT_NAME);
         error) {
       return error;
     }
@@ -406,7 +422,8 @@ std::error_code WriteHeader(
 
     for (const auto& [property_name, property] : properties) {
       if (std::error_code error =
-              ValidateName(property_name, ErrorCode::INVALID_PROPERTY_NAME);
+              ValidateName(property_name, ErrorCode::MISSING_PROPERTY_NAME,
+                           ErrorCode::INVALID_PROPERTY_NAME);
           error) {
         return error;
       }

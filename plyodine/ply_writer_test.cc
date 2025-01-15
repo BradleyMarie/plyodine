@@ -388,11 +388,11 @@ TEST(Validate, DefaultErrorCondition) {
       writer.WriteTo(output).category();
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 11; i++) {
+  for (int i = 1; i <= 14; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(12),
+  EXPECT_NE(error_catgegory.default_error_condition(15),
             std::errc::invalid_argument);
 }
 
@@ -432,11 +432,10 @@ TEST(Validate, StartFails) {
 TEST(Validate, BadElementNames) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {{"", {{"prop", {}}}}}).message(),
-            "An element had an invalid name (must be non-empty and contain "
-            "only ASCII graphic characters)");
+            "An element had an empty name");
   EXPECT_EQ(WriteToASCII(output, {{" ", {{"prop", {}}}}}).message(),
-            "An element had an invalid name (must be non-empty and contain "
-            "only ASCII graphic characters)");
+            "An element name contained characters (must contain only ASCII "
+            "graphic characters)");
 }
 
 TEST(Validate, EmptyPropertyNames) {
@@ -447,8 +446,7 @@ TEST(Validate, EmptyPropertyNames) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, properties).message(),
-            "A property had an invalid name (must be non-empty and contain "
-            "only ASCII graphic characters)");
+            "A property had an empty name");
 }
 
 TEST(Validate, NonGraphicPropertyNames) {
@@ -459,8 +457,8 @@ TEST(Validate, NonGraphicPropertyNames) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, properties).message(),
-            "A property had an invalid name (must be non-empty and contain "
-            "only ASCII graphic characters)");
+            "A property name contained characters (must contain only ASCII "
+            "graphic characters)");
 }
 
 TEST(Validate, BadComment) {
@@ -607,8 +605,8 @@ TEST(ASCII, NonFinite) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A non-finite floating-point value cannot be serialized to an "
-            "ASCII output");
+            "A non-finite floating-point property value cannot be written to "
+            "an ASCII output");
 }
 
 TEST(ASCII, NonFiniteList) {
@@ -618,9 +616,10 @@ TEST(ASCII, NonFiniteList) {
   data["vertex"]["a"] = al;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A non-finite floating-point value cannot be serialized to an "
-            "ASCII output");
+  EXPECT_EQ(
+      WriteToASCII(output, data).message(),
+      "A non-finite floating-point property list value cannot be written to "
+      "an ASCII output");
 }
 
 TEST(ASCII, TestData) {
