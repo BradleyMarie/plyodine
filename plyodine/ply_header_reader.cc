@@ -16,11 +16,11 @@
 
 namespace {
 
-enum class ErrorCode : int {
+enum class ErrorCode {
   MIN_VALUE = 1,
   BAD_STREAM = 1,
   MISSING_MAGIC_STRING = 2,
-  CONTAINS_MISMATCHED_LINE_ENDINGS = 3,
+  MISMATCHED_LINE_ENDINGS = 3,
   CONTAINS_INVALID_CHARACTER = 4,
   LINE_STARTS_WITH_WHITESPACE = 5,
   LINE_ENDS_WITH_WHITESPACE = 6,
@@ -65,7 +65,7 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::MISSING_MAGIC_STRING:
       return "The first line of the input must exactly contain the magic "
              "string";
-    case ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS:
+    case ErrorCode::MISMATCHED_LINE_ENDINGS:
       return "The input contained mismatched line endings";
     case ErrorCode::CONTAINS_INVALID_CHARACTER:
       return "The input contained an invalid character";
@@ -154,7 +154,7 @@ std::expected<std::string_view, std::error_code> ReadNextLine(
     if (c == '\r' || c == '\n') {
       do {
         if (c != line_ending[0]) {
-          return std::unexpected(ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS);
+          return std::unexpected(ErrorCode::MISMATCHED_LINE_ENDINGS);
         }
         line_ending.remove_prefix(1);
       } while (!line_ending.empty() && input.get(c));

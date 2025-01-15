@@ -98,7 +98,7 @@ class TriangleMeshReader : public PlyReader {
       const std::array<VertexIndexType, 3> &vertex_indices) = 0;
 
  private:
-  enum class ErrorCode : int {
+  enum class ErrorCode {
     MIN_VALUE = 1,
     MISSING_VERTEX_ELEMENT = 1,
     MISSING_FACE_ELEMENT = 2,

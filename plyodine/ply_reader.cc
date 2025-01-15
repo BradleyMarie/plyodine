@@ -21,7 +21,7 @@
 
 namespace {
 
-enum class ErrorCode : int {
+enum class ErrorCode {
   MIN_VALUE = 1,
   BAD_STREAM = 1,
   UNKNOWN_ELEMENT = 2,
