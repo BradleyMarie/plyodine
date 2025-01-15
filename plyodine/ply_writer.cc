@@ -22,19 +22,18 @@
 
 namespace {
 
-enum class ErrorCode : int {
+enum class ErrorCode {
   MIN_VALUE = 1,
   BAD_STREAM = 1,
-  COMMENT_CONTAINS_INVALID_CHARACTERS = 2,
-  OBJ_INFO_CONTAINS_INVALID_CHARACTERS = 3,
-  ELEMENT_HAS_NO_PROPERTIES = 4,
-  PROPERTY_HAS_NO_INSTANCES = 5,
-  EMPTY_NAME_SPECIFIED = 6,
-  NAME_CONTAINS_INVALID_CHARACTERS = 7,
-  LIST_INDEX_TOO_SMALL = 8,
-  ASCII_FLOAT_NOT_FINITE = 9,
-  NOT_ENOUGH_VALUES = 10,
-  MAX_VALUE = 10,
+  INVALID_COMMENT = 2,
+  INVALID_OBJ_INFO = 3,
+  MISSING_PROPERTIES = 4,
+  EMPTY_NAME = 5,
+  INVALID_CHARACTERS_IN_NAME = 6,
+  LIST_SIZE_OVERFLOWED = 7,
+  INVALID_ASCII_FLOAT = 8,
+  MISSING_DATA = 9,
+  MAX_VALUE = 9,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -52,27 +51,24 @@ std::string ErrorCategory::message(int condition) const {
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
       return "Output stream must be in good state";
-    case ErrorCode::COMMENT_CONTAINS_INVALID_CHARACTERS:
+    case ErrorCode::INVALID_COMMENT:
       return "A comment may only contain graphic characters and spaces";
-    case ErrorCode::OBJ_INFO_CONTAINS_INVALID_CHARACTERS:
+    case ErrorCode::INVALID_OBJ_INFO:
       return "An obj_info may only contain graphic characters and spaces";
-    case ErrorCode::ELEMENT_HAS_NO_PROPERTIES:
-      return "An element must have at least one associated property";
-    case ErrorCode::PROPERTY_HAS_NO_INSTANCES:
-      return "All elements with properties must have a non-zero number of "
-             "instances";
-    case ErrorCode::EMPTY_NAME_SPECIFIED:
+    case ErrorCode::MISSING_PROPERTIES:
+      return "An element must have properties";
+    case ErrorCode::EMPTY_NAME:
       return "Names of properties and elements may not be empty";
-    case ErrorCode::NAME_CONTAINS_INVALID_CHARACTERS:
+    case ErrorCode::INVALID_CHARACTERS_IN_NAME:
       return "Names of properties and elements may only contain graphic "
              "characters";
-    case ErrorCode::LIST_INDEX_TOO_SMALL:
+    case ErrorCode::LIST_SIZE_OVERFLOWED:
       return "The list was too big to be represented with the selected size "
              "type";
-    case ErrorCode::ASCII_FLOAT_NOT_FINITE:
+    case ErrorCode::INVALID_ASCII_FLOAT:
       return "Only finite floating point values may be serialized to an ASCII "
              "output";
-    case ErrorCode::NOT_ENOUGH_VALUES:
+    case ErrorCode::MISSING_DATA:
       return "A property generator did not produce enough values to cover all "
              "every associated element instance in the output";
   };
@@ -119,12 +115,12 @@ using WriteFunc =
 
 std::error_code ValidateName(const std::string& name) {
   if (name.empty()) {
-    return ErrorCode::EMPTY_NAME_SPECIFIED;
+    return ErrorCode::EMPTY_NAME;
   }
 
   for (char c : name) {
     if (!std::isgraph(c)) {
-      return ErrorCode::NAME_CONTAINS_INVALID_CHARACTERS;
+      return ErrorCode::INVALID_CHARACTERS_IN_NAME;
     }
   }
 
@@ -156,7 +152,7 @@ template <std::floating_point T>
 std::error_code SerializeASCII(std::ostream& stream, std::stringstream& storage,
                                T value) {
   if (!std::isfinite(value)) {
-    return ErrorCode::ASCII_FLOAT_NOT_FINITE;
+    return ErrorCode::INVALID_ASCII_FLOAT;
   }
 
   storage.str("");
@@ -237,7 +233,7 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
              std::ostream& stream,
              std::stringstream& token) mutable -> std::error_code {
     if (iter == end) {
-      return std::error_code(ErrorCode::NOT_ENOUGH_VALUES);
+      return std::error_code(ErrorCode::MISSING_DATA);
     }
 
     T value = *iter;
@@ -245,7 +241,7 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
     if constexpr (!std::is_arithmetic_v<T>) {
       size_t size = value.size();
       if (size > list_capacities[static_cast<size_t>(list_type)]) {
-        return ErrorCode::LIST_INDEX_TOO_SMALL;
+        return ErrorCode::LIST_SIZE_OVERFLOWED;
       }
 
       switch (list_type) {
@@ -356,7 +352,7 @@ std::error_code WriteHeader(
 
   for (const auto& comment : comments) {
     if (!ValidateComment(comment)) {
-      return ErrorCode::COMMENT_CONTAINS_INVALID_CHARACTERS;
+      return ErrorCode::INVALID_COMMENT;
     }
 
     if (!stream.write(comment_prefix.data(), comment_prefix.size()) ||
@@ -367,7 +363,7 @@ std::error_code WriteHeader(
 
   for (const auto& info : object_info) {
     if (!ValidateComment(info)) {
-      return ErrorCode::OBJ_INFO_CONTAINS_INVALID_CHARACTERS;
+      return ErrorCode::INVALID_OBJ_INFO;
     }
 
     if (!stream.write(obj_info_prefix.data(), obj_info_prefix.size()) ||
@@ -376,22 +372,16 @@ std::error_code WriteHeader(
     }
   }
 
-  for (const auto& [element_name, _] : num_element_instances) {
-    if (!elements.contains(element_name)) {
-      return ErrorCode::ELEMENT_HAS_NO_PROPERTIES;
-    }
-  }
-
   for (const auto& [element_name, properties] : elements) {
+    if (properties.empty()) {
+      return ErrorCode::MISSING_PROPERTIES;
+    }
+
     if (std::error_code error = ValidateName(element_name); error) {
       return error;
     }
 
     uintmax_t num_instances = num_element_instances[element_name];
-    if (num_instances == 0) {
-      return ErrorCode::PROPERTY_HAS_NO_INSTANCES;
-    }
-
     if (!stream.write(element_prefix.data(), element_prefix.size()) ||
         !stream.write(element_name.data(), element_name.size()) ||
         !stream.put(' ') || !(stream << num_instances) || !stream.put('\r')) {

@@ -123,7 +123,7 @@ class TestWriter final : public PlyWriter {
     }
 
     if (insert_invalid_element_) {
-      num_element_instances["INVALID"] = 99;
+      callbacks.try_emplace("INVALID");
     }
 
     for (const auto& [element_name, element_properties] : properties_) {
@@ -383,11 +383,11 @@ TEST(Validate, DefaultErrorCondition) {
       writer.WriteTo(output).category();
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 10; i++) {
+  for (int i = 1; i <= 9; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(11),
+  EXPECT_NE(error_catgegory.default_error_condition(10),
             std::errc::invalid_argument);
 }
 
@@ -426,10 +426,10 @@ TEST(Validate, StartFails) {
 
 TEST(Validate, BadElementNames) {
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(WriteToASCII(output, {{"", {}}}).message(),
+  EXPECT_EQ(WriteToASCII(output, {{"", {{"prop", {}}}}}).message(),
             "Names of properties and elements may not be empty");
   EXPECT_EQ(
-      WriteToASCII(output, {{" ", {}}}).message(),
+      WriteToASCII(output, {{" ", {{"prop", {}}}}}).message(),
       "Names of properties and elements may only contain graphic characters");
 }
 
@@ -456,16 +456,6 @@ TEST(Validate, NonGraphicPropertyNames) {
       "Names of properties and elements may only contain graphic characters");
 }
 
-TEST(Validate, NoInstances) {
-  std::map<std::string, std::map<std::string, Property>> properties;
-  properties["vertex"]["a"] = std::vector<int8_t>();
-
-  std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(
-      WriteToASCII(output, properties).message(),
-      "All elements with properties must have a non-zero number of instances");
-}
-
 TEST(Validate, BadComment) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).message(),
@@ -480,13 +470,6 @@ TEST(Validate, BadObjInfo) {
             "An obj_info may only contain graphic characters and spaces");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).message(),
             "An obj_info may only contain graphic characters and spaces");
-}
-
-TEST(Validate, NoProperties) {
-  TestWriter writer({}, {}, {}, false, true);
-  std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(writer.WriteTo(output).message(),
-            "An element must have at least one associated property");
 }
 
 TEST(Validate, ListTooBig) {
@@ -533,6 +516,30 @@ TEST(All, DefaultListSize) {
       "1 1\r");
   std::string expected(std::istreambuf_iterator<char>(input), {});
   EXPECT_EQ(expected, output.str());
+}
+
+TEST(All, NoInstances) {
+  std::map<std::string, std::map<std::string, Property>> properties;
+  properties["vertex"]["a"] = std::vector<int8_t>();
+
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(0, WriteToASCII(output, properties).value());
+
+  std::stringstream input(
+      "ply\r"
+      "format ascii 1.0\r"
+      "element vertex 0\r"
+      "property char a\r"
+      "end_header\r");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
+}
+
+TEST(All, NoProperties) {
+  TestWriter writer({}, {}, {}, false, true);
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(writer.WriteTo(output).message(),
+            "An element must have properties");
 }
 
 TEST(ASCII, Empty) {

@@ -152,7 +152,9 @@ class PlyWriter {
   // needed by PlyWriter in order to fill out the header of the file as well as
   // generators for all of the properties in the file.
   //
-  // `num_num_element_instances`: The number of instances of each element.
+  // `num_num_element_instances`: The number of instances of each element. If
+  // not provided, this value is assumed to be zero. Values in this map not
+  // associated with elements in the `property_generators` map will be ignored.
   //
   // `property_generators`: The generators for each property in the file, keyed
   // from element name to property name to generator. The type of the property
