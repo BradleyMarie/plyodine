@@ -27,17 +27,17 @@ enum class ErrorCode {
   BAD_STREAM = 1,
   INVALID_COMMENT = 2,
   INVALID_OBJ_INFO = 3,
-  MISSING_PROPERTIES = 4,
-  MISSING_ELEMENT_NAME = 5,
-  INVALID_ELEMENT_NAME = 6,
-  MISSING_PROPERTY_NAME = 7,
-  INVALID_PROPERTY_NAME = 8,
-  OVERFLOWED_UCHAR_LIST = 9,
-  OVERFLOWED_USHORT_LIST = 10,
-  OVERFLOWED_UINT_LIST = 11,
+  MISSING_ELEMENT_NAME = 4,
+  INVALID_ELEMENT_NAME = 5,
+  MISSING_PROPERTY_NAME = 6,
+  INVALID_PROPERTY_NAME = 7,
+  OVERFLOWED_UCHAR_LIST = 8,
+  OVERFLOWED_USHORT_LIST = 9,
+  OVERFLOWED_UINT_LIST = 10,
+  MISSING_DATA = 11,
   INVALID_ASCII_FLOAT = 12,
   INVALID_ASCII_FLOAT_LIST = 13,
-  MISSING_DATA = 14,
+  MISSING_PROPERTIES = 14,
   MAX_VALUE = 14,
 };
 
@@ -62,18 +62,16 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::INVALID_OBJ_INFO:
       return "An obj_info string contained invalid characters (must contain "
              "only ASCII space and ASCII graphic characters)";
-    case ErrorCode::MISSING_PROPERTIES:
-      return "An element had no properties";
     case ErrorCode::MISSING_ELEMENT_NAME:
       return "An element had an empty name";
     case ErrorCode::INVALID_ELEMENT_NAME:
-      return "An element name contained characters (must contain only ASCII "
-             "graphic characters)";
+      return "An element name contained invalid characters (must contain only "
+             "ASCII graphic characters)";
     case ErrorCode::MISSING_PROPERTY_NAME:
       return "A property had an empty name";
     case ErrorCode::INVALID_PROPERTY_NAME:
-      return "A property name contained characters (must contain only ASCII "
-             "graphic characters)";
+      return "A property name contained invalid characters (must contain only "
+             "ASCII graphic characters)";
     case ErrorCode::OVERFLOWED_UCHAR_LIST:
       return "A property list with size type 'uchar' exceeded its maximum "
              "supported length (255 entries)";
@@ -83,15 +81,17 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::OVERFLOWED_UINT_LIST:
       return "A property list with size type 'uint' exceeded its maximum "
              "supported length (4,294,967,295 entries)";
+    case ErrorCode::MISSING_DATA:
+      return "A property generator did not produce enough data for all "
+             "instances of its element";
     case ErrorCode::INVALID_ASCII_FLOAT:
       return "A non-finite floating-point property value cannot be written to "
              "an ASCII output";
     case ErrorCode::INVALID_ASCII_FLOAT_LIST:
       return "A non-finite floating-point property list value cannot be "
              "written to an ASCII output";
-    case ErrorCode::MISSING_DATA:
-      return "A property generator did not produce enough data for all "
-             "instances of its element";
+    case ErrorCode::MISSING_PROPERTIES:
+      return "An element had no properties";
   };
 
   return "Unknown Error";

@@ -434,8 +434,8 @@ TEST(Validate, BadElementNames) {
   EXPECT_EQ(WriteToASCII(output, {{"", {{"prop", {}}}}}).message(),
             "An element had an empty name");
   EXPECT_EQ(WriteToASCII(output, {{" ", {{"prop", {}}}}}).message(),
-            "An element name contained characters (must contain only ASCII "
-            "graphic characters)");
+            "An element name contained invalid characters (must contain only "
+            "ASCII graphic characters)");
 }
 
 TEST(Validate, EmptyPropertyNames) {
@@ -457,8 +457,8 @@ TEST(Validate, NonGraphicPropertyNames) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, properties).message(),
-            "A property name contained characters (must contain only ASCII "
-            "graphic characters)");
+            "A property name contained invalid characters (must contain only "
+            "ASCII graphic characters)");
 }
 
 TEST(Validate, BadComment) {
