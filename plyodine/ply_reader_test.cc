@@ -228,12 +228,10 @@ class MockPlyReader final : public PlyReader {
             break;
           case PropertyType::UINT:
             if (convert_int_to_float) {
-              callbacks[element.first][property.first] =
-                  FloatPropertyListCallback([element_name = element.first,
-                                             property_name = property.first,
-                                             this](
-                                                std::span<const float> value) {
-                    return HandleFloatList(element_name, property_name, value);
+              callbacks[element.first][property.first] = FloatPropertyCallback(
+                  [element_name = element.first, property_name = property.first,
+                   this](float value) {
+                    return HandleFloat(element_name, property_name, value);
                   });
             } else {
               callbacks[element.first][property.first] = UIntPropertyCallback(
@@ -535,8 +533,8 @@ TEST(Error, IntToFloat) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
   EXPECT_EQ(
-      "A callback requested an unsupported conversion from property of type "
-      "'uint' to property list of data type 'float'",
+      "A callback requested an unsupported conversion from 'uint' property "
+      "to 'float' property",
       reader.ReadFrom(stream).message());
 }
 
@@ -551,8 +549,8 @@ TEST(Error, FloatToInt) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
   EXPECT_EQ(
-      "A callback requested an unsupported conversion from property of type "
-      "'float' to property of type 'uint'",
+      "A callback requested an unsupported conversion from 'float' property "
+      "to 'uint' property",
       reader.ReadFrom(stream).message());
 }
 
@@ -567,8 +565,8 @@ TEST(Error, ListToScalar) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
   EXPECT_EQ(
-      "A callback requested an unsupported conversion from property list of "
-      "data type 'double' to property of type 'double'",
+      "A callback requested an unsupported conversion from 'double' property "
+      "list to 'double' property",
       reader.ReadFrom(stream).message());
 }
 
@@ -583,8 +581,8 @@ TEST(Error, ScalarToList) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
   EXPECT_EQ(
-      "A callback requested an unsupported conversion from property of type "
-      "'double' to property list of data type 'double'",
+      "A callback requested an unsupported conversion from 'double' property "
+      "to 'double' property list",
       reader.ReadFrom(stream).message());
 }
 
