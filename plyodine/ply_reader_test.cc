@@ -24,6 +24,7 @@ using ::testing::_;
 using ::testing::InSequence;
 using ::testing::IsEmpty;
 using ::testing::Return;
+using ::testing::StartsWith;
 
 enum class PropertyType {
   CHAR = 0u,
@@ -433,11 +434,11 @@ TEST(Validate, DefaultErrorCondition) {
 
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 20; i++) {
+  for (int i = 1; i <= 152; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(21),
+  EXPECT_NE(error_catgegory.default_error_condition(153),
             std::errc::invalid_argument);
 }
 
@@ -464,7 +465,7 @@ TEST(Validate, BadStream) {
   std::stringstream input(std::ios::in | std::ios::binary);
   input.clear(std::ios::badbit);
 
-  EXPECT_EQ("Input stream must be in good state",
+  EXPECT_EQ("The stream was not in 'good' state",
             reader.ReadFrom(input).message());
 }
 
@@ -523,34 +524,6 @@ TEST(Header, StartFails) {
   EXPECT_EQ(reader.ReadFrom(stream).value(), 1);
 }
 
-TEST(Error, UnknownElement) {
-  MockPlyReader reader;
-  reader.add_invalid_element = true;
-
-  EXPECT_CALL(reader, StartImpl(_, _, _))
-      .Times(1)
-      .WillOnce(Return(std::error_code()));
-
-  std::ifstream stream =
-      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("The callback map contained an unknown element",
-            reader.ReadFrom(stream).message());
-}
-
-TEST(Error, UnknownProperty) {
-  MockPlyReader reader;
-  reader.add_invalid_property = true;
-
-  EXPECT_CALL(reader, StartImpl(_, _, _))
-      .Times(1)
-      .WillOnce(Return(std::error_code()));
-
-  std::ifstream stream =
-      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("The callback map contained an unknown property",
-            reader.ReadFrom(stream).message());
-}
-
 TEST(Error, IntToFloat) {
   MockPlyReader reader;
   reader.convert_int_to_float = true;
@@ -561,7 +534,7 @@ TEST(Error, IntToFloat) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("The callback map requested an unsupported conversion",
+  EXPECT_EQ("A callback requested an unsupported conversion",
             reader.ReadFrom(stream).message());
 }
 
@@ -575,7 +548,7 @@ TEST(Error, FloatToInt) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("The callback map requested an unsupported conversion",
+  EXPECT_EQ("A callback requested an unsupported conversion",
             reader.ReadFrom(stream).message());
 }
 
@@ -589,7 +562,7 @@ TEST(Error, ListToScalar) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("The callback map requested an unsupported conversion",
+  EXPECT_EQ("A callback requested an unsupported conversion",
             reader.ReadFrom(stream).message());
 }
 
@@ -603,7 +576,7 @@ TEST(Error, ScalarToList) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("The callback map requested an unsupported conversion",
+  EXPECT_EQ("A callback requested an unsupported conversion",
             reader.ReadFrom(stream).message());
 }
 
@@ -697,7 +670,7 @@ TEST(ASCII, InvalidCharacter) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_invalid_character.ply");
   EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "The input contained an invalid character");
+            "A property with type 'char' had a value that could not be parsed");
 }
 
 TEST(ASCII, ListMissingEntries) {
@@ -729,8 +702,10 @@ TEST(ASCII, ListMissingEntries) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_missing_entries.ply");
-  EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "The input contained an element with too few tokens");
+  EXPECT_EQ(
+      reader.ReadFrom(stream).message(),
+      "A line in the input had fewer tokens than expected (reached end of line "
+      "but expected to find a property list value of type 'uchar')");
 }
 
 TEST(ASCII, MissingElement) {
@@ -763,7 +738,9 @@ TEST(ASCII, MissingElement) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_missing_element.ply");
-  EXPECT_EQ(reader.ReadFrom(stream).message(), "Unexpected EOF");
+  EXPECT_EQ(reader.ReadFrom(stream).message(),
+            "The stream ended earlier than expected (reached EOF but expected "
+            "to find a property value of type 'char')");
 }
 
 TEST(ASCII, ExtraWhitespace) {
@@ -798,13 +775,14 @@ TEST(ASCII, ExtraWhitespace) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_empty_token.ply");
-  EXPECT_EQ(
-      reader.ReadFrom(stream).message(),
-      "Non-comment ASCII lines may only contain a single space between tokens");
+  EXPECT_EQ(reader.ReadFrom(stream).message(),
+            "The input contained an empty token (tokens on non-comment lines "
+            "must be separated by exactly one ASCII space with no leading or "
+            "trailing whitespace on the line)");
 }
 
 TEST(ASCII, ListSizeTooLarge) {
-  auto impl = [](const std::string& name) {
+  auto impl = [](const std::string& name, const std::string& type) {
     std::map<std::string,
              std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
@@ -832,20 +810,27 @@ TEST(ASCII, ListSizeTooLarge) {
     EXPECT_CALL(reader, HandleDoubleList(_, _, _)).Times(0);
 
     std::ifstream stream = OpenRunfile(name);
-    EXPECT_EQ(reader.ReadFrom(stream).message(),
-              "The input contained a property list size that was out of range");
+    EXPECT_THAT(reader.ReadFrom(stream).message(),
+                StartsWith("A property list with size type '" + type +
+                           "' had a size that was out of range"));
   };
 
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_int8.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_int16.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_int32.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_uint8.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_uint16.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_uint32.ply");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_int8.ply",
+       "char");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_int16.ply",
+       "short");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_int32.ply",
+       "int");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_uint8.ply",
+       "uchar");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_uint16.ply",
+       "ushort");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_uint32.ply",
+       "uint");
 }
 
 TEST(ASCII, ListSizeBad) {
-  auto impl = [](const std::string& name) {
+  auto impl = [](const std::string& name, const std::string& type) {
     std::map<std::string,
              std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", PropertyType::UCHAR_LIST}}}}};
@@ -873,20 +858,23 @@ TEST(ASCII, ListSizeBad) {
     EXPECT_CALL(reader, HandleDoubleList(_, _, _)).Times(0);
 
     std::ifstream stream = OpenRunfile(name);
-    EXPECT_EQ(reader.ReadFrom(stream).message(),
-              "The input contained a property list size that failed to parse");
+    EXPECT_THAT(reader.ReadFrom(stream).message(),
+                StartsWith("A property list with size type '" + type +
+                           "' had a size that could not be parsed"));
   };
 
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_int8.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_int16.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_int32.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_uint8.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_uint16.ply");
-  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_uint32.ply");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_int8.ply", "char");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_int16.ply", "short");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_int32.ply", "int");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_uint8.ply", "uchar");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_uint16.ply",
+       "ushort");
+  impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_uint32.ply", "uint");
 }
 
 TEST(ASCII, EntryBad) {
-  auto impl = [](const std::string& name, PropertyType type) {
+  auto impl = [](const std::string& name, PropertyType type,
+                 const std::string& type_name) {
     std::map<std::string,
              std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", type}}}}};
@@ -915,29 +903,31 @@ TEST(ASCII, EntryBad) {
 
     std::ifstream stream = OpenRunfile(name);
     EXPECT_EQ(reader.ReadFrom(stream).message(),
-              "The input contained a property entry that failed to parse");
+              "A property with type '" + type_name +
+                  "' had a value that could not be parsed");
   };
 
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_double.ply",
-       PropertyType::DOUBLE);
+       PropertyType::DOUBLE, "double");
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_float.ply",
-       PropertyType::FLOAT);
+       PropertyType::FLOAT, "float");
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_int8.ply",
-       PropertyType::CHAR);
+       PropertyType::CHAR, "char");
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_int16.ply",
-       PropertyType::SHORT);
+       PropertyType::SHORT, "short");
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_int32.ply",
-       PropertyType::INT);
+       PropertyType::INT, "int");
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_uint8.ply",
-       PropertyType::UCHAR);
+       PropertyType::UCHAR, "uchar");
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_uint16.ply",
-       PropertyType::USHORT);
+       PropertyType::USHORT, "ushort");
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_uint32.ply",
-       PropertyType::UINT);
+       PropertyType::UINT, "uint");
 }
 
 TEST(ASCII, EntryTooBig) {
-  auto impl = [](const std::string& name, PropertyType type) {
+  auto impl = [](const std::string& name, PropertyType type,
+                 const std::string& type_name) {
     std::map<std::string,
              std::pair<uintmax_t, std::map<std::string, PropertyType>>>
         properties = {{"vertex", {1u, {{"l", type}}}}};
@@ -965,26 +955,27 @@ TEST(ASCII, EntryTooBig) {
     EXPECT_CALL(reader, HandleDoubleList(_, _, _)).Times(0);
 
     std::ifstream stream = OpenRunfile(name);
-    EXPECT_EQ(reader.ReadFrom(stream).message(),
-              "The input contained a property entry that was out of range");
+    EXPECT_THAT(reader.ReadFrom(stream).message(),
+                StartsWith("A property with data type '" + type_name +
+                           "' had a value that was out of range"));
   };
 
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_double.ply",
-       PropertyType::DOUBLE);
+       PropertyType::DOUBLE, "double");
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_float.ply",
-       PropertyType::FLOAT);
+       PropertyType::FLOAT, "float");
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_int8.ply",
-       PropertyType::CHAR);
+       PropertyType::CHAR, "char");
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_int16.ply",
-       PropertyType::SHORT);
+       PropertyType::SHORT, "short");
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_int32.ply",
-       PropertyType::INT);
+       PropertyType::INT, "int");
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_uint8.ply",
-       PropertyType::UCHAR);
+       PropertyType::UCHAR, "uchar");
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_uint16.ply",
-       PropertyType::USHORT);
+       PropertyType::USHORT, "ushort");
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_uint32.ply",
-       PropertyType::UINT);
+       PropertyType::UINT, "uint");
 }
 
 TEST(ASCII, UnusedTokens) {
@@ -1018,7 +1009,8 @@ TEST(ASCII, UnusedTokens) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_unused_tokens.ply");
   EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "The input contained an element with unused tokens");
+            "The input contained a data token that was not associated with any "
+            "property");
 }
 
 TEST(ASCII, WithData) {
@@ -1391,9 +1383,9 @@ TEST(ASCII, WithNegativeCharListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_sizes_negative_int8.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'char' had a size "
+                         "that was out of range"));
 }
 
 TEST(ASCII, WithNegativeShortListSize) {
@@ -1409,9 +1401,9 @@ TEST(ASCII, WithNegativeShortListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_sizes_negative_int16.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'short' had a size "
+                         "that was out of range"));
 }
 
 TEST(ASCII, WithNegativeIntListSize) {
@@ -1427,9 +1419,9 @@ TEST(ASCII, WithNegativeIntListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_sizes_negative_int32.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'int' had a size that "
+                         "was out of range"));
 }
 
 TEST(BigEndian, Empty) {
@@ -1842,9 +1834,9 @@ TEST(BigEndian, WithNegativeCharListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_big_list_sizes_negative_int8.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'char' had a size "
+                         "that was out of range"));
 }
 
 TEST(BigEndian, WithNegativeShortListSize) {
@@ -1860,9 +1852,9 @@ TEST(BigEndian, WithNegativeShortListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_big_list_sizes_negative_int16.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'short' had a size "
+                         "that was out of range"));
 }
 
 TEST(BigEndian, WithNegativeIntListSize) {
@@ -1878,9 +1870,9 @@ TEST(BigEndian, WithNegativeIntListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_big_list_sizes_negative_int32.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'int' had a size that "
+                         "was out of range"));
 }
 
 TEST(LittleEndian, Empty) {
@@ -2293,9 +2285,9 @@ TEST(LittleEndian, WithNegativeCharListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_little_list_sizes_negative_int8.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'char' had a size "
+                         "that was out of range"));
 }
 
 TEST(LittleEndian, WithNegativeShortListSize) {
@@ -2311,9 +2303,9 @@ TEST(LittleEndian, WithNegativeShortListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_little_list_sizes_negative_int16.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'short' had a size "
+                         "that was out of range"));
 }
 
 TEST(LittleEndian, WithNegativeIntListSize) {
@@ -2329,9 +2321,9 @@ TEST(LittleEndian, WithNegativeIntListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_little_list_sizes_negative_int32.ply");
-  auto result = reader.ReadFrom(stream);
-  EXPECT_EQ("The input contained a property list with a negative size",
-            result.message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A property list with size type 'int' had a size that "
+                         "was out of range"));
 }
 
 class MockConvertingPlyReader final : public PlyReader {
@@ -2392,31 +2384,39 @@ TEST(Error, OverridesError) {
 TEST(Error, NegativeToUnsigned) {
   PropertyType types[]{PropertyType::UCHAR, PropertyType::USHORT,
                        PropertyType::UINT};
-  for (PropertyType type : types) {
+  std::string type_names[3] = {"uchar", "ushort", "uint"};
+  for (size_t i = 0; i < 3; i++) {
     std::ifstream stream = OpenRunfile(
         "_main/plyodine/test_data/ply_ascii_limit_negative_int32.ply");
 
-    MockConvertingPlyReader reader(type);
+    MockConvertingPlyReader reader(types[i]);
     EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 0))
         .WillOnce(Return(std::error_code()));
 
-    EXPECT_EQ("Signed integer to unsigned integer conversion underflowed",
-              reader.ReadFrom(stream).message());
+    EXPECT_THAT(
+        reader.ReadFrom(stream).message(),
+        StartsWith(
+            "A conversion of a property value from type 'int' to type '" +
+            type_names[i] + "' underflowed"));
   }
 }
 
 TEST(Error, NegativeSignedUnderflow) {
   PropertyType types[]{PropertyType::CHAR, PropertyType::SHORT};
-  for (PropertyType type : types) {
+  std::string type_names[2] = {"char", "short"};
+  for (size_t i = 0; i < 2; i++) {
     std::ifstream stream = OpenRunfile(
         "_main/plyodine/test_data/ply_ascii_limit_negative_int32.ply");
 
-    MockConvertingPlyReader reader(type);
+    MockConvertingPlyReader reader(types[i]);
     EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 1))
         .WillOnce(Return(std::error_code()));
 
-    EXPECT_EQ("Signed integer conversion underflowed",
-              reader.ReadFrom(stream).message());
+    EXPECT_THAT(
+        reader.ReadFrom(stream).message(),
+        StartsWith(
+            "A conversion of a property value from type 'int' to type '" +
+            type_names[i] + "' underflowed"));
   }
 }
 
@@ -2424,16 +2424,20 @@ TEST(Error, IntegerOverflow) {
   PropertyType types[]{PropertyType::CHAR, PropertyType::UCHAR,
                        PropertyType::SHORT, PropertyType::USHORT,
                        PropertyType::INT};
-  for (PropertyType type : types) {
+  std::string type_names[5] = {"char", "uchar", "short", "ushort", "int"};
+  for (size_t i = 0; i < 5; i++) {
     std::ifstream stream = OpenRunfile(
         "_main/plyodine/test_data/ply_ascii_limit_positive_uint32.ply");
 
-    MockConvertingPlyReader reader(type);
+    MockConvertingPlyReader reader(types[i]);
     EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 2))
         .WillOnce(Return(std::error_code()));
 
-    EXPECT_EQ("Integer conversion overflowed",
-              reader.ReadFrom(stream).message());
+    EXPECT_THAT(
+        reader.ReadFrom(stream).message(),
+        StartsWith(
+            "A conversion of a property value from type 'uint' to type '" +
+            type_names[i] + "' overflowed"));
   }
 }
 
@@ -2445,8 +2449,9 @@ TEST(Error, FloatUnderflow) {
   EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 3))
       .WillOnce(Return(std::error_code()));
 
-  EXPECT_EQ("Floating point conversion underflowed",
-            reader.ReadFrom(stream).message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A conversion of a property value from type 'double' "
+                         "to type 'float' underflowed"));
 }
 
 TEST(Error, FloatOverflow) {
@@ -2457,8 +2462,9 @@ TEST(Error, FloatOverflow) {
   EXPECT_CALL(reader, OnConversionFailure("vertex", "a", 4))
       .WillOnce(Return(std::error_code()));
 
-  EXPECT_EQ("Floating point conversion overflowed",
-            reader.ReadFrom(stream).message());
+  EXPECT_THAT(reader.ReadFrom(stream).message(),
+              StartsWith("A conversion of a property value from type 'double' "
+                         "to type 'float' overflowed"));
 }
 
 }  // namespace

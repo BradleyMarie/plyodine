@@ -1,5 +1,6 @@
 #include "plyodine/ply_reader.h"
 
+#include <array>
 #include <bit>
 #include <charconv>
 #include <cmath>
@@ -24,26 +25,158 @@ namespace {
 enum class ErrorCode {
   MIN_VALUE = 1,
   BAD_STREAM = 1,
-  UNKNOWN_ELEMENT = 2,
-  UNKNOWN_PROPERTY = 3,
-  UNSUPPORTED_CONVERSION = 4,
-  UNEXPECTED_EOF = 5,
-  CONTAINS_MISMATCHED_LINE_ENDINGS = 6,
-  CONTAINS_INVALID_CHARACTER = 7,
-  NEGATIVE_LIST_SIZE = 8,
-  ELEMENT_TOO_FEW_TOKENS = 9,
-  ELEMENT_CONTAINS_EXTRA_WHITESPACE = 10,
-  ELEMENT_CONTAINS_EXTRA_TOKENS = 11,
-  ELEMENT_LIST_SIZE_OUT_OF_RANGE = 12,
-  ELEMENT_PROPERTY_OUT_OF_RANGE = 13,
-  ELEMENT_LIST_SIZE_PARSING_FAILED = 14,
-  ELEMENT_PROPERTY_PARSING_FAILED = 15,
-  CONVERSION_SIGNED_UNDERFLOW = 16,
-  CONVERSION_UNSIGNED_UNDERFLOW = 17,
-  CONVERSION_INTEGER_OVERFLOW = 18,
-  CONVERSION_FLOAT_UNDERFLOW = 19,
-  CONVERSION_FLOAT_OVERFLOW = 20,
-  MAX_VALUE = 20,
+  INVALID_CONVERSION = 2,
+  UNEXPECTED_EOF_PROPERTY_LIST_SIZE_CHAR = 3,
+  UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UCHAR = 4,
+  UNEXPECTED_EOF_PROPERTY_LIST_SIZE_SHORT = 5,
+  UNEXPECTED_EOF_PROPERTY_LIST_SIZE_USHORT = 6,
+  UNEXPECTED_EOF_PROPERTY_LIST_SIZE_INT = 7,
+  UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UINT = 8,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_CHAR = 9,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_UCHAR = 10,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_SHORT = 11,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_USHORT = 12,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_INT = 13,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_UINT = 14,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_FLOAT = 15,
+  UNEXPECTED_EOF_PROPERTY_LIST_VALUE_DOUBLE = 16,
+  UNEXPECTED_EOF_PROPERTY_VALUE_CHAR = 17,
+  UNEXPECTED_EOF_PROPERTY_VALUE_UCHAR = 18,
+  UNEXPECTED_EOF_PROPERTY_VALUE_SHORT = 19,
+  UNEXPECTED_EOF_PROPERTY_VALUE_USHORT = 20,
+  UNEXPECTED_EOF_PROPERTY_VALUE_INT = 21,
+  UNEXPECTED_EOF_PROPERTY_VALUE_UINT = 22,
+  UNEXPECTED_EOF_PROPERTY_VALUE_FLOAT = 23,
+  UNEXPECTED_EOF_PROPERTY_VALUE_DOUBLE = 24,
+  ASCII_PROPERTY_LIST_SIZE_MISSING_CHAR = 25,
+  ASCII_PROPERTY_LIST_SIZE_MISSING_UCHAR = 26,
+  ASCII_PROPERTY_LIST_SIZE_MISSING_SHORT = 27,
+  ASCII_PROPERTY_LIST_SIZE_MISSING_USHORT = 28,
+  ASCII_PROPERTY_LIST_SIZE_MISSING_INT = 29,
+  ASCII_PROPERTY_LIST_SIZE_MISSING_UINT = 30,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_CHAR = 31,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_UCHAR = 32,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_SHORT = 33,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_USHORT = 34,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_INT = 35,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_UINT = 36,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_FLOAT = 37,
+  ASCII_PROPERTY_LIST_VALUE_MISSING_DOUBLE = 38,
+  ASCII_PROPERTY_VALUE_MISSING_CHAR = 39,
+  ASCII_PROPERTY_VALUE_MISSING_UCHAR = 40,
+  ASCII_PROPERTY_VALUE_MISSING_SHORT = 41,
+  ASCII_PROPERTY_VALUE_MISSING_USHORT = 42,
+  ASCII_PROPERTY_VALUE_MISSING_INT = 43,
+  ASCII_PROPERTY_VALUE_MISSING_UINT = 44,
+  ASCII_PROPERTY_VALUE_MISSING_FLOAT = 45,
+  ASCII_PROPERTY_VALUE_MISSING_DOUBLE = 46,
+  ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_CHAR = 47,
+  ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UCHAR = 48,
+  ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_SHORT = 49,
+  ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_USHORT = 50,
+  ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_INT = 51,
+  ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UINT = 52,
+  PROPERTY_LIST_SIZE_OUT_OF_RANGE_CHAR = 53,
+  PROPERTY_LIST_SIZE_OUT_OF_RANGE_UCHAR = 54,
+  PROPERTY_LIST_SIZE_OUT_OF_RANGE_SHORT = 55,
+  PROPERTY_LIST_SIZE_OUT_OF_RANGE_USHORT = 56,
+  PROPERTY_LIST_SIZE_OUT_OF_RANGE_INT = 57,
+  PROPERTY_LIST_SIZE_OUT_OF_RANGE_UINT = 58,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_CHAR = 59,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_UCHAR = 60,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_SHORT = 61,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_USHORT = 62,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_INT = 63,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_UINT = 64,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_FLOAT = 65,
+  ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_DOUBLE = 66,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_CHAR = 67,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_UCHAR = 68,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_SHORT = 69,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_USHORT = 70,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_INT = 71,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_UINT = 72,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_FLOAT = 73,
+  ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_DOUBLE = 74,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_CHAR = 75,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_UCHAR = 76,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_SHORT = 77,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_USHORT = 78,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_INT = 79,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_UINT = 80,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_FLOAT = 81,
+  ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_DOUBLE = 82,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_CHAR = 83,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_UCHAR = 84,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_SHORT = 85,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_USHORT = 86,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_INT = 87,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_UINT = 88,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_FLOAT = 89,
+  ASCII_PROPERTY_VALUE_OUT_OF_RANGE_DOUBLE = 90,
+  OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UCHAR = 91,
+  OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT = 92,
+  OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_USHORT = 93,
+  OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT = 94,
+  OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UINT = 95,
+  OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT = 96,
+  OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_USHORT = 97,
+  OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT = 98,
+  OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_UINT = 99,
+  OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_USHORT = 100,
+  OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT = 101,
+  OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_UINT = 102,
+  OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT = 103,
+  OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_UINT = 104,
+  OVERFLOWED_PROPERTY_VALUE_INT_FROM_UINT = 105,
+  OVERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE = 106,
+  OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UCHAR = 107,
+  OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT = 108,
+  OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_USHORT = 109,
+  OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT = 110,
+  OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UINT = 111,
+  OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT = 112,
+  OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_USHORT = 113,
+  OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT = 114,
+  OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_UINT = 115,
+  OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_USHORT = 116,
+  OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT = 117,
+  OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_UINT = 118,
+  OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT = 119,
+  OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_UINT = 120,
+  OVERFLOWED_PROPERTY_LIST_VALUE_INT_FROM_UINT = 121,
+  OVERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE = 122,
+  UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT = 123,
+  UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT = 124,
+  UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_CHAR = 125,
+  UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT = 126,
+  UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT = 127,
+  UNDERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT = 128,
+  UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_CHAR = 129,
+  UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_SHORT = 130,
+  UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT = 131,
+  UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_CHAR = 132,
+  UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_SHORT = 133,
+  UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_INT = 134,
+  UNDERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE = 135,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT = 136,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT = 137,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_CHAR = 138,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT = 139,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT = 140,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT = 141,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_CHAR = 142,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_SHORT = 143,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT = 144,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_CHAR = 145,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_SHORT = 146,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_INT = 147,
+  UNDERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE = 148,
+  ASCII_UNUSED_TOKEN = 149,
+  ASCII_MISMATCHED_LINE_ENDINGS = 150,
+  ASCII_EMPTY_TOKEN = 151,
+  UNEXPECTED_EOF_NO_PROPERTIES = 152,
+  MAX_VALUE = 152,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -57,49 +190,490 @@ const char* ErrorCategory::name() const noexcept {
 }
 
 std::string ErrorCategory::message(int condition) const {
+  static const std::string float_min =
+      std::to_string(std::numeric_limits<float>::lowest());
+  static const std::string float_max =
+      std::to_string(std::numeric_limits<float>::max());
+  static const std::string double_min =
+      std::to_string(std::numeric_limits<double>::lowest());
+  static const std::string double_max =
+      std::to_string(std::numeric_limits<double>::max());
+
   ErrorCode error_code{condition};
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
-      return "Input stream must be in good state";
-    case ErrorCode::UNKNOWN_ELEMENT:
-      return "The callback map contained an unknown element";
-    case ErrorCode::UNKNOWN_PROPERTY:
-      return "The callback map contained an unknown property";
-    case ErrorCode::UNSUPPORTED_CONVERSION:
-      return "The callback map requested an unsupported conversion";
-    case ErrorCode::UNEXPECTED_EOF:
-      return "Unexpected EOF";
-    case ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS:
+      return "The stream was not in 'good' state";
+    case ErrorCode::INVALID_CONVERSION:
+      return "A callback requested an unsupported conversion";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_CHAR:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list size of type 'char')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UCHAR:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list size of type 'uchar')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_SHORT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list size of type 'short')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_USHORT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list size of type 'ushort')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_INT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list size of type 'int')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UINT:
+      return "The stream ended earlier than than expected (reached EOF but "
+             "expected to find a property list size of type 'uint')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_CHAR:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'char')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_UCHAR:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'uchar')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_SHORT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'short')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_USHORT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'ushort')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_INT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'int')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_UINT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'uint')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_FLOAT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'float')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_DOUBLE:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property list value of type 'double')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_CHAR:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'char')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_UCHAR:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'uchar')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_SHORT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'short')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_USHORT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'ushort')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_INT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'int')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_UINT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'uint')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_FLOAT:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'float')";
+    case ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_DOUBLE:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find a property value of type 'double')";
+    case ErrorCode::UNEXPECTED_EOF_NO_PROPERTIES:
+      return "The stream ended earlier than expected (reached EOF but expected "
+             "to find an element with no properties')";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_CHAR:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list size of type "
+             "'char')";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_UCHAR:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list size of type "
+             "'uchar')";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_SHORT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list size of type "
+             "'short')";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_USHORT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list size of type "
+             "'ushort')";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_INT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list size of type 'int')";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_UINT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list size of type "
+             "'uint')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_CHAR:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'char')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_UCHAR:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'uchar')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_SHORT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'short')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_USHORT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'ushort')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_INT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'int')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_UINT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'uint')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_FLOAT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'float')";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_DOUBLE:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property list value of type "
+             "'double')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_CHAR:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'char')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_UCHAR:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'uchar')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_SHORT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'short')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_USHORT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'ushort')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_INT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'int')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_UINT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'uint')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_FLOAT:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'float')";
+    case ErrorCode::ASCII_PROPERTY_VALUE_MISSING_DOUBLE:
+      return "A line in the input had fewer tokens than expected (reached end "
+             "of line but expected to find a property value of type 'double')";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_CHAR:
+      return "A property list with size type 'char' had a size that could not "
+             "be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UCHAR:
+      return "A property list with size type 'uchar' had a size that could not "
+             "be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_SHORT:
+      return "A property list with size type 'short' had a size that could not "
+             "be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_USHORT:
+      return "A property list with size type 'ushort' had a size that could "
+             "not be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_INT:
+      return "A property list with size type 'int' had a size that could not "
+             "be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UINT:
+      return "A property list with size type 'uint' had a size that could not "
+             "be parsed";
+    case ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_CHAR:
+      return "A property list with size type 'char' had a size that was out of "
+             "range (must have between 0 and 127 entries)";
+    case ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_UCHAR:
+      return "A property list with size type 'uchar' had a size that was out "
+             "of range (must have between 0 and 255 entries)";
+    case ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_SHORT:
+      return "A property list with size type 'short' had a size that was out "
+             "of range (must have between 0 and 32,767 entries)";
+    case ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_USHORT:
+      return "A property list with size type 'ushort' had a size that was out "
+             "of range (must have between 0 and 65,535 entries)";
+    case ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_INT:
+      return "A property list with size type 'int' had a size that was out of "
+             "range (must have between 0 and 2,147,483,647 entries)";
+    case ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_UINT:
+      return "A property list with size type 'uint' had a size that was out of "
+             "range (must have between 0 and 4,294,967,295 entries)";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_CHAR:
+      return "A property list with data type 'char' had a value that could not "
+             "be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_UCHAR:
+      return "A property list with data type 'uchar' had a value that could "
+             "not be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_SHORT:
+      return "A property list with data type 'short' had a value that could "
+             "not be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_USHORT:
+      return "A property list with data type 'ushort' had a value that could "
+             "not be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_INT:
+      return "A property list with data type 'int' had a value that could not "
+             "be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_UINT:
+      return "A property list with data type 'uint' had a value that could not "
+             "be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_FLOAT:
+      return "A property list with data type 'float' had a value that could "
+             "not be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_DOUBLE:
+      return "A property list with data type 'double' had a value that could "
+             "not be parsed";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_CHAR:
+      return "A property list with data type 'char' had a value that was out "
+             "of range (must be between -128 and 127)";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_UCHAR:
+      return "A property list with data type 'uchar' had a value that was out "
+             "of range (must be between 0 and 255)";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_SHORT:
+      return "A property list with data type 'short' had a value that was out "
+             "of range (must be between -32,768 and 32,767)";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_USHORT:
+      return "A property list with data type 'ushort' had a value that was out "
+             "of range (must be between 0 and 65,535)";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_INT:
+      return "A property list with data type 'int' had a value that was out of "
+             "range (must be between -2,147,483,648 and 2,147,483,647)";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_UINT:
+      return "A property list with data type 'uint' had a value that was out "
+             "of range (must be between 0 and 4,294,967,295)";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_FLOAT:
+      return "A property list with data type 'float' had a value that was out "
+             "of range (must be between ~" +
+             float_min + " and ~" + float_max + ")";
+    case ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_DOUBLE:
+      return "A property list with data type 'double' had a value that was out "
+             "of range (must be between ~" +
+             double_min + " and ~" + double_max + ")";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_CHAR:
+      return "A property with type 'char' had a value that could not be parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_UCHAR:
+      return "A property with type 'uchar' had a value that could not be "
+             "parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_SHORT:
+      return "A property with type 'short' had a value that could not be "
+             "parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_USHORT:
+      return "A property with type 'ushort' had a value that could not be "
+             "parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_INT:
+      return "A property with type 'int' had a value that could not be parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_UINT:
+      return "A property with type 'uint' had a value that could not be parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_FLOAT:
+      return "A property with type 'float' had a value that could not be "
+             "parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_DOUBLE:
+      return "A property with type 'double' had a value that could not be "
+             "parsed";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_CHAR:
+      return "A property with data type 'char' had a value that was out of "
+             "range (must be between -128 and 127)";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_UCHAR:
+      return "A property with data type 'uchar' had a value that was out of "
+             "range (must be between 0 and 255)";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_SHORT:
+      return "A property with data type 'short' had a value that was out of "
+             "range (must be between -32,768 and 32,767)";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_USHORT:
+      return "A property with data type 'ushort' had a value that was out of "
+             "range (must be between 0 and 65,535)";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_INT:
+      return "A property with data type 'int' had a value that was out of "
+             "range (must be between -2,147,483,648 and 2,147,483,647)";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_UINT:
+      return "A property with data type 'uint' had a value that was out of "
+             "range (must be between 0 and 4,294,967,295)";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_FLOAT:
+      return "A property with data type 'float' had a value that was out of "
+             "range (must be between ~" +
+             float_min + " and ~" + float_max + ")";
+    case ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_DOUBLE:
+      return "A property with data type 'double' had a value that was out of "
+             "range (must be between ~" +
+             double_min + " and ~" + double_max + ")";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UCHAR:
+      return "A conversion of a property value from type 'uchar' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT:
+      return "A conversion of a property value from type 'short' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_USHORT:
+      return "A conversion of a property value from type 'ushort' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT:
+      return "A conversion of a property value from type 'int' to type 'char' "
+             "overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UINT:
+      return "A conversion of a property value from type 'uint' to type 'char' "
+             "overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT:
+      return "A conversion of a property value from type 'short' to type "
+             "'uchar' overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_USHORT:
+      return "A conversion of a property value from type 'ushort' to type "
+             "'uchar' overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT:
+      return "A conversion of a property value from type 'int' to type 'uchar' "
+             "overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_UINT:
+      return "A conversion of a property value from type 'uint' to type "
+             "'uchar' overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_USHORT:
+      return "A conversion of a property value from type 'ushort' to type "
+             "'short' overflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT:
+      return "A conversion of a property value from type 'int' to type 'short' "
+             "overflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_UINT:
+      return "A conversion of a property value from type 'uint' to type "
+             "'short' overflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT:
+      return "A conversion of a property value from type 'int' to type "
+             "'ushort' overflowed (must be between 0 and 65,535)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_UINT:
+      return "A conversion of a property value from type 'uint' to type "
+             "'ushort' overflowed (must be between 0 and 65,535)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_INT_FROM_UINT:
+      return "A conversion of a property value from type 'uint' to type 'int' "
+             "overflowed (must be between -2,147,483,648 and 2,147,483,647)";
+    case ErrorCode::OVERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE:
+      return "A conversion of a property value from type 'double' to type "
+             "'float' overflowed (must be between " +
+             float_min + " and " + float_max + ")";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UCHAR:
+      return "A conversion of a property list value from type 'uchar' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT:
+      return "A conversion of a property list value from type 'short' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_USHORT:
+      return "A conversion of a property list value from type 'ushort' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UINT:
+      return "A conversion of a property list value from type 'uint' to type "
+             "'char' overflowed (must be between -128 and 127)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT:
+      return "A conversion of a property list value from type 'short' to type "
+             "'uchar' overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_USHORT:
+      return "A conversion of a property list value from type 'ushort' to type "
+             "'uchar' overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'uchar' overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_UINT:
+      return "A conversion of a property list value from type 'uint' to type "
+             "'uchar' overflowed (must be between 0 and 255)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_USHORT:
+      return "A conversion of a property list value from type 'ushort' to type "
+             "'short' overflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'short' overflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_UINT:
+      return "A conversion of a property list value from type 'uint' to type "
+             "'short' overflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'ushort' overflowed (must be between 0 and 65,535)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_UINT:
+      return "A conversion of a property list value from type 'uint' to type "
+             "'ushort' overflowed (must be between 0 and 65,535)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_INT_FROM_UINT:
+      return "A conversion of a property list value from type 'uint' to type "
+             "'int' overflowed (must be between -2,147,483,648 and "
+             "2,147,483,647)";
+    case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE:
+      return "A conversion of a property list value from type 'double' to type "
+             "'float' overflowed (must be between " +
+             float_min + " and " + float_max + ")";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT:
+      return "A conversion of a property value from type 'short' to type "
+             "'char' underflowed (must be between -128 and 127)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT:
+      return "A conversion of a property value from type 'int' to type 'char' "
+             "underflowed (must be between -128 and 127)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_CHAR:
+      return "A conversion of a property value from type 'char' to type "
+             "'uchar' underflowed (must be between 0 and 255)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT:
+      return "A conversion of a property value from type 'short' to type "
+             "'uchar' underflowed (must be between 0 and 255)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT:
+      return "A conversion of a property value from type 'int' to type 'uchar' "
+             "underflowed (must be between 0 and 255)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT:
+      return "A conversion of a property value from type 'int' to type 'short' "
+             "underflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_CHAR:
+      return "A conversion of a property value from type 'char' to type "
+             "'ushort' underflowed (must be between 0 and 65,535)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_SHORT:
+      return "A conversion of a property value from type 'short' to type "
+             "'ushort' underflowed (must be between 0 and 65,535)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT:
+      return "A conversion of a property value from type 'int' to type "
+             "'ushort' underflowed (must be between 0 and 65,535)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_CHAR:
+      return "A conversion of a property value from type 'char' to type 'uint' "
+             "underflowed (must be between 0 and 4,294,967,295)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_SHORT:
+      return "A conversion of a property value from type 'short' to type "
+             "'uint' underflowed (must be between 0 and 4,294,967,295)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_INT:
+      return "A conversion of a property value from type 'int' to type 'uint' "
+             "underflowed (must be between 0 and 4,294,967,295)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE:
+      return "A conversion of a property value from type 'double' to type "
+             "'float' underflowed (must be between " +
+             float_min + " and " + float_max + ")";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT:
+      return "A conversion of a property list value from type 'short' to type "
+             "'char' underflowed (must be between -128 and 127)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'char' underflowed (must be between -128 and 127)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_CHAR:
+      return "A conversion of a property list value from type 'char' to type "
+             "'uchar' underflowed (must be between 0 and 255)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT:
+      return "A conversion of a property list value from type 'short' to type "
+             "'uchar' underflowed (must be between 0 and 255)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'uchar' underflowed (must be between 0 and 255)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'short' underflowed (must be between -32,768 and 32,767)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_CHAR:
+      return "A conversion of a property list value from type 'char' to type "
+             "'ushort' underflowed (must be between 0 and 65,535)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_SHORT:
+      return "A conversion of a property list value from type 'short' to type "
+             "'ushort' underflowed (must be between 0 and 65,535)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'ushort' underflowed (must be between 0 and 65,535)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_CHAR:
+      return "A conversion of a property list value from type 'char' to type "
+             "'uint' underflowed (must be between 0 and 4,294,967,295)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_SHORT:
+      return "A conversion of a property list value from type 'short' to type "
+             "'uint' underflowed (must be between 0 and 4,294,967,295)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_INT:
+      return "A conversion of a property list value from type 'int' to type "
+             "'uint' underflowed (must be between 0 and 4,294,967,295)";
+    case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE:
+      return "A conversion of a property list value from type 'double' to type "
+             "'float' underflowed (must be between " +
+             float_min + " and " + float_max + ")";
+    case ErrorCode::ASCII_UNUSED_TOKEN:
+      return "The input contained a data token that was not associated with "
+             "any property";
+    case ErrorCode::ASCII_MISMATCHED_LINE_ENDINGS:
       return "The input contained mismatched line endings";
-    case ErrorCode::CONTAINS_INVALID_CHARACTER:
-      return "The input contained an invalid character";
-    case ErrorCode::NEGATIVE_LIST_SIZE:
-      return "The input contained a property list with a negative size";
-    case ErrorCode::ELEMENT_TOO_FEW_TOKENS:
-      return "The input contained an element with too few tokens";
-    case ErrorCode::ELEMENT_CONTAINS_EXTRA_WHITESPACE:
-      return "Non-comment ASCII lines may only contain a single space between "
-             "tokens";
-    case ErrorCode::ELEMENT_CONTAINS_EXTRA_TOKENS:
-      return "The input contained an element with unused tokens";
-    case ErrorCode::ELEMENT_LIST_SIZE_OUT_OF_RANGE:
-      return "The input contained a property list size that was out of range";
-    case ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE:
-      return "The input contained a property entry that was out of range";
-    case ErrorCode::ELEMENT_LIST_SIZE_PARSING_FAILED:
-      return "The input contained a property list size that failed to parse";
-    case ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED:
-      return "The input contained a property entry that failed to parse";
-    case ErrorCode::CONVERSION_SIGNED_UNDERFLOW:
-      return "Signed integer conversion underflowed";
-    case ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW:
-      return "Signed integer to unsigned integer conversion underflowed";
-    case ErrorCode::CONVERSION_INTEGER_OVERFLOW:
-      return "Integer conversion overflowed";
-    case ErrorCode::CONVERSION_FLOAT_UNDERFLOW:
-      return "Floating point conversion underflowed";
-    case ErrorCode::CONVERSION_FLOAT_OVERFLOW:
-      return "Floating point conversion overflowed";
+    case ErrorCode::ASCII_EMPTY_TOKEN:
+      return "The input contained an empty token (tokens on non-comment lines "
+             "must be separated by exactly one ASCII space with no leading or "
+             "trailing whitespace on the line)";
   };
 
   return "Unknown Error";
@@ -131,6 +705,12 @@ struct is_error_code_enum<ErrorCode> : true_type {};
 namespace plyodine {
 namespace {
 
+enum class ReadType {
+  PROPERTY_LIST_SIZE = 0,
+  PROPERTY_LIST_VALUE = 1,
+  PROPERTY_VALUE = 2,
+};
+
 using ContextData =
     std::tuple<int8_t, std::vector<int8_t>, uint8_t, std::vector<uint8_t>,
                int16_t, std::vector<int16_t>, uint16_t, std::vector<uint16_t>,
@@ -142,16 +722,39 @@ struct Context final {
   std::string_view line_ending;
   std::stringstream line;
   std::string token;
+  bool eof = false;
 };
 
 using AppendFunc = void (*)(Context&);
-using ConvertFunc = std::error_code (*)(Context&);
+using ConvertFunc = std::error_code (*)(Context&, ReadType);
 using Handler = std::function<std::error_code(Context&)>;
 using OnConversionErrorFunc = std::function<std::error_code(
     const std::string&, const std::string&, std::error_code)>;
-using ReadFunc = std::error_code (*)(std::istream&, Context&);
+using ReadFunc = std::error_code (*)(std::istream&, Context&, ReadType);
 
-std::error_code ReadNextLine(std::istream& stream, Context& context) {
+template <typename T>
+consteval size_t GetTypeIndex() {
+  if constexpr (std::is_same_v<T, int8_t>) {
+    return 0;
+  } else if constexpr (std::is_same_v<T, uint8_t>) {
+    return 1;
+  } else if constexpr (std::is_same_v<T, int16_t>) {
+    return 2;
+  } else if constexpr (std::is_same_v<T, uint16_t>) {
+    return 3;
+  } else if constexpr (std::is_same_v<T, int32_t>) {
+    return 4;
+  } else if constexpr (std::is_same_v<T, uint32_t>) {
+    return 5;
+  } else if constexpr (std::is_same_v<T, float>) {
+    return 6;
+  } else {
+    return 7;
+  }
+}
+
+std::error_code ReadNextLine(std::istream& stream, Context& context,
+                             ErrorCode end_of_file_error) {
   std::string_view line_ending = context.line_ending;
 
   context.line.str("");
@@ -164,23 +767,20 @@ std::error_code ReadNextLine(std::istream& stream, Context& context) {
 
       while (!line_ending.empty() && stream.get(c)) {
         if (c != line_ending[0]) {
-          return ErrorCode::CONTAINS_MISMATCHED_LINE_ENDINGS;
+          return ErrorCode::ASCII_MISMATCHED_LINE_ENDINGS;
         }
         line_ending.remove_prefix(1);
+        context.eof = stream.eof();
       }
 
       break;
-    }
-
-    if (c != ' ' && !std::isgraph(c)) {
-      return ErrorCode::CONTAINS_INVALID_CHARACTER;
     }
 
     context.line.put(c);
   }
 
   if (!c) {
-    return ErrorCode::UNEXPECTED_EOF;
+    return end_of_file_error;
   }
 
   if (stream.fail() && !stream.eof()) {
@@ -190,7 +790,10 @@ std::error_code ReadNextLine(std::istream& stream, Context& context) {
   return std::error_code();
 }
 
-std::error_code ReadNextToken(Context& context) {
+std::error_code ReadNextToken(Context& context, bool allow_decimal,
+                              ErrorCode unparsable_error,
+                              ErrorCode missing_token_error,
+                              ErrorCode end_of_line_error) {
   context.token.clear();
 
   char c = 0;
@@ -199,23 +802,204 @@ std::error_code ReadNextToken(Context& context) {
       break;
     }
 
+    if (c == '-') {
+      if (!context.token.empty()) {
+        return unparsable_error;
+      }
+    } else if (c == '.') {
+      if (!allow_decimal) {
+        return unparsable_error;
+      }
+
+      allow_decimal = false;
+    } else if (!std::isdigit(c)) {
+      return unparsable_error;
+    }
+
     context.token.push_back(c);
   }
 
   if (!c) {
-    return ErrorCode::ELEMENT_TOO_FEW_TOKENS;
+    return context.eof ? end_of_line_error : missing_token_error;
   }
 
   if (context.token.empty()) {
-    return ErrorCode::ELEMENT_CONTAINS_EXTRA_WHITESPACE;
+    return ErrorCode::ASCII_EMPTY_TOKEN;
   }
 
   return std::error_code();
 }
 
+consteval std::array<ErrorCode, 3> UnexpectedEofErrors(size_t index) {
+  static constexpr ErrorCode property_list_size[8] = {
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_CHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UCHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_SHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_USHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_INT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UINT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UINT,  // Unused
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UINT,  // Unused
+  };
+
+  static constexpr ErrorCode property_list_value[8] = {
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_CHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_UCHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_SHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_USHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_INT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_UINT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_FLOAT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_VALUE_DOUBLE,
+  };
+
+  static constexpr ErrorCode property_value[8] = {
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_CHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_UCHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_SHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_USHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_INT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_UINT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_FLOAT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_DOUBLE,
+  };
+
+  return {property_list_size[index], property_list_value[index],
+          property_value[index]};
+}
+
+consteval std::array<ErrorCode, 3> MissingErrors(size_t index) {
+  static constexpr ErrorCode property_list_size[8] = {
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_CHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_UCHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_SHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_USHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_INT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_UINT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_UINT,  // Unused
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_MISSING_UINT,  // Unused
+  };
+
+  static constexpr ErrorCode property_list_value[8] = {
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_CHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_UCHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_SHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_USHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_INT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_UINT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_FLOAT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_MISSING_DOUBLE,
+  };
+
+  static constexpr ErrorCode property_value[8] = {
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_CHAR,
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_UCHAR,
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_SHORT,
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_USHORT,
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_INT,
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_UINT,
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_FLOAT,
+      ErrorCode::ASCII_PROPERTY_VALUE_MISSING_DOUBLE,
+  };
+
+  return {property_list_size[index], property_list_value[index],
+          property_value[index]};
+}
+
+consteval std::array<ErrorCode, 3> OutOfRangeErrors(size_t index) {
+  static constexpr ErrorCode property_list_size[8] = {
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_CHAR,
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_UCHAR,
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_SHORT,
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_USHORT,
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_INT,
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_UINT,
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_UINT,  // Unused
+      ErrorCode::PROPERTY_LIST_SIZE_OUT_OF_RANGE_UINT,  // Unused
+  };
+
+  static constexpr ErrorCode property_list_value[8] = {
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_CHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_UCHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_SHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_USHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_INT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_UINT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_FLOAT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_OUT_OF_RANGE_DOUBLE,
+  };
+
+  static constexpr ErrorCode property_value[8] = {
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_CHAR,
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_UCHAR,
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_SHORT,
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_USHORT,
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_INT,
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_UINT,
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_FLOAT,
+      ErrorCode::ASCII_PROPERTY_VALUE_OUT_OF_RANGE_DOUBLE,
+  };
+
+  return {property_list_size[index], property_list_value[index],
+          property_value[index]};
+}
+
+consteval std::array<ErrorCode, 3> FailedToParseErrors(size_t index) {
+  static constexpr ErrorCode property_list_size[8] = {
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_CHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UCHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_SHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_USHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_INT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UINT,
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UINT,  // Unused
+      ErrorCode::ASCII_PROPERTY_LIST_SIZE_FAILED_TO_PARSE_UINT,  // Unused
+  };
+
+  static constexpr ErrorCode property_list_value[8] = {
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_CHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_UCHAR,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_SHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_USHORT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_INT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_UINT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_FLOAT,
+      ErrorCode::ASCII_PROPERTY_LIST_VALUE_FAILED_TO_PARSE_DOUBLE,
+  };
+
+  static constexpr ErrorCode property_value[8] = {
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_CHAR,
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_UCHAR,
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_SHORT,
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_USHORT,
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_INT,
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_UINT,
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_FLOAT,
+      ErrorCode::ASCII_PROPERTY_VALUE_FAILED_TO_PARSE_DOUBLE,
+  };
+
+  return {property_list_size[index], property_list_value[index],
+          property_value[index]};
+}
+
 template <typename T>
-std::error_code ReadASCII(std::istream& input, Context& context) {
-  if (std::error_code error = ReadNextToken(context); error) {
+std::error_code ReadASCII(std::istream& input, Context& context,
+                          ReadType read_type) {
+  static constexpr std::array<ErrorCode, 3> missing =
+      MissingErrors(GetTypeIndex<T>());
+  static constexpr std::array<ErrorCode, 3> unexpected_eof =
+      UnexpectedEofErrors(GetTypeIndex<T>());
+  static constexpr std::array<ErrorCode, 3> failed_to_parse =
+      FailedToParseErrors(GetTypeIndex<T>());
+  static constexpr std::array<ErrorCode, 3> out_of_range =
+      OutOfRangeErrors(GetTypeIndex<T>());
+
+  if (std::error_code error =
+          ReadNextToken(context, std::is_floating_point_v<T>,
+                        failed_to_parse[static_cast<size_t>(read_type)],
+                        missing[static_cast<size_t>(read_type)],
+                        unexpected_eof[static_cast<size_t>(read_type)]);
+      error) {
     return error;
   }
 
@@ -223,9 +1007,11 @@ std::error_code ReadASCII(std::istream& input, Context& context) {
   auto parsing_result = std::from_chars(
       context.token.data(), context.token.data() + context.token.size(), value);
   if (parsing_result.ec == std::errc::result_out_of_range) {
-    return ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE;
-  } else if (parsing_result.ec != std::errc{}) {
-    return ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED;
+    return out_of_range[static_cast<size_t>(read_type)];
+  }
+
+  if (read_type == ReadType::PROPERTY_LIST_SIZE && value < 0) {
+    return out_of_range[static_cast<size_t>(read_type)];
   }
 
   std::get<T>(context.data) = value;
@@ -234,18 +1020,28 @@ std::error_code ReadASCII(std::istream& input, Context& context) {
 }
 
 template <std::endian Endianness, std::integral T>
-std::error_code ReadBinary(std::istream& stream, Context& context) {
+std::error_code ReadBinary(std::istream& stream, Context& context,
+                           ReadType read_type) {
+  static constexpr std::array<ErrorCode, 3> unexpected_eof =
+      UnexpectedEofErrors(GetTypeIndex<T>());
+  static constexpr std::array<ErrorCode, 3> out_of_range =
+      OutOfRangeErrors(GetTypeIndex<T>());
+
   T value;
   stream.read(reinterpret_cast<char*>(&value), sizeof(T));
   if (stream.fail()) {
     if (stream.eof()) {
-      return ErrorCode::UNEXPECTED_EOF;
+      return unexpected_eof[static_cast<size_t>(read_type)];
     }
     return std::io_errc::stream;
   }
 
   if (Endianness != std::endian::native) {
     value = std::byteswap(value);
+  }
+
+  if (read_type == ReadType::PROPERTY_LIST_SIZE && value < 0) {
+    return out_of_range[static_cast<size_t>(read_type)];
   }
 
   std::get<T>(context.data) = value;
@@ -254,19 +1050,29 @@ std::error_code ReadBinary(std::istream& stream, Context& context) {
 }
 
 template <std::endian Endianness, std::floating_point T>
-std::error_code ReadBinary(std::istream& stream, Context& context) {
+std::error_code ReadBinary(std::istream& stream, Context& context,
+                           ReadType read_type) {
+  static constexpr std::array<ErrorCode, 3> unexpected_eof =
+      UnexpectedEofErrors(GetTypeIndex<T>());
+  static constexpr std::array<ErrorCode, 3> out_of_range =
+      OutOfRangeErrors(GetTypeIndex<T>());
+
   std::conditional_t<std::is_same_v<T, float>, uint32_t, uint64_t> value;
 
   stream.read(reinterpret_cast<char*>(&value), sizeof(value));
   if (stream.fail()) {
     if (stream.eof()) {
-      return ErrorCode::UNEXPECTED_EOF;
+      return unexpected_eof[static_cast<size_t>(read_type)];
     }
     return std::io_errc::stream;
   }
 
   if (Endianness != std::endian::native) {
     value = std::byteswap(value);
+  }
+
+  if (read_type == ReadType::PROPERTY_LIST_SIZE && value < 0) {
+    return out_of_range[static_cast<size_t>(read_type)];
   }
 
   std::get<T>(context.data) = std::bit_cast<T>(value);
@@ -320,27 +1126,228 @@ ReadFunc GetReadFunc(PlyHeader::Format format, PlyHeader::Property::Type type) {
 }
 
 template <typename Source, typename Dest>
-std::error_code Convert(Context& context) {
+ErrorCode UnderflowError(ReadType read_type) {
+  if (read_type == ReadType::PROPERTY_VALUE) {
+    if constexpr (std::is_same_v<Dest, int8_t>) {
+      if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint8_t>) {
+      if constexpr (std::is_same_v<Source, int8_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_CHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT;
+      }
+    } else if constexpr (std::is_same_v<Dest, int16_t>) {
+      static_assert(std::is_same_v<Source, int32_t>);
+      return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT;
+    } else if constexpr (std::is_same_v<Dest, uint16_t>) {
+      if constexpr (std::is_same_v<Source, int8_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_CHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint32_t>) {
+      if constexpr (std::is_same_v<Source, int8_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_CHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_INT;
+      }
+    } else {
+      static_assert(std::is_same_v<Dest, float> &&
+                    std::is_same_v<Source, double>);
+      return ErrorCode::UNDERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE;
+    }
+  } else {
+    if constexpr (std::is_same_v<Dest, int8_t>) {
+      if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint8_t>) {
+      if constexpr (std::is_same_v<Source, int8_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_CHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT;
+      }
+    } else if constexpr (std::is_same_v<Dest, int16_t>) {
+      static_assert(std::is_same_v<Source, int32_t>);
+      return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT;
+    } else if constexpr (std::is_same_v<Dest, uint16_t>) {
+      if constexpr (std::is_same_v<Source, int8_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_CHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint32_t>) {
+      if constexpr (std::is_same_v<Source, int8_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_CHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_SHORT;
+      } else {
+        static_assert(std::is_same_v<Source, int32_t>);
+        return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_INT;
+      }
+    } else {
+      static_assert(std::is_same_v<Dest, float> &&
+                    std::is_same_v<Source, double>);
+      return ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE;
+    }
+  }
+}
+
+template <typename Source, typename Dest>
+ErrorCode OverflowedError(ReadType read_type) {
+  if (read_type == ReadType::PROPERTY_VALUE) {
+    if constexpr (std::is_same_v<Dest, int8_t>) {
+      if constexpr (std::is_same_v<Source, uint8_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UCHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT;
+      } else if constexpr (std::is_same_v<Source, uint16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_USHORT;
+      } else if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint8_t>) {
+      if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT;
+      } else if constexpr (std::is_same_v<Source, uint16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_USHORT;
+      } else if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, int16_t>) {
+      if constexpr (std::is_same_v<Source, uint16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_UINT;
+      } else if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint16_t>) {
+      if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, int32_t>) {
+      static_assert(std::is_same_v<Source, uint32_t>);
+      return ErrorCode::OVERFLOWED_PROPERTY_VALUE_INT_FROM_UINT;
+    } else {
+      static_assert(std::is_same_v<Dest, float> &&
+                    std::is_same_v<Source, double>);
+      return ErrorCode::OVERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE;
+    }
+  } else {
+    if constexpr (std::is_same_v<Dest, int8_t>) {
+      if constexpr (std::is_same_v<Source, uint8_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UCHAR;
+      } else if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT;
+      } else if constexpr (std::is_same_v<Source, uint16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_USHORT;
+      } else if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint8_t>) {
+      if constexpr (std::is_same_v<Source, int16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT;
+      } else if constexpr (std::is_same_v<Source, uint16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_USHORT;
+      } else if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, int16_t>) {
+      if constexpr (std::is_same_v<Source, uint16_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_UINT;
+      } else if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, uint16_t>) {
+      if constexpr (std::is_same_v<Source, int32_t>) {
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT;
+      } else {
+        static_assert(std::is_same_v<Source, uint32_t>);
+        return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_UINT;
+      }
+    } else if constexpr (std::is_same_v<Dest, int32_t>) {
+      static_assert(std::is_same_v<Source, uint32_t>);
+      return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_INT_FROM_UINT;
+    } else {
+      static_assert(std::is_same_v<Dest, float> &&
+                    std::is_same_v<Source, double>);
+      return ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE;
+    }
+  }
+}
+
+template <typename Source, typename Dest>
+std::error_code Convert(Context& context, ReadType read_type) {
+  static_assert(std::is_floating_point_v<Source> ==
+                std::is_floating_point_v<Dest>);
+
   if constexpr (!std::is_same_v<Source, Dest>) {
     if constexpr (std::is_floating_point_v<Source>) {
-      if (std::isfinite(std::get<Source>(context.data))) {
-        if (std::get<Source>(context.data) <
-            std::numeric_limits<Dest>::lowest()) {
-          return ErrorCode::CONVERSION_FLOAT_UNDERFLOW;
-        }
+      if constexpr (sizeof(Dest) < sizeof(Source)) {
+        if (std::isfinite(std::get<Source>(context.data))) {
+          if (std::get<Source>(context.data) <
+              std::numeric_limits<Dest>::lowest()) {
+            return UnderflowError<Source, Dest>(read_type);
+          }
 
-        if (std::get<Source>(context.data) > std::numeric_limits<Dest>::max()) {
-          return ErrorCode::CONVERSION_FLOAT_OVERFLOW;
+          if (std::get<Source>(context.data) >
+              std::numeric_limits<Dest>::max()) {
+            return OverflowedError<Source, Dest>(read_type);
+          }
         }
       }
     } else {
       if constexpr (std::is_signed_v<Source> && !std::is_signed_v<Dest>) {
         if (std::get<Source>(context.data) < 0) {
-          return ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW;
+          return UnderflowError<Source, Dest>(read_type);
         }
-      } else if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest>) {
+      } else if constexpr (std::is_signed_v<Source> && std::is_signed_v<Dest> &&
+                           sizeof(Dest) < sizeof(Source)) {
         if (std::get<Source>(context.data) < std::numeric_limits<Dest>::min()) {
-          return ErrorCode::CONVERSION_SIGNED_UNDERFLOW;
+          return UnderflowError<Source, Dest>(read_type);
         }
       }
 
@@ -349,7 +1356,7 @@ std::error_code Convert(Context& context) {
                      !std::is_signed_v<Source> && std::is_signed_v<Dest>)) {
         if (std::get<Source>(context.data) >
             static_cast<Source>(std::numeric_limits<Dest>::max())) {
-          return ErrorCode::CONVERSION_INTEGER_OVERFLOW;
+          return OverflowedError<Source, Dest>(read_type);
         }
       }
     }
@@ -362,18 +1369,20 @@ std::error_code Convert(Context& context) {
 }
 
 template <size_t SourceTypeIndex, size_t DestTypeIndex>
-constexpr ConvertFunc GetConvertFunc() {
-  if constexpr ((SourceTypeIndex >= 6 && DestTypeIndex < 6) ||
-                (SourceTypeIndex < 6 && DestTypeIndex >= 6)) {
-    return nullptr;
+consteval ConvertFunc GetConvertFunc() {
+  using Source = std::tuple_element_t<SourceTypeIndex * 2, ContextData>;
+  using Dest = std::tuple_element_t<DestTypeIndex * 2, ContextData>;
+
+  if constexpr (std::is_floating_point_v<Source> ==
+                std::is_floating_point_v<Dest>) {
+    return Convert<Source, Dest>;
   }
 
-  return Convert<std::tuple_element_t<SourceTypeIndex * 2, ContextData>,
-                 std::tuple_element_t<DestTypeIndex * 2, ContextData>>;
+  return nullptr;
 }
 
 template <size_t SourceTypeIndex>
-constexpr std::array<ConvertFunc, 8> GetConvertFuncs() {
+consteval std::array<ConvertFunc, 8> GetConvertFuncs() {
   return {
       GetConvertFunc<SourceTypeIndex, 0>(),
       GetConvertFunc<SourceTypeIndex, 1>(),
@@ -489,31 +1498,25 @@ std::error_code PropertyParser::Parse(std::istream& stream,
                                       Context& context) const {
   uint32_t length = 1;
   if (read_length_) {
-    if (std::error_code error = read_length_(stream, context); error) {
-      if (error == ErrorCode::ELEMENT_PROPERTY_OUT_OF_RANGE) {
-        return ErrorCode::ELEMENT_LIST_SIZE_OUT_OF_RANGE;
-      }
-
-      if (error == ErrorCode::ELEMENT_PROPERTY_PARSING_FAILED) {
-        return ErrorCode::ELEMENT_LIST_SIZE_PARSING_FAILED;
-      }
-
+    if (std::error_code error =
+            read_length_(stream, context, ReadType::PROPERTY_LIST_SIZE);
+        error) {
       return error;
     }
 
-    if (convert_length_(context)) {
-      return ErrorCode::NEGATIVE_LIST_SIZE;
-    }
+    convert_length_(context, ReadType::PROPERTY_LIST_SIZE);
 
     length = std::get<uint32_t>(context.data);
   }
 
   for (uint32_t i = 0; i < length; i++) {
-    if (std::error_code error = read_(stream, context); error) {
+    ReadType read_type =
+        read_length_ ? ReadType::PROPERTY_LIST_VALUE : ReadType::PROPERTY_VALUE;
+    if (std::error_code error = read_(stream, context, read_type); error) {
       return error;
     }
 
-    if (std::error_code error = convert_(context); error) {
+    if (std::error_code error = convert_(context, read_type); error) {
       return on_conversion_error_(element_name_, property_name_, error);
     }
 
@@ -593,25 +1596,25 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
   for (auto& [element_name, element_callbacks] : requested_callbacks) {
     auto element_iter = actual_callbacks.find(element_name);
     if (element_iter == actual_callbacks.end()) {
-      return ErrorCode::UNKNOWN_ELEMENT;
+      continue;
     }
 
     for (auto& [property_name, property_callback] : element_callbacks) {
       auto property_iter = element_iter->second.find(property_name);
       if (property_iter == element_iter->second.end()) {
-        return ErrorCode::UNKNOWN_PROPERTY;
+        continue;
       }
 
       size_t original_index = property_iter->second.index();
       size_t desired_index = property_callback.index();
 
       if ((original_index & 0x1u) != (desired_index & 0x1u)) {
-        return ErrorCode::UNSUPPORTED_CONVERSION;
+        return ErrorCode::INVALID_CONVERSION;
       }
 
       if (((original_index >> 1u) < 6 && (desired_index >> 1u) >= 6) ||
           ((original_index >> 1u) >= 6 && (desired_index >> 1u) < 6)) {
-        return ErrorCode::UNSUPPORTED_CONVERSION;
+        return ErrorCode::INVALID_CONVERSION;
       }
 
       property_iter->second = std::move(property_callback);
@@ -632,20 +1635,78 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
           [&, this](const std::string& element_name,
                     const std::string& property_name,
                     std::error_code original_error) -> std::error_code {
-            ConversionFailureReason reason;
-            if (original_error == ErrorCode::CONVERSION_SIGNED_UNDERFLOW) {
-              reason = ConversionFailureReason::SIGNED_INTEGER_UNDERFLOW;
-            } else if (original_error ==
-                       ErrorCode::CONVERSION_UNSIGNED_UNDERFLOW) {
-              reason = ConversionFailureReason::UNSIGNED_INTEGER_UNDERFLOW;
-            } else if (original_error ==
-                       ErrorCode::CONVERSION_INTEGER_OVERFLOW) {
-              reason = ConversionFailureReason::INTEGER_OVERFLOW;
-            } else if (original_error ==
-                       ErrorCode::CONVERSION_FLOAT_UNDERFLOW) {
-              reason = ConversionFailureReason::FLOAT_UNDERFLOW;
-            } else {
-              reason = ConversionFailureReason::FLOAT_OVERFLOW;
+            ConversionFailureReason reason{};
+            switch (static_cast<ErrorCode>(original_error.value())) {
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UCHAR:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_USHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_CHAR_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_USHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_UCHAR_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_USHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_SHORT_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_USHORT_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_INT_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UCHAR:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_USHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_USHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_USHORT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_UINT:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_INT_FROM_UINT:
+                reason = ConversionFailureReason::INTEGER_OVERFLOW;
+                break;
+              case ErrorCode::OVERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE:
+              case ErrorCode::OVERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE:
+                reason = ConversionFailureReason::FLOAT_OVERFLOW;
+                break;
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_CHAR_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_SHORT_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_CHAR_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_SHORT_FROM_INT:
+                reason = ConversionFailureReason::SIGNED_INTEGER_UNDERFLOW;
+                break;
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_CHAR:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UCHAR_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_CHAR:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_USHORT_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_CHAR:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_UINT_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_CHAR:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UCHAR_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_CHAR:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_USHORT_FROM_INT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_CHAR:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_SHORT:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_UINT_FROM_INT:
+                reason = ConversionFailureReason::UNSIGNED_INTEGER_UNDERFLOW;
+                break;
+              case ErrorCode::UNDERFLOWED_PROPERTY_VALUE_FLOAT_FROM_DOUBLE:
+              case ErrorCode::UNDERFLOWED_PROPERTY_LIST_VALUE_FLOAT_FROM_DOUBLE:
+                reason = ConversionFailureReason::FLOAT_UNDERFLOW;
+                break;
+              default:
+                break;
             }
 
             if (std::error_code error =
@@ -660,14 +1721,47 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
     }
   }
 
+  static constexpr ErrorCode value_eof_error_code[8] = {
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_CHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_UCHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_SHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_USHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_INT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_UINT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_FLOAT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_VALUE_DOUBLE,
+  };
+
+  static constexpr ErrorCode list_eof_error_code[6] = {
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_CHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UCHAR,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_SHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_USHORT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_INT,
+      ErrorCode::UNEXPECTED_EOF_PROPERTY_LIST_SIZE_UINT,
+  };
+
   Context context;
   context.line_ending = header->line_ending;
   for (size_t element_index = 0; element_index < header->elements.size();
        element_index++) {
-    for (size_t instance = 0;
-         instance < header->elements[element_index].num_in_file; instance++) {
+    const PlyHeader::Element& element = header->elements[element_index];
+    for (size_t instance = 0; instance < element.num_in_file; instance++) {
       if (header->format == PlyHeader::Format::ASCII) {
-        if (std::error_code error = ReadNextLine(stream, context); error) {
+        ErrorCode eof_error = ErrorCode::UNEXPECTED_EOF_NO_PROPERTIES;
+        if (!element.properties.empty()) {
+          const PlyHeader::Property& property = element.properties.front();
+          if (property.list_type) {
+            eof_error =
+                list_eof_error_code[static_cast<size_t>(*property.list_type)];
+          } else {
+            eof_error =
+                value_eof_error_code[static_cast<size_t>(property.data_type)];
+          }
+        }
+
+        if (std::error_code error = ReadNextLine(stream, context, eof_error);
+            error) {
           return error;
         }
       }
@@ -683,12 +1777,12 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
       }
 
       if (header->format == PlyHeader::Format::ASCII) {
-        if (std::error_code error = ReadNextToken(context);
-            error != ErrorCode::ELEMENT_TOO_FEW_TOKENS) {
-          if (!error) {
-            return ErrorCode::ELEMENT_CONTAINS_EXTRA_TOKENS;
-          }
-
+        std::error_code error = ReadNextToken(
+            context, false, ErrorCode::ASCII_UNUSED_TOKEN,
+            ErrorCode::ASCII_EMPTY_TOKEN, ErrorCode::ASCII_EMPTY_TOKEN);
+        if (!error) {
+          return ErrorCode::ASCII_UNUSED_TOKEN;
+        } else if (error != ErrorCode::ASCII_EMPTY_TOKEN) {
           return error;
         }
       }
