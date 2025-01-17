@@ -434,11 +434,11 @@ TEST(Validate, DefaultErrorCondition) {
 
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 152; i++) {
+  for (int i = 1; i <= 327; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(153),
+  EXPECT_NE(error_catgegory.default_error_condition(328),
             std::errc::invalid_argument);
 }
 
@@ -534,8 +534,10 @@ TEST(Error, IntToFloat) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("A callback requested an unsupported conversion",
-            reader.ReadFrom(stream).message());
+  EXPECT_EQ(
+      "A callback requested an unsupported conversion from property of type "
+      "'uint' to property list of data type 'float'",
+      reader.ReadFrom(stream).message());
 }
 
 TEST(Error, FloatToInt) {
@@ -548,8 +550,10 @@ TEST(Error, FloatToInt) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("A callback requested an unsupported conversion",
-            reader.ReadFrom(stream).message());
+  EXPECT_EQ(
+      "A callback requested an unsupported conversion from property of type "
+      "'float' to property of type 'uint'",
+      reader.ReadFrom(stream).message());
 }
 
 TEST(Error, ListToScalar) {
@@ -562,8 +566,10 @@ TEST(Error, ListToScalar) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("A callback requested an unsupported conversion",
-            reader.ReadFrom(stream).message());
+  EXPECT_EQ(
+      "A callback requested an unsupported conversion from property list of "
+      "data type 'double' to property of type 'double'",
+      reader.ReadFrom(stream).message());
 }
 
 TEST(Error, ScalarToList) {
@@ -576,8 +582,10 @@ TEST(Error, ScalarToList) {
 
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ("A callback requested an unsupported conversion",
-            reader.ReadFrom(stream).message());
+  EXPECT_EQ(
+      "A callback requested an unsupported conversion from property of type "
+      "'double' to property list of data type 'double'",
+      reader.ReadFrom(stream).message());
 }
 
 TEST(ASCII, Empty) {
