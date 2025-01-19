@@ -166,23 +166,6 @@ class TriangleMeshReader : public PlyReader {
       return "plyodine::TriangleMeshReader";
     }
 
-    template <typename T>
-    static std::string MessageWithType(const char* message) {
-      std::string result(message);
-      if constexpr (std::is_same_v<T, uint8_t>) {
-        result += "uchar'";
-      } else if constexpr (std::is_same_v<T, uint16_t>) {
-        result += "ushort'";
-      } else if constexpr (std::is_same_v<T, uint32_t>) {
-        result += "uint'";
-      } else if constexpr (std::is_same_v<T, float>) {
-        result += "float'";
-      } else {
-        result += "double'";
-      }
-      return result;
-    }
-
     std::string message(int condition) const override {
       ErrorCode error_code{condition};
       switch (error_code) {
@@ -281,68 +264,62 @@ class TriangleMeshReader : public PlyReader {
         case ErrorCode::INVALID_PROPERTY_V_VALUE:
           return "A value of property 'v' on element 'vertex' was not finite";
         case ErrorCode::OVERFLOWED_PROPERTY_X_TYPE:
-          return MessageWithType<PositionType>(
-              "A value of property 'x' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'x' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_Y_TYPE:
-          return MessageWithType<PositionType>(
-              "A value of property 'y' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'y' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_Z_TYPE:
-          return MessageWithType<PositionType>(
-              "A value of property 'z' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'z' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE:
           return "A value of property list 'vertex_indices' on element 'face' "
                  "was negative";
         case ErrorCode::OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE:
-          return MessageWithType<VertexIndexType>(
-              "A value of property list 'vertex_indices' on element 'face' "
-              "could not into destination type '");
+          if constexpr (std::is_same_v<VertexIndexType, uint8_t>) {
+            return "A value of property list 'vertex_indices' on element "
+                   "'face' could not into destination type 'uchar'";
+          } else if constexpr (std::is_same_v<VertexIndexType, uint16_t>) {
+            return "A value of property list 'vertex_indices' on element "
+                   "'face' could not into destination type 'ushort'";
+          } else {
+            static_assert(std::is_same_v<VertexIndexType, uint32_t>);
+            return "A value of property list 'vertex_indices' on element "
+                   "'face' could not into destination type 'uint'";
+          }
         case ErrorCode::OVERFLOWED_PROPERTY_NX_TYPE:
-          return MessageWithType<NormalType>(
-              "A value of property 'nx' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'nx' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_NY_TYPE:
-          return MessageWithType<NormalType>(
-              "A value of property 'ny' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'ny' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_NZ_TYPE:
-          return MessageWithType<NormalType>(
-              "A value of property 'nz' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'nz' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_S_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 'texture_s' on element 'vertex' could not "
-              "fit finitely into destination type '");
+          return "A value of property 'texture_s' on element 'vertex' could "
+                 "not fit finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_T_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 'texture_t' on element 'vertex' could not "
-              "fit finitely into destination type '");
+          return "A value of property 'texture_t' on element 'vertex' could "
+                 "not fit finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_U_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 'texture_u' on element 'vertex' could not "
-              "fit finitely into destination type '");
+          return "A value of property 'texture_u' on element 'vertex' could "
+                 "not fit finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_V_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 'texture_v' on element 'vertex' could not "
-              "fit finitely into destination type '");
+          return "A value of property 'texture_v' on element 'vertex' could "
+                 "not fit finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_S_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 's' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 's' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_T_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 't' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 't' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_U_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 'u' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'u' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_V_TYPE:
-          return MessageWithType<UVType>(
-              "A value of property 'v' on element 'vertex' could not fit "
-              "finitely into destination type '");
+          return "A value of property 'v' on element 'vertex' could not fit "
+                 "finitely into destination type 'float'";
       }
 
       return "Unknown Error";
