@@ -639,8 +639,7 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
   return std::error_code();
 }
 
-std::error_code ReadNextToken(Context& context, bool allow_decimal,
-                              std::error_code unparsable_error,
+std::error_code ReadNextToken(Context& context, bool is_float,
                               std::error_code missing_token_error,
                               std::error_code end_of_line_error) {
   context.token.clear();
@@ -649,20 +648,6 @@ std::error_code ReadNextToken(Context& context, bool allow_decimal,
   while (context.line.get(c)) {
     if (c == ' ') {
       break;
-    }
-
-    if (c == '-') {
-      if (!context.token.empty()) {
-        return unparsable_error;
-      }
-    } else if (c == '.') {
-      if (!allow_decimal) {
-        return unparsable_error;
-      }
-
-      allow_decimal = false;
-    } else if (!std::isdigit(c)) {
-      return unparsable_error;
     }
 
     context.token.push_back(c);
@@ -684,17 +669,20 @@ std::error_code ReadASCII(std::istream& input, Context& context,
                           EntryType entry_type) {
   if (std::error_code error =
           ReadNextToken(context, std::is_floating_point_v<T>,
-                        MakeFailedToParse(entry_type, GetDataType<T>()),
                         MakeMissingToken(entry_type, GetDataType<T>()),
                         MakeUnexpectedEof(entry_type, GetDataType<T>()));
       error) {
     return error;
   }
 
+  const char* start = context.token.data();
+  const char* end = start + context.token.size();
+
   T value{};
-  auto parsing_result = std::from_chars(
-      context.token.data(), context.token.data() + context.token.size(), value);
-  if (parsing_result.ec == std::errc::result_out_of_range) {
+  std::from_chars_result result = std::from_chars(start, end, value);
+  if (result.ec == std::errc::invalid_argument || result.ptr != end) {
+    return MakeFailedToParse(entry_type, GetDataType<T>());
+  } else if (result.ec == std::errc::result_out_of_range) {
     return MakeOutOfRange(entry_type, GetDataType<T>());
   }
 
@@ -1195,8 +1183,7 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
 
       if (header->format == PlyHeader::Format::ASCII) {
         std::error_code error =
-            ReadNextToken(context, false, MakeUnusedToken(), MakeEmptyToken(),
-                          MakeEmptyToken());
+            ReadNextToken(context, false, MakeEmptyToken(), MakeEmptyToken());
         if (!error) {
           return MakeUnusedToken();
         } else if (error != MakeEmptyToken()) {

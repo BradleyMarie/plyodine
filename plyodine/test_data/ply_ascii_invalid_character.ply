@@ -1,7 +1,1 @@
-ply
-format ascii 1.0
-element vertex 2
-property char a
-end_header
-1!
-2
+plyformat ascii 1.0element vertex 2property char aend_header1!2
