@@ -662,7 +662,9 @@ TEST(ASCII, InvalidCharacter) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_invalid_character.ply");
   EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "A property with type 'char' could not be parsed");
+            "The input contained invalid characters in its data section (an "
+            "input with format 'ascii' must contain only printable ASCII "
+            "characters on each line)");
 }
 
 TEST(ASCII, ListMissingEntries) {
@@ -733,44 +735,6 @@ TEST(ASCII, MissingElement) {
   EXPECT_EQ(reader.ReadFrom(stream).message(),
             "The stream ended earlier than expected (reached EOF but expected "
             "to find a property of type 'char')");
-}
-
-TEST(ASCII, ExtraWhitespace) {
-  std::map<std::string,
-           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {
-          {"vertex",
-           {2u, {{"a", PropertyType::CHAR}, {"b", PropertyType::CHAR}}}}};
-
-  MockPlyReader reader;
-  EXPECT_CALL(reader,
-              StartImpl(PropertiesAre(properties), IsEmpty(), IsEmpty()))
-      .Times(1)
-      .WillOnce(Return(std::error_code()));
-  EXPECT_CALL(reader, HandleChar("vertex", "a", 1))
-      .WillOnce(Return(std::error_code()));
-  EXPECT_CALL(reader, HandleCharList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUChar(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUCharList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleShort(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleShortList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUShort(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUShortList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleInt(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleIntList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUInt(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUIntList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleFloat(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleDouble(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(_, _, _)).Times(0);
-
-  std::ifstream stream =
-      OpenRunfile("_main/plyodine/test_data/ply_ascii_empty_token.ply");
-  EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "The input contained an empty token (tokens on non-comment lines "
-            "must be separated by exactly one ASCII space with no leading or "
-            "trailing whitespace on the line)");
 }
 
 TEST(ASCII, ListSizeTooLarge) {
@@ -1005,160 +969,164 @@ TEST(ASCII, UnusedTokens) {
 }
 
 TEST(ASCII, WithData) {
-  std::map<std::string,
-           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex",
-                     {3u,
-                      {{"a", PropertyType::CHAR},
-                       {"b", PropertyType::UCHAR},
-                       {"c", PropertyType::SHORT},
-                       {"d", PropertyType::USHORT},
-                       {"e", PropertyType::INT},
-                       {"f", PropertyType::UINT},
-                       {"g", PropertyType::FLOAT},
-                       {"h", PropertyType::DOUBLE}}}},
-                    {"vertex_lists",
-                     {1u,
-                      {{"a", PropertyType::CHAR_LIST},
-                       {"b", PropertyType::UCHAR_LIST},
-                       {"c", PropertyType::SHORT_LIST},
-                       {"d", PropertyType::USHORT_LIST},
-                       {"e", PropertyType::INT_LIST},
-                       {"f", PropertyType::UINT_LIST},
-                       {"g", PropertyType::FLOAT_LIST},
-                       {"h", PropertyType::DOUBLE_LIST}}}}};
-  std::vector<std::string> comments = {"comment 1", "comment 2"};
-  std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
+  auto impl = [](const char* filename) {
+    std::map<std::string,
+             std::pair<uintmax_t, std::map<std::string, PropertyType>>>
+        properties = {{"vertex",
+                       {3u,
+                        {{"a", PropertyType::CHAR},
+                         {"b", PropertyType::UCHAR},
+                         {"c", PropertyType::SHORT},
+                         {"d", PropertyType::USHORT},
+                         {"e", PropertyType::INT},
+                         {"f", PropertyType::UINT},
+                         {"g", PropertyType::FLOAT},
+                         {"h", PropertyType::DOUBLE}}}},
+                      {"vertex_lists",
+                       {1u,
+                        {{"a", PropertyType::CHAR_LIST},
+                         {"b", PropertyType::UCHAR_LIST},
+                         {"c", PropertyType::SHORT_LIST},
+                         {"d", PropertyType::USHORT_LIST},
+                         {"e", PropertyType::INT_LIST},
+                         {"f", PropertyType::UINT_LIST},
+                         {"g", PropertyType::FLOAT_LIST},
+                         {"h", PropertyType::DOUBLE_LIST}}}}};
+    std::vector<std::string> comments = {"comment 1", "comment 2"};
+    std::vector<std::string> object_info = {"obj info 1", "obj info 2"};
 
-  MockPlyReader reader;
-  EXPECT_CALL(reader, StartImpl(PropertiesAre(properties), ValuesAre(comments),
-                                ValuesAre(object_info)))
-      .Times(1)
-      .WillOnce(Return(std::error_code()));
+    MockPlyReader reader;
+    EXPECT_CALL(reader, StartImpl(PropertiesAre(properties),
+                                  ValuesAre(comments), ValuesAre(object_info)))
+        .Times(1)
+        .WillOnce(Return(std::error_code()));
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleChar("vertex", "a", -1))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleChar("vertex", "a", 2))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleChar("vertex", "a", 0))
-        .WillOnce(Return(std::error_code()));
-  }
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleChar("vertex", "a", -1))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleChar("vertex", "a", 2))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleChar("vertex", "a", 0))
+          .WillOnce(Return(std::error_code()));
+    }
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleUChar("vertex", "b", 1))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleUChar("vertex", "b", 2))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleUChar("vertex", "b", 0))
-        .WillOnce(Return(std::error_code()));
-  }
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleUChar("vertex", "b", 1))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleUChar("vertex", "b", 2))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleUChar("vertex", "b", 0))
+          .WillOnce(Return(std::error_code()));
+    }
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleShort("vertex", "c", -1))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleShort("vertex", "c", 2))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleShort("vertex", "c", 0))
-        .WillOnce(Return(std::error_code()));
-  }
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleShort("vertex", "c", -1))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleShort("vertex", "c", 2))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleShort("vertex", "c", 0))
+          .WillOnce(Return(std::error_code()));
+    }
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleUShort("vertex", "d", 1))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleUShort("vertex", "d", 2))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleUShort("vertex", "d", 0))
-        .WillOnce(Return(std::error_code()));
-  }
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleUShort("vertex", "d", 1))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleUShort("vertex", "d", 2))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleUShort("vertex", "d", 0))
+          .WillOnce(Return(std::error_code()));
+    }
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleInt("vertex", "e", -1))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleInt("vertex", "e", 2))
-        .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleInt("vertex", "e", 0))
-        .WillOnce(Return(std::error_code()));
-  }
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleInt("vertex", "e", -1))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleInt("vertex", "e", 2))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleInt("vertex", "e", 0))
+          .WillOnce(Return(std::error_code()));
+    }
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleUInt("vertex", "f", 1))
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleUInt("vertex", "f", 1))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleUInt("vertex", "f", 2))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleUInt("vertex", "f", 0))
+          .WillOnce(Return(std::error_code()));
+    }
+
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleFloat("vertex", "g", 1.5f))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleFloat("vertex", "g", 2.5f))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleFloat("vertex", "g", 3.14159274f))
+          .WillOnce(Return(std::error_code()));
+    }
+
+    {
+      InSequence s;
+      EXPECT_CALL(reader, HandleDouble("vertex", "h", 1.5))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleDouble("vertex", "h", 2.5))
+          .WillOnce(Return(std::error_code()));
+      EXPECT_CALL(reader, HandleDouble("vertex", "h", 3.1415926535897931))
+          .WillOnce(Return(std::error_code()));
+    }
+
+    std::vector<int8_t> values_int8 = {-1, 2, 0};
+    EXPECT_CALL(reader,
+                HandleCharList("vertex_lists", "a", ValuesAre(values_int8)))
         .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleUInt("vertex", "f", 2))
+
+    std::vector<uint8_t> values_uint8 = {1, 2, 0};
+    EXPECT_CALL(reader,
+                HandleUCharList("vertex_lists", "b", ValuesAre(values_uint8)))
         .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleUInt("vertex", "f", 0))
+
+    std::vector<int16_t> values_int16 = {-1, 2, 0};
+    EXPECT_CALL(reader,
+                HandleShortList("vertex_lists", "c", ValuesAre(values_int16)))
         .WillOnce(Return(std::error_code()));
-  }
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 1.5f))
+    std::vector<uint16_t> values_uint16 = {1, 2, 0};
+    EXPECT_CALL(reader,
+                HandleUShortList("vertex_lists", "d", ValuesAre(values_uint16)))
         .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 2.5f))
+
+    std::vector<int32_t> values_int32 = {-1, 2, 0};
+    EXPECT_CALL(reader,
+                HandleIntList("vertex_lists", "e", ValuesAre(values_int32)))
         .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleFloat("vertex", "g", 3.14159274f))
+
+    std::vector<uint32_t> values_uint32 = {1, 2, 0};
+    EXPECT_CALL(reader,
+                HandleUIntList("vertex_lists", "f", ValuesAre(values_uint32)))
         .WillOnce(Return(std::error_code()));
-  }
 
-  {
-    InSequence s;
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 1.5))
+    std::vector<float> values_float = {1.5f, 2.5f, 3.14159274f};
+    EXPECT_CALL(reader,
+                HandleFloatList("vertex_lists", "g", ValuesAre(values_float)))
         .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 2.5))
+
+    std::vector<double> values_double = {1.5, 2.5, 3.1415926535897931};
+    EXPECT_CALL(reader,
+                HandleDoubleList("vertex_lists", "h", ValuesAre(values_double)))
         .WillOnce(Return(std::error_code()));
-    EXPECT_CALL(reader, HandleDouble("vertex", "h", 3.1415926535897931))
-        .WillOnce(Return(std::error_code()));
-  }
 
-  std::vector<int8_t> values_int8 = {-1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleCharList("vertex_lists", "a", ValuesAre(values_int8)))
-      .WillOnce(Return(std::error_code()));
+    std::ifstream stream = OpenRunfile(filename);
+    EXPECT_EQ(0, reader.ReadFrom(stream).value());
+  };
 
-  std::vector<uint8_t> values_uint8 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUCharList("vertex_lists", "b", ValuesAre(values_uint8)))
-      .WillOnce(Return(std::error_code()));
-
-  std::vector<int16_t> values_int16 = {-1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleShortList("vertex_lists", "c", ValuesAre(values_int16)))
-      .WillOnce(Return(std::error_code()));
-
-  std::vector<uint16_t> values_uint16 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUShortList("vertex_lists", "d", ValuesAre(values_uint16)))
-      .WillOnce(Return(std::error_code()));
-
-  std::vector<int32_t> values_int32 = {-1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleIntList("vertex_lists", "e", ValuesAre(values_int32)))
-      .WillOnce(Return(std::error_code()));
-
-  std::vector<uint32_t> values_uint32 = {1, 2, 0};
-  EXPECT_CALL(reader,
-              HandleUIntList("vertex_lists", "f", ValuesAre(values_uint32)))
-      .WillOnce(Return(std::error_code()));
-
-  std::vector<float> values_float = {1.5f, 2.5f, 3.14159274f};
-  EXPECT_CALL(reader,
-              HandleFloatList("vertex_lists", "g", ValuesAre(values_float)))
-      .WillOnce(Return(std::error_code()));
-
-  std::vector<double> values_double = {1.5, 2.5, 3.1415926535897931};
-  EXPECT_CALL(reader,
-              HandleDoubleList("vertex_lists", "h", ValuesAre(values_double)))
-      .WillOnce(Return(std::error_code()));
-
-  std::ifstream stream =
-      OpenRunfile("_main/plyodine/test_data/ply_ascii_data.ply");
-  EXPECT_EQ(0, reader.ReadFrom(stream).value());
+  impl("_main/plyodine/test_data/ply_ascii_data.ply");
+  impl("_main/plyodine/test_data/ply_ascii_data_with_space.ply");
 }
 
 TEST(ASCII, WithDataSkipAll) {

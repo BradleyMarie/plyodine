@@ -36,8 +36,8 @@ enum class ErrorType : uint8_t {
   UNEXPECTED_EOF = 2,
   UNEXPECTED_EOF_NO_PROPERTIES = 3,
   MISMATCHED_LINE_ENDINGS = 4,
-  MISSING_TOKEN = 5,
-  EMPTY_TOKEN = 6,
+  INVALID_CHARACTERS = 5,
+  MISSING_TOKEN = 6,
   UNUSED_TOKEN = 7,
   FAILED_TO_PARSE = 8,
   OUT_OF_RANGE = 9,
@@ -196,13 +196,13 @@ std::optional<std::pair<ErrorType, uint8_t>> DecodeError(int error) {
         return std::nullopt;
       }
       break;
-    case ErrorType::MISSING_TOKEN:
-      if (!IsMissingToken(payload)) {
+    case ErrorType::INVALID_CHARACTERS:
+      if (payload != 0) {
         return std::nullopt;
       }
       break;
-    case ErrorType::EMPTY_TOKEN:
-      if (payload != 0) {
+    case ErrorType::MISSING_TOKEN:
+      if (!IsMissingToken(payload)) {
         return std::nullopt;
       }
       break;
@@ -439,15 +439,15 @@ std::string ErrorCategory::message(int condition) const {
                "expected to find an element with no properties')";
       case ErrorType::MISMATCHED_LINE_ENDINGS:
         return "The input contained mismatched line endings";
+      case ErrorType::INVALID_CHARACTERS:
+        return "The input contained invalid characters in its data section (an "
+               "input with format 'ascii' must contain only printable ASCII "
+               "characters on each line)";
       case ErrorType::MISSING_TOKEN:
         return MissingUnexpectedEofMessage(
             "A line in the input had fewer tokens than expected (reached end "
             "of line but expected to find a ",
             std::get<1>(*decoded));
-      case ErrorType::EMPTY_TOKEN:
-        return "The input contained an empty token (tokens on non-comment "
-               "lines must be separated by exactly one ASCII space with no "
-               "leading or trailing whitespace on the line)";
       case ErrorType::UNUSED_TOKEN:
         return "The input contained a data token that was not associated with "
                "any property";
@@ -503,16 +503,16 @@ std::error_code MakeMismatchedLineEndings() {
   return std::error_code(value, kErrorCategory);
 }
 
+std::error_code MakeInvalidCharacter() {
+  int value = EncodeError(ErrorType::INVALID_CHARACTERS, 0);
+  return std::error_code(value, kErrorCategory);
+}
+
 std::error_code MakeMissingToken(EntryType entry_type,
                                  PlyHeader::Property::Type data_type) {
   uint8_t payload =
       8u * static_cast<uint8_t>(entry_type) + static_cast<uint8_t>(data_type);
   int value = EncodeError(ErrorType::MISSING_TOKEN, payload);
-  return std::error_code(value, kErrorCategory);
-}
-
-std::error_code MakeEmptyToken() {
-  int value = EncodeError(ErrorType::EMPTY_TOKEN, 0);
   return std::error_code(value, kErrorCategory);
 }
 
@@ -604,8 +604,9 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
 
   context.line.str("");
   context.line.clear();
+  context.eof = true;
 
-  char c = 0;
+  char c;
   while (stream.get(c)) {
     if (c == line_ending[0]) {
       line_ending.remove_prefix(1);
@@ -614,10 +615,11 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
         if (c != line_ending[0]) {
           return MakeMismatchedLineEndings();
         }
+
         line_ending.remove_prefix(1);
-        context.eof = stream.eof();
       }
 
+      context.eof = false;
       break;
     }
 
@@ -625,15 +627,30 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
       return MakeMismatchedLineEndings();
     }
 
-    context.line.put(c);
-  }
+    if (c == '\t') {
+      c = ' ';
+    }
 
-  if (!c) {
-    return end_of_file_error;
+    if (!std::isprint(c)) {
+      return MakeInvalidCharacter();
+    }
+
+    if (c == ' ') {
+      std::string_view view = context.line.view();
+      if (view.empty() || view.back() == ' ') {
+        continue;
+      }
+    }
+
+    context.line.put(c);
   }
 
   if (stream.fail() && !stream.eof()) {
     return std::io_errc::stream;
+  }
+
+  if (context.line.view().empty() && context.eof) {
+    return end_of_file_error;
   }
 
   return std::error_code();
@@ -644,7 +661,7 @@ std::error_code ReadNextToken(Context& context, bool is_float,
                               std::error_code end_of_line_error) {
   context.token.clear();
 
-  char c = 0;
+  char c;
   while (context.line.get(c)) {
     if (c == ' ') {
       break;
@@ -653,12 +670,8 @@ std::error_code ReadNextToken(Context& context, bool is_float,
     context.token.push_back(c);
   }
 
-  if (!c) {
-    return context.eof ? end_of_line_error : missing_token_error;
-  }
-
   if (context.token.empty()) {
-    return MakeEmptyToken();
+    return context.eof ? end_of_line_error : missing_token_error;
   }
 
   return std::error_code();
@@ -1183,11 +1196,9 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
 
       if (header->format == PlyHeader::Format::ASCII) {
         std::error_code error =
-            ReadNextToken(context, false, MakeEmptyToken(), MakeEmptyToken());
+            ReadNextToken(context, false, MakeUnusedToken(), MakeUnusedToken());
         if (!error) {
           return MakeUnusedToken();
-        } else if (error != MakeEmptyToken()) {
-          return error;
         }
       }
     }

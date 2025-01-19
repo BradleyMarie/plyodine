@@ -74,8 +74,8 @@ cc_test(
     data = [
         "test_data/header_format_bad.ply",
         "test_data/ply_ascii_data.ply",
+        "test_data/ply_ascii_data_with_space.ply",
         "test_data/ply_ascii_empty.ply",
-        "test_data/ply_ascii_empty_token.ply",
         "test_data/ply_ascii_entry_bad_double.ply",
         "test_data/ply_ascii_entry_bad_float.ply",
         "test_data/ply_ascii_entry_bad_int16.ply",
