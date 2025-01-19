@@ -1,6 +1,11 @@
+#include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <string>
+#include <system_error>
 #include <variant>
+#include <vector>
 
 #include "plyodine/ply_reader.h"
 
