@@ -8,7 +8,6 @@
 #include <format>
 #include <ios>
 #include <map>
-#include <memory>
 #include <optional>
 #include <span>
 #include <sstream>
@@ -267,7 +266,8 @@ std::string InvalidConversionMessage(uint8_t payload) {
   return message;
 }
 
-std::string UnexpectedEofMessage(uint8_t payload) {
+std::string MissingUnexpectedEofMessage(std::string_view prefix,
+                                        uint8_t payload) {
   static constexpr std::string_view type_names[3][8] = {
       {"property list size of type 'char'",
        "property list size of type 'uchar'",
@@ -291,42 +291,7 @@ std::string UnexpectedEofMessage(uint8_t payload) {
   uint8_t entry_type = payload >> 3u;
   uint8_t data_type = payload & 0x7u;
 
-  std::string result =
-      "The stream ended earlier than expected (reached EOF but expected to "
-      "find a ";
-  result += type_names[entry_type][data_type];
-  result += ")";
-
-  return result;
-}
-
-std::string MissingTokenMessage(uint8_t payload) {
-  static constexpr std::string_view type_names[3][8] = {
-      {"property list size of type 'char'",
-       "property list size of type 'uchar'",
-       "property list size of type 'short'",
-       "property list size of type 'ushort'",
-       "property list size of type 'int'", "property list size of type 'uint'",
-       "INVALID", "INVALID"},
-      {"property list value of type 'char'",
-       "property list value of type 'uchar'",
-       "property list value of type 'short'",
-       "property list value of type 'ushort'",
-       "property list value of type 'int'",
-       "property list value of type 'uint'",
-       "property list value of type 'float'",
-       "property list value of type 'double'"},
-      {"property value of type 'char'", "property value of type 'uchar'",
-       "property value of type 'short'", "property value of type 'ushort'",
-       "property value of type 'int'", "property value of type 'uint'",
-       "property value of type 'float'", "property value of type 'double'"}};
-
-  uint8_t entry_type = payload >> 3u;
-  uint8_t data_type = payload & 0x7u;
-
-  std::string result =
-      "A line in the input had fewer tokens than expected (reached end of line "
-      "but expected to find a ";
+  std::string result(prefix);
   result += type_names[entry_type][data_type];
   result += ")";
 
@@ -412,7 +377,8 @@ std::string OutOfRangeMessage(uint8_t payload) {
   return result;
 }
 
-std::string OverflowedMessage(uint8_t payload) {
+std::string OverflowedUnderflowedMessage(std::string_view type,
+                                         uint8_t payload) {
   static constexpr std::string_view prefix[2] = {
       "A conversion of a property value from type '",
       "A conversion of a property list value from type '"};
@@ -449,53 +415,9 @@ std::string OverflowedMessage(uint8_t payload) {
   result += types[source];
   result += "' to type '";
   result += types[dest];
-  result += "' overflowed (must be between ";
-  result += type_min[dest];
-  result += " and ";
-  result += type_max[dest];
-  result += ")";
-
-  return result;
-}
-
-std::string UnderflowedMessage(uint8_t payload) {
-  static constexpr std::string_view prefix[2] = {
-      "A conversion of a property value from type '",
-      "A conversion of a property list value from type '"};
-
-  static constexpr std::string_view types[8] = {
-      "char", "uchar", "short", "ushort", "int", "uint", "float", "double",
-  };
-
-  static const std::string type_min[8] = {
-      "-128",
-      "0",
-      "-32,767",
-      "0",
-      "-2,147,483,647",
-      "0",
-      std::format("~{}", std::numeric_limits<float>::lowest()),
-      std::format("~{}", std::numeric_limits<double>::lowest())};
-
-  static const std::string type_max[8] = {
-      "127",
-      "255",
-      "32,767",
-      "65,535",
-      "2,147,483,647",
-      "4,294,967,295",
-      std::format("~{}", std::numeric_limits<float>::max()),
-      std::format("~{}", std::numeric_limits<double>::max())};
-
-  uint8_t is_list_type = payload & 1u;
-  uint8_t source = (payload >> 1u) & 0x7u;
-  uint8_t dest = (payload >> 4u) & 0x7u;
-
-  std::string result(prefix[is_list_type]);
-  result += types[source];
-  result += "' to type '";
-  result += types[dest];
-  result += "' underflowed (must be between ";
+  result += "' ";
+  result += type;
+  result += " (must be between ";
   result += type_min[dest];
   result += " and ";
   result += type_max[dest];
@@ -522,14 +444,20 @@ std::string ErrorCategory::message(int condition) const {
       case ErrorType::INVALID_CONVERSION:
         return InvalidConversionMessage(std::get<1>(*decoded));
       case ErrorType::UNEXPECTED_EOF:
-        return UnexpectedEofMessage(std::get<1>(*decoded));
+        return MissingUnexpectedEofMessage(
+            "The stream ended earlier than expected (reached EOF but expected "
+            "to find a ",
+            std::get<1>(*decoded));
       case ErrorType::UNEXPECTED_EOF_NO_PROPERTIES:
         return "The stream ended earlier than expected (reached EOF but "
                "expected to find an element with no properties')";
       case ErrorType::MISMATCHED_LINE_ENDINGS:
         return "The input contained mismatched line endings";
       case ErrorType::MISSING_TOKEN:
-        return MissingTokenMessage(std::get<1>(*decoded));
+        return MissingUnexpectedEofMessage(
+            "A line in the input had fewer tokens than expected (reached end "
+            "of line but expected to find a ",
+            std::get<1>(*decoded));
       case ErrorType::EMPTY_TOKEN:
         return "The input contained an empty token (tokens on non-comment "
                "lines must be separated by exactly one ASCII space with no "
@@ -542,9 +470,11 @@ std::string ErrorCategory::message(int condition) const {
       case ErrorType::OUT_OF_RANGE:
         return OutOfRangeMessage(std::get<1>(*decoded));
       case ErrorType::OVERFLOW:
-        return OverflowedMessage(std::get<1>(*decoded));
+        return OverflowedUnderflowedMessage("overflowed",
+                                            std::get<1>(*decoded));
       case ErrorType::UNDERFLOW:
-        return UnderflowedMessage(std::get<1>(*decoded));
+        return OverflowedUnderflowedMessage("underflowed",
+                                            std::get<1>(*decoded));
     }
   }
 
@@ -937,39 +867,46 @@ std::error_code Convert(Context& context, EntryType entry_type) {
   return std::error_code();
 }
 
-template <size_t SourceTypeIndex, size_t DestTypeIndex>
+template <PlyHeader::Property::Type Source, PlyHeader::Property::Type Dest>
 consteval ConvertFunc GetConvertFunc() {
-  using Source = std::tuple_element_t<SourceTypeIndex * 2, ContextData>;
-  using Dest = std::tuple_element_t<DestTypeIndex * 2, ContextData>;
+  using SourceType =
+      std::tuple_element_t<static_cast<size_t>(Source) * 2, ContextData>;
+  using DestType =
+      std::tuple_element_t<static_cast<size_t>(Dest) * 2, ContextData>;
 
-  if constexpr (std::is_floating_point_v<Source> ==
-                std::is_floating_point_v<Dest>) {
-    return Convert<Source, Dest>;
+  if constexpr (std::is_floating_point_v<SourceType> ==
+                std::is_floating_point_v<DestType>) {
+    return Convert<SourceType, DestType>;
   }
 
   return nullptr;
 }
 
-template <size_t SourceTypeIndex>
+template <PlyHeader::Property::Type Source>
 consteval std::array<ConvertFunc, 8> GetConvertFuncs() {
   return {
-      GetConvertFunc<SourceTypeIndex, 0>(),
-      GetConvertFunc<SourceTypeIndex, 1>(),
-      GetConvertFunc<SourceTypeIndex, 2>(),
-      GetConvertFunc<SourceTypeIndex, 3>(),
-      GetConvertFunc<SourceTypeIndex, 4>(),
-      GetConvertFunc<SourceTypeIndex, 5>(),
-      GetConvertFunc<SourceTypeIndex, 6>(),
-      GetConvertFunc<SourceTypeIndex, 7>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::CHAR>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::UCHAR>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::SHORT>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::USHORT>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::INT>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::UINT>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::FLOAT>(),
+      GetConvertFunc<Source, PlyHeader::Property::Type::DOUBLE>(),
   };
 }
 
 ConvertFunc GetConvertFunc(PlyHeader::Property::Type source,
                            PlyHeader::Property::Type dest) {
   static constexpr std::array<ConvertFunc, 8> conversion_funcs[8] = {
-      GetConvertFuncs<0>(), GetConvertFuncs<1>(), GetConvertFuncs<2>(),
-      GetConvertFuncs<3>(), GetConvertFuncs<4>(), GetConvertFuncs<5>(),
-      GetConvertFuncs<6>(), GetConvertFuncs<7>(),
+      GetConvertFuncs<PlyHeader::Property::Type::CHAR>(),
+      GetConvertFuncs<PlyHeader::Property::Type::UCHAR>(),
+      GetConvertFuncs<PlyHeader::Property::Type::SHORT>(),
+      GetConvertFuncs<PlyHeader::Property::Type::USHORT>(),
+      GetConvertFuncs<PlyHeader::Property::Type::INT>(),
+      GetConvertFuncs<PlyHeader::Property::Type::UINT>(),
+      GetConvertFuncs<PlyHeader::Property::Type::FLOAT>(),
+      GetConvertFuncs<PlyHeader::Property::Type::DOUBLE>(),
   };
 
   return conversion_funcs[static_cast<size_t>(source)]
