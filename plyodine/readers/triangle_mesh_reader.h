@@ -70,10 +70,14 @@ template <std::floating_point PositionType = float,
           std::floating_point NormalType = float,
           std::floating_point UVType = float,
           std::unsigned_integral VertexIndexType = uint32_t>
-  requires(sizeof(PositionType) <= sizeof(double) &&
-           sizeof(NormalType) <= sizeof(double) &&
-           sizeof(UVType) <= sizeof(double) &&
-           sizeof(VertexIndexType) <= sizeof(uint32_t))
+  requires(std::is_same_v<PositionType, float> ||
+           std::is_same_v<PositionType, double>) &&
+          (std::is_same_v<NormalType, float> ||
+           std::is_same_v<NormalType, double>) &&
+          (std::is_same_v<UVType, float> || std::is_same_v<UVType, double>) &&
+          (std::is_same_v<VertexIndexType, uint8_t> ||
+           std::is_same_v<VertexIndexType, uint16_t> ||
+           std::is_same_v<VertexIndexType, uint32_t>)
 class TriangleMeshReader : public PlyReader {
  protected:
   // This function may be implemented by derived classes to identify the start
@@ -160,6 +164,23 @@ class TriangleMeshReader : public PlyReader {
   static class ErrorCategory final : public std::error_category {
     const char* name() const noexcept override {
       return "plyodine::TriangleMeshReader";
+    }
+
+    template <typename T>
+    static std::string MessageWithType(const char* message) {
+      std::string result(message);
+      if constexpr (std::is_same_v<T, uint8_t>) {
+        result += "uchar'";
+      } else if constexpr (std::is_same_v<T, uint16_t>) {
+        result += "ushort'";
+      } else if constexpr (std::is_same_v<T, uint32_t>) {
+        result += "uint'";
+      } else if constexpr (std::is_same_v<T, float>) {
+        result += "float'";
+      } else {
+        result += "double'";
+      }
+      return result;
     }
 
     std::string message(int condition) const override {
@@ -260,53 +281,68 @@ class TriangleMeshReader : public PlyReader {
         case ErrorCode::INVALID_PROPERTY_V_VALUE:
           return "A value of property 'v' on element 'vertex' was not finite";
         case ErrorCode::OVERFLOWED_PROPERTY_X_TYPE:
-          return "A value of property 'x' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<PositionType>(
+              "A value of property 'x' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_Y_TYPE:
-          return "A value of property 'y' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<PositionType>(
+              "A value of property 'y' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_Z_TYPE:
-          return "A value of property 'z' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<PositionType>(
+              "A value of property 'z' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE:
           return "A value of property list 'vertex_indices' on element 'face' "
                  "was negative";
         case ErrorCode::OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE:
-          return "A value of property list 'vertex_indices' on element 'face' "
-                 "could not into its destination type";
+          return MessageWithType<VertexIndexType>(
+              "A value of property list 'vertex_indices' on element 'face' "
+              "could not into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_NX_TYPE:
-          return "A value of property 'nx' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<NormalType>(
+              "A value of property 'nx' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_NY_TYPE:
-          return "A value of property 'ny' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<NormalType>(
+              "A value of property 'ny' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_NZ_TYPE:
-          return "A value of property 'nz' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<NormalType>(
+              "A value of property 'nz' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_S_TYPE:
-          return "A value of property 'texture_s' on element 'vertex' could "
-                 "not fit finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 'texture_s' on element 'vertex' could not "
+              "fit finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_T_TYPE:
-          return "A value of property 'texture_t' on element 'vertex' could "
-                 "not fit finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 'texture_t' on element 'vertex' could not "
+              "fit finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_U_TYPE:
-          return "A value of property 'texture_u' on element 'vertex' could "
-                 "not fit finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 'texture_u' on element 'vertex' could not "
+              "fit finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_V_TYPE:
-          return "A value of property 'texture_v' on element 'vertex' could "
-                 "not fit finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 'texture_v' on element 'vertex' could not "
+              "fit finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_S_TYPE:
-          return "A value of property 's' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 's' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_T_TYPE:
-          return "A value of property 't' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 't' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_U_TYPE:
-          return "A value of property 'u' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 'u' on element 'vertex' could not fit "
+              "finitely into destination type '");
         case ErrorCode::OVERFLOWED_PROPERTY_V_TYPE:
-          return "A value of property 'v' on element 'vertex' could not fit "
-                 "finitely into its destination type";
+          return MessageWithType<UVType>(
+              "A value of property 'v' on element 'vertex' could not fit "
+              "finitely into destination type '");
       }
 
       return "Unknown Error";
@@ -744,10 +780,14 @@ class TriangleMeshReader : public PlyReader {
 
 template <std::floating_point PositionType, std::floating_point NormalType,
           std::floating_point UVType, std::unsigned_integral VertexIndexType>
-  requires(sizeof(PositionType) <= sizeof(double) &&
-           sizeof(NormalType) <= sizeof(double) &&
-           sizeof(UVType) <= sizeof(double) &&
-           sizeof(VertexIndexType) <= sizeof(uint32_t))
+  requires(std::is_same_v<PositionType, float> ||
+           std::is_same_v<PositionType, double>) &&
+          (std::is_same_v<NormalType, float> ||
+           std::is_same_v<NormalType, double>) &&
+          (std::is_same_v<UVType, float> || std::is_same_v<UVType, double>) &&
+          (std::is_same_v<VertexIndexType, uint8_t> ||
+           std::is_same_v<VertexIndexType, uint16_t> ||
+           std::is_same_v<VertexIndexType, uint32_t>)
 TriangleMeshReader<PositionType, NormalType, UVType,
                    VertexIndexType>::ErrorCategory
     TriangleMeshReader<PositionType, NormalType, UVType,

@@ -380,8 +380,8 @@ TEST(TriangleMeshReader, CouldNotFitPosition) {
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
               "A value of property '" + names[i] +
-                  "' on element 'vertex' could not fit finitely into its "
-                  "destination type");
+                  "' on element 'vertex' could not fit finitely into "
+                  "destination type 'float'");
   }
 }
 
@@ -442,8 +442,8 @@ TEST(TriangleMeshReader, CouldNotFitNormal) {
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
               "A value of property '" + names[i] +
-                  "' on element 'vertex' could not fit finitely into its "
-                  "destination type");
+                  "' on element 'vertex' could not fit finitely into "
+                  "destination type 'float'");
   }
 }
 
@@ -464,8 +464,8 @@ TEST(TriangleMeshReader, ValidatesNormalWhenMissing) {
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
               "A value of property '" + names[i] +
-                  "' on element 'vertex' could not fit finitely into its "
-                  "destination type");
+                  "' on element 'vertex' could not fit finitely into "
+                  "destination type 'float'");
   }
 }
 
@@ -535,12 +535,12 @@ TEST(TriangleMeshReader, CouldNotFitUVs) {
 
       EXPECT_EQ(reader.ReadFrom(input_u).message(),
                 "A value of property '" + u_names[i] +
-                    "' on element 'vertex' could not fit finitely into its "
-                    "destination type");
+                    "' on element 'vertex' could not fit finitely into "
+                    "destination type 'float'");
       EXPECT_EQ(reader.ReadFrom(input_v).message(),
                 "A value of property '" + v_names[j] +
-                    "' on element 'vertex' could not fit finitely into its "
-                    "destination type");
+                    "' on element 'vertex' could not fit finitely into "
+                    "destination type 'float'");
     }
   }
 }
@@ -564,8 +564,8 @@ TEST(TriangleMeshReader, ValidatesUVsWhenMissing) {
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
               "A value of property '" + names[i] +
-                  "' on element 'vertex' could not fit finitely into its "
-                  "destination type");
+                  "' on element 'vertex' could not fit finitely into "
+                  "destination type 'float'");
   }
 }
 
@@ -654,7 +654,7 @@ TEST(TriangleMeshReader, VertexIndexTooBigForIndexType) {
 
     EXPECT_EQ(reader.ReadFrom(input).message(),
               "A value of property list 'vertex_indices' on element 'face' "
-              "could not into its destination type");
+              "could not into destination type 'uchar'");
   }
 }
 
