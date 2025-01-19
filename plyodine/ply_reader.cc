@@ -687,7 +687,7 @@ std::error_code ReadASCII(std::istream& input, Context& context,
     return error;
   }
 
-  T value;
+  T value{};
   auto parsing_result = std::from_chars(
       context.token.data(), context.token.data() + context.token.size(), value);
   if (parsing_result.ec == std::errc::result_out_of_range) {
@@ -706,7 +706,7 @@ std::error_code ReadASCII(std::istream& input, Context& context,
 template <std::endian Endianness, std::integral T>
 std::error_code ReadBinary(std::istream& stream, Context& context,
                            EntryType entry_type) {
-  T value;
+  T value{};
   stream.read(reinterpret_cast<char*>(&value), sizeof(T));
   if (stream.fail()) {
     if (stream.eof()) {
@@ -731,7 +731,7 @@ std::error_code ReadBinary(std::istream& stream, Context& context,
 template <std::endian Endianness, std::floating_point T>
 std::error_code ReadBinary(std::istream& stream, Context& context,
                            EntryType entry_type) {
-  std::conditional_t<std::is_same_v<T, float>, uint32_t, uint64_t> value;
+  std::conditional_t<std::is_same_v<T, float>, uint32_t, uint64_t> value{};
 
   stream.read(reinterpret_cast<char*>(&value), sizeof(value));
   if (stream.fail()) {
