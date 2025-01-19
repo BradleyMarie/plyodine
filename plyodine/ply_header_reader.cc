@@ -135,18 +135,22 @@ namespace plyodine {
 namespace {
 
 std::expected<std::string_view, std::error_code> ReadNextLine(
-    std::istream& input, std::string& storage, std::string_view line_ending) {
+    std::istream& stream, std::string& storage, std::string_view line_ending) {
   storage.clear();
 
   char c;
-  while (input.get(c)) {
-    if (c == '\r' || c == '\n') {
-      do {
-        if (c != line_ending[0]) {
+  while (stream.get(c)) {
+    if (c == line_ending[0]) {
+      line_ending.remove_prefix(1);
+
+      while (!line_ending.empty()) {
+        if (!stream.get(c) || c != line_ending[0]) {
           return std::unexpected(ErrorCode::MISMATCHED_LINE_ENDINGS);
         }
+
         line_ending.remove_prefix(1);
-      } while (!line_ending.empty() && input.get(c));
+      }
+
       break;
     }
 
@@ -165,7 +169,7 @@ std::expected<std::string_view, std::error_code> ReadNextLine(
     storage.push_back(c);
   }
 
-  if (input.fail() && !input.eof()) {
+  if (stream.fail() && !stream.eof()) {
     return std::unexpected(std::io_errc::stream);
   }
 
@@ -192,20 +196,20 @@ std::optional<std::string_view> ReadNextToken(std::string_view& line) {
 }
 
 std::expected<std::string, std::error_code> ParseMagicString(
-    std::istream& input) {
+    std::istream& stream) {
   char c = 0;
-  while (input.get(c)) {
+  while (stream.get(c)) {
     if (c != ' ' && c != '\t') {
       break;
     }
   };
 
-  if (c != 'p' || !input.get(c) || c != 'l' || !input.get(c) || c != 'y') {
+  if (c != 'p' || !stream.get(c) || c != 'l' || !stream.get(c) || c != 'y') {
     return std::unexpected(ErrorCode::MISSING_MAGIC_WORD);
   }
 
   c = 0;
-  while (input.get(c)) {
+  while (stream.get(c)) {
     if (c != ' ' && c != '\t') {
       break;
     }
@@ -224,8 +228,8 @@ std::expected<std::string, std::error_code> ParseMagicString(
     return "\n";
   }
 
-  if (input.peek() == '\n') {
-    input.get();
+  if (stream.peek() == '\n') {
+    stream.get();
     return "\r\n";
   }
 
@@ -270,8 +274,9 @@ bool CheckVersion(std::string_view version) {
 }
 
 std::expected<PlyHeader::Format, std::error_code> ParseFormat(
-    std::istream& input, std::string& storage, const std::string& line_ending) {
-  auto line = ReadNextLine(input, storage, line_ending);
+    std::istream& stream, std::string& storage,
+    const std::string& line_ending) {
+  auto line = ReadNextLine(stream, storage, line_ending);
   if (!line) {
     return std::unexpected(line.error());
   }

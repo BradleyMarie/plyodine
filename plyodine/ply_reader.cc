@@ -10,7 +10,6 @@
 #include <map>
 #include <optional>
 #include <span>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -586,8 +585,9 @@ using ContextData =
 struct Context final {
   ContextData data;
   std::string_view line_ending;
-  std::stringstream line;
-  std::string token;
+  std::string storage;
+  std::string_view line;
+  std::string_view token;
   bool eof = false;
 };
 
@@ -602,8 +602,7 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
                              std::error_code end_of_file_error) {
   std::string_view line_ending = context.line_ending;
 
-  context.line.str("");
-  context.line.clear();
+  context.storage.clear();
   context.eof = true;
 
   char c;
@@ -611,8 +610,8 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
     if (c == line_ending[0]) {
       line_ending.remove_prefix(1);
 
-      while (!line_ending.empty() && stream.get(c)) {
-        if (c != line_ending[0]) {
+      while (!line_ending.empty()) {
+        if (!stream.get(c) || c != line_ending[0]) {
           return MakeMismatchedLineEndings();
         }
 
@@ -636,22 +635,23 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
     }
 
     if (c == ' ') {
-      std::string_view view = context.line.view();
-      if (view.empty() || view.back() == ' ') {
+      if (context.storage.empty() || context.storage.back() == ' ') {
         continue;
       }
     }
 
-    context.line.put(c);
+    context.storage.push_back(c);
   }
 
   if (stream.fail() && !stream.eof()) {
     return std::io_errc::stream;
   }
 
-  if (context.line.view().empty() && context.eof) {
+  if (context.storage.empty() && context.eof) {
     return end_of_file_error;
   }
+
+  context.line = context.storage;
 
   return std::error_code();
 }
@@ -659,20 +659,20 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
 std::error_code ReadNextToken(Context& context, bool is_float,
                               std::error_code missing_token_error,
                               std::error_code end_of_line_error) {
-  context.token.clear();
-
-  char c;
-  while (context.line.get(c)) {
-    if (c == ' ') {
-      break;
-    }
-
-    context.token.push_back(c);
-  }
-
-  if (context.token.empty()) {
+  size_t prefix_length = context.line.find_first_not_of(' ');
+  if (prefix_length == std::string_view::npos) {
     return context.eof ? end_of_line_error : missing_token_error;
   }
+
+  context.line.remove_prefix(prefix_length);
+
+  size_t token_length = context.line.find(' ');
+  if (token_length == std::string::npos) {
+    token_length = context.line.length();
+  }
+
+  context.token = context.line.substr(0u, token_length);
+  context.line.remove_prefix(token_length);
 
   return std::error_code();
 }
