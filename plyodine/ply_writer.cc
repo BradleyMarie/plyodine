@@ -58,10 +58,10 @@ std::string ErrorCategory::message(int condition) const {
       return "The stream was not in 'good' state";
     case ErrorCode::INVALID_COMMENT:
       return "A comment string contained invalid characters (must contain only "
-             "ASCII space and ASCII graphic characters)";
+             "printable ASCII characters)";
     case ErrorCode::INVALID_OBJ_INFO:
       return "An obj_info string contained invalid characters (must contain "
-             "only ASCII space and ASCII graphic characters)";
+             "only printable ASCII characters)";
     case ErrorCode::MISSING_ELEMENT_NAME:
       return "An element had an empty name";
     case ErrorCode::INVALID_ELEMENT_NAME:
@@ -151,7 +151,7 @@ std::error_code ValidateName(const std::string& name, ErrorCode empty_error,
 
 bool ValidateComment(const std::string& comment) {
   for (char c : comment) {
-    if (!std::isgraph(c) && c != ' ') {
+    if (!std::isprint(c)) {
       return false;
     }
   }

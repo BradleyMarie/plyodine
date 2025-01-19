@@ -465,20 +465,20 @@ TEST(Validate, BadComment) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).message(),
             "A comment string contained invalid characters (must contain only "
-            "ASCII space and ASCII graphic characters)");
+            "printable ASCII characters)");
   EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).message(),
             "A comment string contained invalid characters (must contain only "
-            "ASCII space and ASCII graphic characters)");
+            "printable ASCII characters)");
 }
 
 TEST(Validate, BadObjInfo) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).message(),
             "An obj_info string contained invalid characters (must contain "
-            "only ASCII space and ASCII graphic characters)");
+            "only printable ASCII characters)");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).message(),
             "An obj_info string contained invalid characters (must contain "
-            "only ASCII space and ASCII graphic characters)");
+            "only printable ASCII characters)");
 }
 
 TEST(Validate, ListTooBigUInt8) {
