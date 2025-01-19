@@ -85,10 +85,10 @@ std::string ErrorCategory::message(int condition) const {
       return "A property generator did not produce enough data for all "
              "instances of its element";
     case ErrorCode::INVALID_ASCII_FLOAT:
-      return "A non-finite floating-point property value cannot be written to "
-             "an ASCII output";
+      return "A non-finite floating-point property cannot be written to an "
+             "ASCII output";
     case ErrorCode::INVALID_ASCII_FLOAT_LIST:
-      return "A non-finite floating-point property list value cannot be "
+      return "A non-finite floating-point property list entry cannot be "
              "written to an ASCII output";
     case ErrorCode::MISSING_PROPERTIES:
       return "An element had no properties";

@@ -275,18 +275,18 @@ std::string MissingUnexpectedEofMessage(std::string_view prefix,
        "property list size of type 'ushort'",
        "property list size of type 'int'", "property list size of type 'uint'",
        "INVALID", "INVALID"},
-      {"property list value of type 'char'",
-       "property list value of type 'uchar'",
-       "property list value of type 'short'",
-       "property list value of type 'ushort'",
-       "property list value of type 'int'",
-       "property list value of type 'uint'",
-       "property list value of type 'float'",
-       "property list value of type 'double'"},
-      {"property value of type 'char'", "property value of type 'uchar'",
-       "property value of type 'short'", "property value of type 'ushort'",
-       "property value of type 'int'", "property value of type 'uint'",
-       "property value of type 'float'", "property value of type 'double'"}};
+      {"property list entry of type 'char'",
+       "property list entry of type 'uchar'",
+       "property list entry of type 'short'",
+       "property list entry of type 'ushort'",
+       "property list entry of type 'int'",
+       "property list entry of type 'uint'",
+       "property list entry of type 'float'",
+       "property list entry of type 'double'"},
+      {"property of type 'char'", "property of type 'uchar'",
+       "property of type 'short'", "property of type 'ushort'",
+       "property of type 'int'", "property of type 'uint'",
+       "property of type 'float'", "property of type 'double'"}};
 
   uint8_t entry_type = payload >> 3u;
   uint8_t data_type = payload & 0x7u;
@@ -300,19 +300,13 @@ std::string MissingUnexpectedEofMessage(std::string_view prefix,
 
 std::string FailedToParseMessage(uint8_t payload) {
   static constexpr std::string_view prefix[3] = {
-      "A property list with size type '",
-      "A property list with value type '",
+      "A property list size with type '",
+      "A property list entry with type '",
       "A property with type '",
   };
 
   static constexpr std::string_view type[8] = {
       "char", "uchar", "short", "ushort", "int", "uint", "float", "double",
-  };
-
-  static constexpr std::string_view suffix[3] = {
-      "' had a size that could not be parsed",
-      "' had a value that could not be parsed",
-      "' had a value that could not be parsed",
   };
 
   uint8_t entry_type = payload >> 3u;
@@ -320,26 +314,20 @@ std::string FailedToParseMessage(uint8_t payload) {
 
   std::string result(prefix[entry_type]);
   result += type[data_type];
-  result += suffix[entry_type];
+  result += "' could not be parsed";
 
   return result;
 }
 
 std::string OutOfRangeMessage(uint8_t payload) {
   static constexpr std::string_view prefix[3] = {
-      "A property list with size type '",
-      "A property list with value type '",
+      "A property list size with type '",
+      "A property list entry with type '",
       "A property with type '",
   };
 
   static constexpr std::string_view type[8] = {
       "char", "uchar", "short", "ushort", "int", "uint", "float", "double",
-  };
-
-  static constexpr std::string_view entry_type_suffix[3] = {
-      "' had a size that was out of range (must be between ",
-      "' had a value that was out of range (must be between between ",
-      "' had a value that was out of range (must be between between ",
   };
 
   static const std::string data_type_min[3][8]{
@@ -361,18 +349,16 @@ std::string OutOfRangeMessage(uint8_t payload) {
       std::format("~{}", std::numeric_limits<float>::max()),
       std::format("~{}", std::numeric_limits<double>::max())};
 
-  static constexpr std::string_view suffix[3]{" entries)", ")", ")"};
-
   uint8_t entry_type = payload >> 3u;
   uint8_t data_type = payload & 0x7u;
 
   std::string result(prefix[entry_type]);
   result += type[data_type];
-  result += entry_type_suffix[entry_type];
+  result += "' was out of range (must be between ";
   result += data_type_min[entry_type][data_type];
   result += " and ";
   result += data_type_max[data_type];
-  result += suffix[entry_type];
+  result += ")";
 
   return result;
 }
@@ -380,8 +366,8 @@ std::string OutOfRangeMessage(uint8_t payload) {
 std::string OverflowedUnderflowedMessage(std::string_view type,
                                          uint8_t payload) {
   static constexpr std::string_view prefix[2] = {
-      "A conversion of a property value from type '",
-      "A conversion of a property list value from type '"};
+      "A conversion of a property from type '",
+      "A conversion of a property list entry from type '"};
 
   static constexpr std::string_view types[8] = {
       "char", "uchar", "short", "ushort", "int", "uint", "float", "double",

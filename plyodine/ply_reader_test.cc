@@ -658,7 +658,7 @@ TEST(ASCII, InvalidCharacter) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_invalid_character.ply");
   EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "A property with type 'char' had a value that could not be parsed");
+            "A property with type 'char' could not be parsed");
 }
 
 TEST(ASCII, ListMissingEntries) {
@@ -693,7 +693,7 @@ TEST(ASCII, ListMissingEntries) {
   EXPECT_EQ(
       reader.ReadFrom(stream).message(),
       "A line in the input had fewer tokens than expected (reached end of line "
-      "but expected to find a property list value of type 'uchar')");
+      "but expected to find a property list entry of type 'uchar')");
 }
 
 TEST(ASCII, MissingElement) {
@@ -728,7 +728,7 @@ TEST(ASCII, MissingElement) {
       OpenRunfile("_main/plyodine/test_data/ply_ascii_missing_element.ply");
   EXPECT_EQ(reader.ReadFrom(stream).message(),
             "The stream ended earlier than expected (reached EOF but expected "
-            "to find a property value of type 'char')");
+            "to find a property of type 'char')");
 }
 
 TEST(ASCII, ExtraWhitespace) {
@@ -799,8 +799,8 @@ TEST(ASCII, ListSizeTooLarge) {
 
     std::ifstream stream = OpenRunfile(name);
     EXPECT_THAT(reader.ReadFrom(stream).message(),
-                StartsWith("A property list with size type '" + type +
-                           "' had a size that was out of range"));
+                StartsWith("A property list size with type '" + type +
+                           "' was out of range"));
   };
 
   impl("_main/plyodine/test_data/ply_ascii_list_sizes_too_large_int8.ply",
@@ -847,8 +847,8 @@ TEST(ASCII, ListSizeBad) {
 
     std::ifstream stream = OpenRunfile(name);
     EXPECT_THAT(reader.ReadFrom(stream).message(),
-                StartsWith("A property list with size type '" + type +
-                           "' had a size that could not be parsed"));
+                StartsWith("A property list size with type '" + type +
+                           "' could not be parsed"));
   };
 
   impl("_main/plyodine/test_data/ply_ascii_list_sizes_bad_int8.ply", "char");
@@ -891,8 +891,7 @@ TEST(ASCII, EntryBad) {
 
     std::ifstream stream = OpenRunfile(name);
     EXPECT_EQ(reader.ReadFrom(stream).message(),
-              "A property with type '" + type_name +
-                  "' had a value that could not be parsed");
+              "A property with type '" + type_name + "' could not be parsed");
   };
 
   impl("_main/plyodine/test_data/ply_ascii_entry_bad_double.ply",
@@ -945,7 +944,7 @@ TEST(ASCII, EntryTooBig) {
     std::ifstream stream = OpenRunfile(name);
     EXPECT_THAT(reader.ReadFrom(stream).message(),
                 StartsWith("A property with type '" + type_name +
-                           "' had a value that was out of range"));
+                           "' was out of range"));
   };
 
   impl("_main/plyodine/test_data/ply_ascii_entry_too_large_double.ply",
@@ -1371,9 +1370,9 @@ TEST(ASCII, WithNegativeCharListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_sizes_negative_int8.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'char' had a size "
-                         "that was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'char' was out of range"));
 }
 
 TEST(ASCII, WithNegativeShortListSize) {
@@ -1389,9 +1388,9 @@ TEST(ASCII, WithNegativeShortListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_sizes_negative_int16.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'short' had a size "
-                         "that was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'short' was out of range"));
 }
 
 TEST(ASCII, WithNegativeIntListSize) {
@@ -1407,9 +1406,9 @@ TEST(ASCII, WithNegativeIntListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_sizes_negative_int32.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'int' had a size that "
-                         "was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'int' was out of range"));
 }
 
 TEST(BigEndian, Empty) {
@@ -1822,9 +1821,9 @@ TEST(BigEndian, WithNegativeCharListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_big_list_sizes_negative_int8.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'char' had a size "
-                         "that was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'char' was out of range"));
 }
 
 TEST(BigEndian, WithNegativeShortListSize) {
@@ -1840,9 +1839,9 @@ TEST(BigEndian, WithNegativeShortListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_big_list_sizes_negative_int16.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'short' had a size "
-                         "that was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'short' was out of range"));
 }
 
 TEST(BigEndian, WithNegativeIntListSize) {
@@ -1858,9 +1857,9 @@ TEST(BigEndian, WithNegativeIntListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_big_list_sizes_negative_int32.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'int' had a size that "
-                         "was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'int' was out of range"));
 }
 
 TEST(LittleEndian, Empty) {
@@ -2273,9 +2272,9 @@ TEST(LittleEndian, WithNegativeCharListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_little_list_sizes_negative_int8.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'char' had a size "
-                         "that was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'char' was out of range"));
 }
 
 TEST(LittleEndian, WithNegativeShortListSize) {
@@ -2291,9 +2290,9 @@ TEST(LittleEndian, WithNegativeShortListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_little_list_sizes_negative_int16.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'short' had a size "
-                         "that was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'short' was out of range"));
 }
 
 TEST(LittleEndian, WithNegativeIntListSize) {
@@ -2309,9 +2308,9 @@ TEST(LittleEndian, WithNegativeIntListSize) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_little_list_sizes_negative_int32.ply");
-  EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A property list with size type 'int' had a size that "
-                         "was out of range"));
+  EXPECT_THAT(
+      reader.ReadFrom(stream).message(),
+      StartsWith("A property list size with type 'int' was out of range"));
 }
 
 class MockConvertingPlyReader final : public PlyReader {
@@ -2383,9 +2382,8 @@ TEST(Error, NegativeToUnsigned) {
 
     EXPECT_THAT(
         reader.ReadFrom(stream).message(),
-        StartsWith(
-            "A conversion of a property value from type 'int' to type '" +
-            type_names[i] + "' underflowed"));
+        StartsWith("A conversion of a property from type 'int' to type '" +
+                   type_names[i] + "' underflowed"));
   }
 }
 
@@ -2402,9 +2400,8 @@ TEST(Error, NegativeSignedUnderflow) {
 
     EXPECT_THAT(
         reader.ReadFrom(stream).message(),
-        StartsWith(
-            "A conversion of a property value from type 'int' to type '" +
-            type_names[i] + "' underflowed"));
+        StartsWith("A conversion of a property from type 'int' to type '" +
+                   type_names[i] + "' underflowed"));
   }
 }
 
@@ -2423,9 +2420,8 @@ TEST(Error, IntegerOverflow) {
 
     EXPECT_THAT(
         reader.ReadFrom(stream).message(),
-        StartsWith(
-            "A conversion of a property value from type 'uint' to type '" +
-            type_names[i] + "' overflowed"));
+        StartsWith("A conversion of a property from type 'uint' to type '" +
+                   type_names[i] + "' overflowed"));
   }
 }
 
@@ -2438,7 +2434,7 @@ TEST(Error, FloatUnderflow) {
       .WillOnce(Return(std::error_code()));
 
   EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A conversion of a property value from type 'double' "
+              StartsWith("A conversion of a property from type 'double' "
                          "to type 'float' underflowed"));
 }
 
@@ -2451,7 +2447,7 @@ TEST(Error, FloatOverflow) {
       .WillOnce(Return(std::error_code()));
 
   EXPECT_THAT(reader.ReadFrom(stream).message(),
-              StartsWith("A conversion of a property value from type 'double' "
+              StartsWith("A conversion of a property from type 'double' "
                          "to type 'float' overflowed"));
 }
 

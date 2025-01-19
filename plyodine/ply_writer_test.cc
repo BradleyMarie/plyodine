@@ -605,8 +605,8 @@ TEST(ASCII, NonFinite) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A non-finite floating-point property value cannot be written to "
-            "an ASCII output");
+            "A non-finite floating-point property cannot be written to an "
+            "ASCII output");
 }
 
 TEST(ASCII, NonFiniteList) {
@@ -616,10 +616,9 @@ TEST(ASCII, NonFiniteList) {
   data["vertex"]["a"] = al;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(
-      WriteToASCII(output, data).message(),
-      "A non-finite floating-point property list value cannot be written to "
-      "an ASCII output");
+  EXPECT_EQ(WriteToASCII(output, data).message(),
+            "A non-finite floating-point property list entry cannot be written "
+            "to an ASCII output");
 }
 
 TEST(ASCII, TestData) {
