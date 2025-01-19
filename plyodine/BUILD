@@ -116,6 +116,7 @@ cc_test(
         "test_data/ply_ascii_list_sizes_too_large_uint32.ply",
         "test_data/ply_ascii_list_sizes_too_large_uint8.ply",
         "test_data/ply_ascii_mismatched_line_endings.ply",
+        "test_data/ply_ascii_mismatched_line_endings_2.ply",
         "test_data/ply_ascii_missing_element.ply",
         "test_data/ply_ascii_unused_tokens.ply",
         "test_data/ply_big_data.ply",

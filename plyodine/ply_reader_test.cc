@@ -596,36 +596,40 @@ TEST(ASCII, Empty) {
 }
 
 TEST(ASCII, MismatchedLineEndings) {
-  std::map<std::string,
-           std::pair<uintmax_t, std::map<std::string, PropertyType>>>
-      properties = {{"vertex", {2u, {{"a", PropertyType::CHAR}}}}};
+  auto impl = [](const char* filename) {
+    std::map<std::string,
+             std::pair<uintmax_t, std::map<std::string, PropertyType>>>
+        properties = {{"vertex", {2u, {{"a", PropertyType::CHAR}}}}};
 
-  MockPlyReader reader;
-  EXPECT_CALL(reader,
-              StartImpl(PropertiesAre(properties), IsEmpty(), IsEmpty()))
-      .Times(1)
-      .WillOnce(Return(std::error_code()));
-  EXPECT_CALL(reader, HandleChar(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleCharList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUChar(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUCharList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleShort(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleShortList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUShort(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUShortList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleInt(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleIntList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUInt(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleUIntList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleFloat(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleFloatList(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleDouble(_, _, _)).Times(0);
-  EXPECT_CALL(reader, HandleDoubleList(_, _, _)).Times(0);
+    MockPlyReader reader;
+    EXPECT_CALL(reader,
+                StartImpl(PropertiesAre(properties), IsEmpty(), IsEmpty()))
+        .Times(1)
+        .WillOnce(Return(std::error_code()));
+    EXPECT_CALL(reader, HandleChar(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleCharList(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleUChar(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleUCharList(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleShort(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleShortList(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleUShort(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleUShortList(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleInt(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleIntList(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleUInt(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleUIntList(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleFloat(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleFloatList(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleDouble(_, _, _)).Times(0);
+    EXPECT_CALL(reader, HandleDoubleList(_, _, _)).Times(0);
 
-  std::ifstream stream = OpenRunfile(
-      "_main/plyodine/test_data/ply_ascii_mismatched_line_endings.ply");
-  EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "The input contained mismatched line endings");
+    std::ifstream stream = OpenRunfile(filename);
+    EXPECT_EQ(reader.ReadFrom(stream).message(),
+              "The input contained mismatched line endings");
+  };
+
+  impl("_main/plyodine/test_data/ply_ascii_mismatched_line_endings.ply");
+  impl("_main/plyodine/test_data/ply_ascii_mismatched_line_endings_2.ply");
 }
 
 TEST(ASCII, InvalidCharacter) {

@@ -621,6 +621,10 @@ std::error_code ReadNextLine(std::istream& stream, Context& context,
       break;
     }
 
+    if (c == '\r' || c == '\n') {
+      return MakeMismatchedLineEndings();
+    }
+
     context.line.put(c);
   }
 
