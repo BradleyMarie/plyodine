@@ -29,11 +29,11 @@ TEST(ReadPlyHeader, DefaultErrorCondition) {
 
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 25; i++) {
+  for (int i = 1; i <= 22; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(26),
+  EXPECT_NE(error_catgegory.default_error_condition(23),
             std::errc::invalid_argument);
 }
 
@@ -41,7 +41,7 @@ TEST(ReadPlyHeader, BadStream) {
   std::stringstream input(std::ios::in | std::ios::binary);
   input.clear(std::ios::badbit);
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Input stream must be in good state", result.error().message());
+  EXPECT_EQ("The stream was not in 'good' state", result.error().message());
 }
 
 TEST(ReadPlyHeader, BadMagicStringMac) {
@@ -50,9 +50,8 @@ TEST(ReadPlyHeader, BadMagicStringMac) {
     std::stringstream stream(magic_string.substr(0u, i),
                              std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
-    EXPECT_EQ(
-        "The first line of the input must exactly contain the magic string",
-        result.error().message());
+    EXPECT_EQ("The first line of the input must contain only the word 'ply'",
+              result.error().message());
   }
 
   std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
@@ -67,9 +66,8 @@ TEST(ReadPlyHeader, BadMagicStringUnix) {
     std::stringstream stream(magic_string.substr(0u, i),
                              std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
-    EXPECT_EQ(
-        "The first line of the input must exactly contain the magic string",
-        result.error().message());
+    EXPECT_EQ("The first line of the input must contain only the word 'ply'",
+              result.error().message());
   }
 
   std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
@@ -84,9 +82,8 @@ TEST(ReadPlyHeader, BadMagicStringWindows) {
     std::stringstream stream(magic_string.substr(0u, i),
                              std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
-    EXPECT_EQ(
-        "The first line of the input must exactly contain the magic string",
-        result.error().message());
+    EXPECT_EQ("The first line of the input must contain only the word 'ply'",
+              result.error().message());
   }
 
   std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
@@ -100,30 +97,6 @@ TEST(ReadPlyHeader, MismatchedLineEndings) {
       OpenRunfile("_main/plyodine/test_data/header_mismatched_endings.ply");
   auto result = ReadPlyHeader(input);
   EXPECT_EQ("The input contained mismatched line endings",
-            result.error().message());
-}
-
-TEST(ReadPlyHeader, LeadingSpaces) {
-  std::ifstream input =
-      OpenRunfile("_main/plyodine/test_data/header_spaces_leading.ply");
-  auto result = ReadPlyHeader(input);
-  EXPECT_EQ("ASCII lines may not begin with a space", result.error().message());
-}
-
-TEST(ReadPlyHeader, MultipleSpaces) {
-  std::ifstream input =
-      OpenRunfile("_main/plyodine/test_data/header_spaces_multiple.ply");
-  auto result = ReadPlyHeader(input);
-  EXPECT_EQ(
-      "Non-comment ASCII lines may only contain a single space between tokens",
-      result.error().message());
-}
-
-TEST(ReadPlyHeader, TrailingSpaces) {
-  std::ifstream input =
-      OpenRunfile("_main/plyodine/test_data/header_spaces_trailing.ply");
-  auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Non-comment ASCII lines may not contain trailing spaces",
             result.error().message());
 }
 
@@ -469,12 +442,14 @@ TEST(ReadPlyHeader, InvalidKeyword) {
 }
 
 TEST(ReadPlyHeader, Valid) {
-  std::string files[] = {"_main/plyodine/test_data/header_valid_mac.ply",
-                         "_main/plyodine/test_data/header_valid_unix.ply",
-                         "_main/plyodine/test_data/header_valid_windows.ply"};
-  std::string line_endings[] = {"\r", "\n", "\r\n"};
+  std::string files[] = {
+      "_main/plyodine/test_data/header_valid_mac.ply",
+      "_main/plyodine/test_data/header_valid_unix.ply",
+      "_main/plyodine/test_data/header_valid_windows.ply",
+      "_main/plyodine/test_data/header_valid_with_space.ply"};
+  std::string line_endings[] = {"\r", "\n", "\r\n", "\n"};
 
-  for (size_t i = 0; i < 3; i++) {
+  for (size_t i = 0; i < 4; i++) {
     std::ifstream input = OpenRunfile(files[i]);
     auto result = ReadPlyHeader(input);
     ASSERT_TRUE(result);
@@ -562,7 +537,7 @@ TEST(ReadPlyHeader, InvalidCharacters) {
 
   for (size_t i = 4; i < base_string.size(); i++) {
     std::string string_copy = base_string;
-    string_copy[i] = '\t';
+    string_copy[i] = '\v';
     std::stringstream stream(string_copy, std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
     EXPECT_EQ("The input contained an invalid character",

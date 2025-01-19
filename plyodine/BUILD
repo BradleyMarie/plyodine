@@ -45,12 +45,10 @@ cc_test(
         "test_data/header_property_too_many.ply",
         "test_data/header_property_type_bad.ply",
         "test_data/header_property_type_none.ply",
-        "test_data/header_spaces_leading.ply",
-        "test_data/header_spaces_multiple.ply",
-        "test_data/header_spaces_trailing.ply",
         "test_data/header_valid_mac.ply",
         "test_data/header_valid_unix.ply",
         "test_data/header_valid_windows.ply",
+        "test_data/header_valid_with_space.ply",
     ],
     deps = [
         ":ply_header_reader",
