@@ -9,7 +9,10 @@
 
 #include "plyodine/ply_reader.h"
 
-class Reader : public plyodine::PlyReader {
+namespace plyodine {
+namespace {
+
+class Validator final : public PlyReader {
  public:
   std::error_code Start(
       std::map<std::string, uintmax_t> num_element_instances,
@@ -23,7 +26,7 @@ void UpdateCallback(std::function<std::error_code(T)>& callback) {
   callback = [](T) { return std::error_code(); };
 }
 
-std::error_code Reader::Start(
+std::error_code Validator::Start(
     std::map<std::string, uintmax_t> num_element_instances,
     std::map<std::string, std::map<std::string, PropertyCallback>>& callbacks,
     std::vector<std::string> comments, std::vector<std::string> object_info) {
@@ -37,6 +40,9 @@ std::error_code Reader::Start(
   return std::error_code();
 }
 
+}  // namespace
+}  // namespace plyodine
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     std::cerr << "usage: ply_validator <filename>" << std::endl;
@@ -49,8 +55,8 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  Reader reader;
-  if (std::error_code error = reader.ReadFrom(file); error) {
+  plyodine::Validator validator;
+  if (std::error_code error = validator.ReadFrom(file); error) {
     std::cerr << error.message() << std::endl;
     return EXIT_FAILURE;
   }

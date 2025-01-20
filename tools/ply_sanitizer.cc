@@ -20,7 +20,7 @@ namespace {
 
 enum class Format { ASCII, BIG, LITTLE, NATIVE };
 
-class Sanitizer : private PlyReader, private PlyWriter {
+class Sanitizer final : private PlyReader, private PlyWriter {
  public:
   std::error_code Sanitize(std::optional<Format> format, std::istream& input,
                            std::ostream& output);
@@ -32,7 +32,7 @@ class Sanitizer : private PlyReader, private PlyWriter {
   };
 
   template <typename T>
-  class Property : public PropertyInterface {
+  class Property final : public PropertyInterface {
    public:
     void Add(const T& value) { values_.push_back(value); }
 
@@ -49,7 +49,7 @@ class Sanitizer : private PlyReader, private PlyWriter {
   };
 
   template <typename T>
-  struct PropertyList : public PropertyInterface {
+  struct PropertyList final : public PropertyInterface {
    public:
     void Add(std::span<const T> value) {
       values_.emplace_back(value.begin(), value.end());
@@ -285,8 +285,9 @@ size_t Sanitizer::GetPropertyRank(const std::string& element_name,
 }  // namespace plyodine
 
 int main(int argc, char* argv[]) {
-  static const char* usage =
+  static constexpr char usage[] =
       "usage: ply_sanitizer input output [ascii|big|little|native]";
+
   if (argc != 3 && argc != 4) {
     std::cerr << usage << std::endl;
     return EXIT_FAILURE;
