@@ -90,7 +90,14 @@ class Sanitizer : private PlyReader, private PlyWriter {
       const std::string& element_name,
       const std::string& property_name) const override;
 
+  size_t GetElementRank(const std::string& element_name) const override;
+
+  size_t GetPropertyRank(const std::string& element_name,
+                         const std::string& property_name) const override;
+
   std::map<std::string, uintmax_t> num_element_instances_;
+  std::map<std::string, size_t> element_rank;
+  std::map<std::string, size_t> property_rank;
   std::map<std::string,
            std::map<std::string, std::unique_ptr<PropertyInterface>>>
       elements_;
@@ -105,14 +112,24 @@ std::error_code Sanitizer::Sanitize(std::istream& input, std::ostream& output) {
   list_size_types_.clear();
   comments_.clear();
   object_info_.clear();
+  element_rank.clear();
+  property_rank.clear();
 
   auto header = ReadPlyHeader(input);
   if (!header) {
     return header.error();
   }
 
-  for (const auto& element : header->elements) {
-    for (const auto& property : element.properties) {
+  for (size_t i = 0; i < header->elements.size(); i++) {
+    const auto& element = header->elements[i];
+    element_rank[element.name] = i;
+
+    for (size_t j = 0; j < element.properties.size(); j++) {
+      const auto& property = element.properties[j];
+
+      std::string key = element.name + " " + property.name;
+      property_rank[property.name] = j;
+
       if (!property.list_type) {
         continue;
       }
@@ -217,6 +234,16 @@ PlyWriter::ListSizeType Sanitizer::GetPropertyListSizeType(
   return list_size_types_.find(element_name)
       ->second.find(property_name)
       ->second;
+}
+
+size_t Sanitizer::GetElementRank(const std::string& element_name) const {
+  return element_rank.find(element_name)->second;
+}
+
+size_t Sanitizer::GetPropertyRank(const std::string& element_name,
+                                  const std::string& property_name) const {
+  std::string key = element_name + " " + property_name;
+  return property_rank.find(key)->second;
 }
 
 }  // namespace

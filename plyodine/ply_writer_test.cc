@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -90,7 +91,7 @@ class DelegatedWriter final : public PlyWriter {
   }
 };
 
-class TestWriter final : public PlyWriter {
+class TestWriter : public PlyWriter {
  public:
   TestWriter(
       const std::map<std::string, std::map<std::string, Property>>& properties,
@@ -282,6 +283,29 @@ class TestWriter final : public PlyWriter {
   bool insert_invalid_element_;
   bool should_delegate_;
   uint32_t max_size_;
+};
+
+class ReversedWriter final : public TestWriter {
+ public:
+  ReversedWriter(
+      const std::map<std::string, std::map<std::string, Property>>& properties,
+      std::span<const std::string> comments,
+      std::span<const std::string> object_info)
+      : TestWriter(properties, std::move(comments), std::move(object_info)) {}
+
+ private:
+  size_t GetElementRank(const std::string& element_name) const override {
+    if (element_name == "vertex") {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+
+  size_t GetPropertyRank(const std::string& element_name,
+                         const std::string& property_name) const override {
+    return 'z' - std::tolower(property_name[0]);
+  }
 };
 
 std::error_code WriteTo(
@@ -585,6 +609,21 @@ TEST(All, NoProperties) {
   TestWriter writer({}, {}, {}, false, true);
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(writer.WriteTo(output).message(), "An element had no properties");
+}
+
+TEST(All, Ordering) {
+  auto properties = BuildTestData();
+  std::string comments[] = {{"comment 1"}, {"comment 2"}};
+  std::string object_info[] = {{"obj info 1"}, {"obj info 2"}};
+  std::stringstream output(std::ios::out | std::ios::binary);
+
+  ReversedWriter writer(properties, comments, object_info);
+  writer.WriteToASCII(output);
+
+  std::ifstream input =
+      OpenRunfile("_main/plyodine/test_data/ply_ascii_data_reversed.ply");
+  std::string expected(std::istreambuf_iterator<char>(input), {});
+  EXPECT_EQ(expected, output.str());
 }
 
 TEST(ASCII, Empty) {

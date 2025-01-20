@@ -180,6 +180,21 @@ class PlyWriter {
       const std::string& element_name, const std::string& property_name) const {
     return ListSizeType::UINT;
   }
+
+  // This function may be implemented by derived classes to control the ordering
+  // of the elements in the output. Elements with the same rank will be ordered
+  // alphabetically by element name.
+  virtual size_t GetElementRank(const std::string& element_name) const {
+    return 0;
+  }
+
+  // This function may be implemented by derived classes to control the ordering
+  // of the properties of an element in the output. Properties with the same
+  // rank will be ordered alphabetically by property name.
+  virtual size_t GetPropertyRank(const std::string& element_name,
+                                 const std::string& property_name) const {
+    return 0;
+  }
 };
 
 }  // namespace plyodine

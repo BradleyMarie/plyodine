@@ -11,6 +11,7 @@
 #include <limits>
 #include <map>
 #include <ostream>
+#include <set>
 #include <span>
 #include <sstream>
 #include <string>
@@ -129,6 +130,9 @@ enum class Format {
   BINARY_LITTLE_ENDIAN = 2
 };
 
+using GetElementRankFunc = std::function<size_t(const std::string&)>;
+using GetPropertyRankFunc =
+    std::function<size_t(const std::string&, const std::string&)>;
 using GetPropertyListSizeFunc =
     std::function<int(const std::string&, const std::string&)>;
 using WriteFunc =
@@ -330,24 +334,60 @@ WriteFunc MakeWriteFunc(Variant& generator, int list_type) {
 
 struct Property {
   int list_type;
-  int data_type_index;
+  size_t data_type_index;
   WriteFunc write_func;
 };
 
 template <Format F, typename T>
-std::map<std::string, std::map<std::string, Property>> BuildProperties(
-    GetPropertyListSizeFunc get_property_list_size,
-    std::map<std::string, std::map<std::string, T>>& generators) {
-  std::map<std::string, std::map<std::string, Property>> result;
-  for (auto& [element_name, elements] : generators) {
-    std::map<std::string, Property>& properties = result[element_name];
-    for (auto& [property_name, generator] : elements) {
+std::vector<
+    std::pair<std::string, std::vector<std::pair<std::string, Property>>>>
+BuildProperties(GetElementRankFunc get_element_rank,
+                GetPropertyRankFunc get_property_rank,
+                GetPropertyListSizeFunc get_property_list_size,
+                std::map<std::string, std::map<std::string, T>>& generators) {
+  std::map<size_t, std::set<std::string>> ranked_elements;
+  for (auto& [element_name, _] : generators) {
+    ranked_elements[get_element_rank(element_name)].insert(element_name);
+  }
+
+  std::vector<std::string> ordered_elements;
+  for (const auto& [_, elements] : ranked_elements) {
+    for (const auto& element : elements) {
+      ordered_elements.push_back(element);
+    }
+  }
+
+  std::vector<
+      std::pair<std::string, std::vector<std::pair<std::string, Property>>>>
+      result;
+  for (const std::string& element_name : ordered_elements) {
+    std::map<size_t, std::set<std::string>> ranked_properties;
+    for (const auto& [property_name, _] :
+         generators.find(element_name)->second) {
+      ranked_properties[get_property_rank(element_name, property_name)].insert(
+          property_name);
+    }
+
+    std::vector<std::string> ordered_properties;
+    for (const auto& [_, properties] : ranked_properties) {
+      for (const auto& property : properties) {
+        ordered_properties.push_back(property);
+      }
+    }
+
+    result.emplace_back(element_name,
+                        std::vector<std::pair<std::string, Property>>());
+    for (const std::string& property_name : ordered_properties) {
+      auto& generator =
+          generators.find(element_name)->second.find(property_name)->second;
       int list_type = 2;
       if (generator.index() & 1u) {
         list_type = get_property_list_size(element_name, property_name);
       }
-      properties.try_emplace(property_name, list_type, generator.index(),
-                             MakeWriteFunc<F>(generator, list_type));
+
+      result.back().second.emplace_back(
+          property_name, Property{list_type, generator.index(),
+                                  MakeWriteFunc<F>(generator, list_type)});
     }
   }
 
@@ -357,7 +397,9 @@ std::map<std::string, std::map<std::string, Property>> BuildProperties(
 std::error_code WriteHeader(
     std::ostream& stream, std::string_view format,
     std::map<std::string, uintmax_t>& num_element_instances,
-    const std::map<std::string, std::map<std::string, Property>>& elements,
+    const std::vector<
+        std::pair<std::string, std::vector<std::pair<std::string, Property>>>>&
+        elements,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
   static constexpr std::string_view header_prefix = "ply\rformat ";
@@ -460,7 +502,9 @@ std::error_code WriteHeader(
 std::error_code WriteFile(
     std::ostream& stream, Format format,
     std::map<std::string, uintmax_t>& num_element_instances,
-    std::map<std::string, std::map<std::string, Property>>& elements,
+    std::vector<
+        std::pair<std::string, std::vector<std::pair<std::string, Property>>>>&
+        elements,
     const std::vector<std::string>& comments,
     const std::vector<std::string>& object_info) {
   static constexpr std::string_view format_strings[3] = {
@@ -498,6 +542,24 @@ std::error_code WriteFile(
   }
 
   return std::error_code();
+}
+
+GetElementRankFunc MakeGetElementRankFunc(
+    const PlyWriter& ply_writer,
+    size_t (PlyWriter::*get_element_rank)(const std::string&) const) {
+  return [&ply_writer, get_element_rank](const std::string& element_name) {
+    return (ply_writer.*get_element_rank)(element_name);
+  };
+}
+
+GetPropertyRankFunc MakeGetPropertyRankFunc(
+    const PlyWriter& ply_writer,
+    size_t (PlyWriter::*get_property_rank)(const std::string&,
+                                           const std::string&) const) {
+  return [&ply_writer, get_property_rank](const std::string& element_name,
+                                          const std::string& property_name) {
+    return (ply_writer.*get_property_rank)(element_name, property_name);
+  };
 }
 
 template <typename T>
@@ -557,6 +619,8 @@ std::error_code PlyWriter::WriteToASCII(std::ostream& stream) const {
   }
 
   auto properties = BuildProperties<Format::ASCII>(
+      MakeGetElementRankFunc(*ply_writer, &PlyWriter::GetElementRank),
+      MakeGetPropertyRankFunc(*ply_writer, &PlyWriter::GetPropertyRank),
       MakeGetPropertyListSizeFunc(*ply_writer,
                                   &PlyWriter::GetPropertyListSizeType),
       property_generators);
@@ -594,6 +658,8 @@ std::error_code PlyWriter::WriteToBigEndian(std::ostream& stream) const {
   }
 
   auto properties = BuildProperties<Format::BINARY_BIG_ENDIAN>(
+      MakeGetElementRankFunc(*ply_writer, &PlyWriter::GetElementRank),
+      MakeGetPropertyRankFunc(*ply_writer, &PlyWriter::GetPropertyRank),
       MakeGetPropertyListSizeFunc(*ply_writer,
                                   &PlyWriter::GetPropertyListSizeType),
       property_generators);
@@ -631,6 +697,8 @@ std::error_code PlyWriter::WriteToLittleEndian(std::ostream& stream) const {
   }
 
   auto properties = BuildProperties<Format::BINARY_LITTLE_ENDIAN>(
+      MakeGetElementRankFunc(*ply_writer, &PlyWriter::GetElementRank),
+      MakeGetPropertyListSizeFunc(*ply_writer, &PlyWriter::GetPropertyRank),
       MakeGetPropertyListSizeFunc(*ply_writer,
                                   &PlyWriter::GetPropertyListSizeType),
       property_generators);

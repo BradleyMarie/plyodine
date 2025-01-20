@@ -150,6 +150,7 @@ cc_test(
     srcs = ["ply_writer_test.cc"],
     data = [
         "test_data/ply_ascii_data.ply",
+        "test_data/ply_ascii_data_reversed.ply",
         "test_data/ply_ascii_empty.ply",
         "test_data/ply_ascii_large_fp.ply",
         "test_data/ply_ascii_list_sizes.ply",
