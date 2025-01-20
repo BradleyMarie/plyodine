@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <system_error>
@@ -17,9 +18,12 @@
 namespace plyodine {
 namespace {
 
+enum class Format { ASCII, BIG, LITTLE, NATIVE };
+
 class Sanitizer : private PlyReader, private PlyWriter {
  public:
-  std::error_code Sanitize(std::istream& input, std::ostream& output);
+  std::error_code Sanitize(std::optional<Format> format, std::istream& input,
+                           std::ostream& output);
 
  private:
   struct PropertyInterface {
@@ -106,7 +110,8 @@ class Sanitizer : private PlyReader, private PlyWriter {
   std::vector<std::string> object_info_;
 };
 
-std::error_code Sanitizer::Sanitize(std::istream& input, std::ostream& output) {
+std::error_code Sanitizer::Sanitize(std::optional<Format> format,
+                                    std::istream& input, std::ostream& output) {
   num_element_instances_.clear();
   elements_.clear();
   list_size_types_.clear();
@@ -118,6 +123,20 @@ std::error_code Sanitizer::Sanitize(std::istream& input, std::ostream& output) {
   auto header = ReadPlyHeader(input);
   if (!header) {
     return header.error();
+  }
+
+  if (!format.has_value()) {
+    switch (header->format) {
+      case PlyHeader::Format::ASCII:
+        format = Format::ASCII;
+        break;
+      case PlyHeader::Format::BINARY_BIG_ENDIAN:
+        format = Format::BIG;
+        break;
+      case PlyHeader::Format::BINARY_LITTLE_ENDIAN:
+        format = Format::LITTLE;
+        break;
+    }
   }
 
   for (size_t i = 0; i < header->elements.size(); i++) {
@@ -159,7 +178,23 @@ std::error_code Sanitizer::Sanitize(std::istream& input, std::ostream& output) {
     return error;
   }
 
-  return WriteTo(output);
+  std::error_code result;
+  switch (*format) {
+    case Format::ASCII:
+      result = WriteToASCII(output);
+      break;
+    case Format::BIG:
+      result = WriteToBigEndian(output);
+      break;
+    case Format::LITTLE:
+      result = WriteToLittleEndian(output);
+      break;
+    case Format::NATIVE:
+      result = WriteTo(output);
+      break;
+  }
+
+  return result;
 }
 
 template <typename T>
@@ -250,9 +285,28 @@ size_t Sanitizer::GetPropertyRank(const std::string& element_name,
 }  // namespace plyodine
 
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    std::cerr << "usage: ply_sanitizer <input> <output>" << std::endl;
+  static const char* usage =
+      "usage: ply_sanitizer input output [ascii|big|little|native]";
+  if (argc != 3 && argc != 4) {
+    std::cerr << usage << std::endl;
     return EXIT_FAILURE;
+  }
+
+  std::optional<plyodine::Format> format;
+  if (argc == 4) {
+    std::string_view type = argv[3];
+    if (type == "ascii") {
+      format = plyodine::Format::ASCII;
+    } else if (type == "big") {
+      format = plyodine::Format::BIG;
+    } else if (type == "little") {
+      format = plyodine::Format::LITTLE;
+    } else if (type == "native") {
+      format = plyodine::Format::NATIVE;
+    } else {
+      std::cerr << usage << std::endl;
+      return EXIT_FAILURE;
+    }
   }
 
   std::ifstream input(argv[1], std::ios_base::in | std::ios_base::binary);
@@ -268,7 +322,8 @@ int main(int argc, char* argv[]) {
   }
 
   plyodine::Sanitizer sanitizer;
-  if (std::error_code error = sanitizer.Sanitize(input, output); error) {
+  if (std::error_code error = sanitizer.Sanitize(format, input, output);
+      error) {
     std::cerr << error.message() << std::endl;
     return EXIT_FAILURE;
   }
