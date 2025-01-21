@@ -6,6 +6,7 @@
 #include <string>
 #include <system_error>
 
+#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tools/cpp/runfiles/runfiles.h"
 
@@ -13,6 +14,7 @@ namespace plyodine {
 namespace {
 
 using ::bazel::tools::cpp::runfiles::Runfiles;
+using ::testing::StartsWith;
 
 std::ifstream OpenRunfile(const std::string& path) {
   std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest());
@@ -29,11 +31,11 @@ TEST(ReadPlyHeader, DefaultErrorCondition) {
 
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 22; i++) {
+  for (int i = 1; i <= 24; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(23),
+  EXPECT_NE(error_catgegory.default_error_condition(25),
             std::errc::invalid_argument);
 }
 
@@ -50,14 +52,17 @@ TEST(ReadPlyHeader, BadMagicStringMac) {
     std::stringstream stream(magic_string.substr(0u, i),
                              std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
-    EXPECT_EQ("The first line of the input must contain only the word 'ply'",
+    EXPECT_EQ("The first line of the header must contain only 'ply'",
               result.error().message());
   }
 
   std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
   auto result = ReadPlyHeader(stream);
-  EXPECT_EQ("The second line of the input must contain the format specifier",
-            result.error().message());
+  EXPECT_EQ(
+      "The second line of the header must contain only the format specifier "
+      "(must follow structure 'format "
+      "<ascii|binary_big_endian|binary_little_endian> 1.0')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, BadMagicStringUnix) {
@@ -66,14 +71,17 @@ TEST(ReadPlyHeader, BadMagicStringUnix) {
     std::stringstream stream(magic_string.substr(0u, i),
                              std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
-    EXPECT_EQ("The first line of the input must contain only the word 'ply'",
+    EXPECT_EQ("The first line of the header must contain only 'ply'",
               result.error().message());
   }
 
   std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
   auto result = ReadPlyHeader(stream);
-  EXPECT_EQ("The second line of the input must contain the format specifier",
-            result.error().message());
+  EXPECT_EQ(
+      "The second line of the header must contain only the format specifier "
+      "(must follow structure 'format "
+      "<ascii|binary_big_endian|binary_little_endian> 1.0')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, BadMagicStringWindows) {
@@ -82,14 +90,17 @@ TEST(ReadPlyHeader, BadMagicStringWindows) {
     std::stringstream stream(magic_string.substr(0u, i),
                              std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
-    EXPECT_EQ("The first line of the input must contain only the word 'ply'",
+    EXPECT_EQ("The first line of the header must contain only 'ply'",
               result.error().message());
   }
 
   std::stringstream stream(magic_string, std::ios::in | std::ios::binary);
   auto result = ReadPlyHeader(stream);
-  EXPECT_EQ("The second line of the input must contain the format specifier",
-            result.error().message());
+  EXPECT_EQ(
+      "The second line of the header must contain only the format specifier "
+      "(must follow structure 'format "
+      "<ascii|binary_big_endian|binary_little_endian> 1.0')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, MismatchedLineEndings) {
@@ -104,7 +115,9 @@ TEST(ReadPlyHeader, NoFileFormat) {
   std::stringstream input("ply\nformat", std::ios::in | std::ios::binary);
   auto result = ReadPlyHeader(input);
   EXPECT_EQ(
-      "Format must be one of ascii, binary_big_endian, or binary_little_endian",
+      "The second line of the header must contain only the format specifier "
+      "(must follow structure 'format "
+      "<ascii|binary_big_endian|binary_little_endian> 1.0')",
       result.error().message());
 }
 
@@ -134,14 +147,19 @@ TEST(ReadPlyHeader, FormatBad) {
       OpenRunfile("_main/plyodine/test_data/header_format_bad.ply");
   auto result = ReadPlyHeader(input);
   EXPECT_EQ(
-      "Format must be one of ascii, binary_big_endian, or binary_little_endian",
+      "The input specified an invalid format (must be one of 'ascii', "
+      "'binary_big_endian', or 'binary_little_endian')",
       result.error().message());
 }
 
 TEST(ReadPlyHeader, FormatNoVersion) {
   std::stringstream input("ply\nformat ascii", std::ios::in | std::ios::binary);
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Only PLY version 1.0 supported", result.error().message());
+  EXPECT_EQ(
+      "The second line of the header must contain only the format specifier "
+      "(must follow structure 'format "
+      "<ascii|binary_big_endian|binary_little_endian> 1.0')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, FormatGoodVersions) {
@@ -162,7 +180,10 @@ TEST(ReadPlyHeader, FormatBadVersions) {
     std::stringstream input("ply\nformat ascii " + version + "\nend_header",
                             std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(input);
-    EXPECT_EQ("Only PLY version 1.0 supported", result.error().message());
+    EXPECT_EQ(
+        "The input specified an unsupported PLY version (maximum supported "
+        "version is '1.0')",
+        result.error().message());
   }
 }
 
@@ -170,57 +191,77 @@ TEST(ReadPlyHeader, FormatTooLong) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_format_too_long.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("The format specifier contained too many parameters",
-            result.error().message());
+  EXPECT_EQ(
+      "The second line of the header must contain only the format specifier "
+      "(must follow structure 'format "
+      "<ascii|binary_big_endian|binary_little_endian> 1.0')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, ElementNoName) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_name_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too few parameters to element", result.error().message());
+  EXPECT_EQ(
+      "An element declaration was invalid (its line must follow structure "
+      "'element <name> <number of instances>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, ElementNameRepeated) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_name_repeated.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Two elements have the same name", result.error().message());
+  EXPECT_EQ("The input declared two elements with the same name",
+            result.error().message());
 }
 
 TEST(ReadPlyHeader, ElementCountNone) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_count_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too few parameters to element", result.error().message());
+  EXPECT_EQ(
+      "An element declaration was invalid (its line must follow structure "
+      "'element <name> <number of instances>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, ElementCountBad) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_count_bad.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Failed to parse element count", result.error().message());
+  EXPECT_EQ(
+      "An element declaration contained an instance count that could not be "
+      "parsed as an integer",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, ElementCountNegative) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_count_negative.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Failed to parse element count", result.error().message());
+  EXPECT_THAT(result.error().message(),
+              StartsWith("An element declaration contained an instance count "
+                         "that was out of range"));
 }
 
 TEST(ReadPlyHeader, ElementCountTooLarge) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_element_count_too_large.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Out of range element count", result.error().message());
+  EXPECT_THAT(result.error().message(),
+              StartsWith("An element declaration contained an instance count "
+                         "that was out of range"));
 }
 
 TEST(ReadPlyHeader, ElementCountTooMany) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_element_too_many.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too many parameters to element", result.error().message());
+  EXPECT_EQ(
+      "An element declaration was invalid (its line must follow structure "
+      "'element <name> <number of instances>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyTypes) {
@@ -255,91 +296,124 @@ TEST(ReadPlyHeader, PropertyNameNone) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_property_name_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property specifier contained too few parameters",
-            result.error().message());
+  EXPECT_EQ(
+      "A property declaration was invalid (its line must follow structure "
+      "'property <char|uchar|short|ushort|int|uint|float|double> <name>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyNameDuplicated) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_property_name_duplicated.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("An element contains two properties with the same name",
-            result.error().message());
+  EXPECT_EQ(
+      "The input declared two properties of an element with the same name",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyTypeNone) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_property_type_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property specifier contained too few parameters",
-            result.error().message());
+  EXPECT_EQ(
+      "A property declaration was invalid (its line must follow structure "
+      "'property [(list <char|uchar|short|ushort|int|uint>)] "
+      "<char|uchar|short|ushort|int|uint|float|double> <name>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyTypeBad) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_property_type_bad.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property is of an invalid type", result.error().message());
+  EXPECT_EQ(
+      "A property declaration specified an invalid type (must be one of "
+      "'char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float', or "
+      "'double')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyTooMany) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_property_too_many.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too many parameters to property", result.error().message());
+  EXPECT_EQ(
+      "A property declaration was invalid (its line must follow structure "
+      "'property <char|uchar|short|ushort|int|uint|float|double> <name>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListNameNone) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_property_list_name_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property specifier contained too few parameters",
-            result.error().message());
+  EXPECT_EQ(
+      "A property list declaration was invalid (its line must follow structure "
+      "'property list <char|uchar|short|ushort|int|uint> "
+      "<char|uchar|short|ushort|int|uint|float|double> <name>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListNameDuplicated) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_property_list_name_duplicated.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("An element contains two properties with the same name",
-            result.error().message());
+  EXPECT_EQ(
+      "The input declared two properties of an element with the same name",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListDataTypeNone) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_property_list_data_type_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property specifier contained too few parameters",
-            result.error().message());
+  EXPECT_EQ(
+      "A property list declaration was invalid (its line must follow structure "
+      "'property list <char|uchar|short|ushort|int|uint> "
+      "<char|uchar|short|ushort|int|uint|float|double> <name>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListDataTypeBad) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_property_list_data_type_bad.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property is of an invalid type", result.error().message());
+  EXPECT_EQ(
+      "A property list declaration specified an invalid data type (must be one "
+      "of 'char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float', or "
+      "'double')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListListTypeNone) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_property_list_list_type_none.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property specifier contained too few parameters",
-            result.error().message());
+  EXPECT_EQ(
+      "A property list declaration was invalid (its line must follow structure "
+      "'property list <char|uchar|short|ushort|int|uint> "
+      "<char|uchar|short|ushort|int|uint|float|double> <name>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListListTypeBad) {
   std::ifstream input = OpenRunfile(
       "_main/plyodine/test_data/header_property_list_list_type_bad.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property is of an invalid type", result.error().message());
+  EXPECT_EQ(
+      "A property list declaration specified an invalid size type (must be one "
+      "of 'char', 'uchar', 'short', 'ushort', 'int', or 'uint')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListTooMany) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_property_list_too_many.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("Too many parameters to property", result.error().message());
+  EXPECT_EQ(
+      "A property declaration was invalid (its line must follow structure "
+      "'property <char|uchar|short|ushort|int|uint|float|double> <name>')",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, PropertyListTypes) {
@@ -367,11 +441,17 @@ TEST(ReadPlyHeader, PropertyListTypes) {
 
       auto result = ReadPlyHeader(input);
       if (parsed_types[i] == PlyHeader::Property::Type::FLOAT) {
-        EXPECT_EQ("A property list cannot have float as its list type",
-                  result.error().message());
+        EXPECT_EQ(
+            "A property list declaration specified 'float' as its size type "
+            "(must be one of 'char', 'uchar', 'short', 'ushort', 'int', or "
+            "'uint')",
+            result.error().message());
       } else if (parsed_types[i] == PlyHeader::Property::Type::DOUBLE) {
-        EXPECT_EQ("A property list cannot have double as its list type",
-                  result.error().message());
+        EXPECT_EQ(
+            "A property list declaration specified 'double' as its size type "
+            "(must be one of 'char', 'uchar', 'short', 'ushort', 'int', or "
+            "'uint')",
+            result.error().message());
       } else {
         EXPECT_EQ(parsed_types[i],
                   result->elements.at(0).properties.at(0).list_type.value());
@@ -386,8 +466,9 @@ TEST(ReadPlyHeader, LooseProperty) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_loose_property.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("A property could not be associated with an element",
-            result.error().message());
+  EXPECT_EQ(
+      "The input declared a property before its first element declaration",
+      result.error().message());
 }
 
 TEST(ReadPlyHeader, CommentAllowsSpaces) {
@@ -422,23 +503,23 @@ TEST(ReadPlyHeader, EndTooMany) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_end_too_many.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ(
-      "The last line of the header may only contain the end_header keyword",
-      result.error().message());
+  EXPECT_EQ("The last line of the header must contain only 'end_header'",
+            result.error().message());
 }
 
 TEST(ReadPlyHeader, EmptyLine) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_empty_line.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("The input contained an invalid header", result.error().message());
+  EXPECT_EQ("A line in the header was empty", result.error().message());
 }
 
 TEST(ReadPlyHeader, InvalidKeyword) {
   std::ifstream input =
       OpenRunfile("_main/plyodine/test_data/header_invalid_keyword.ply");
   auto result = ReadPlyHeader(input);
-  EXPECT_EQ("The input contained an invalid header", result.error().message());
+  EXPECT_EQ("A line in the header contained an invalid keyword",
+            result.error().message());
 }
 
 TEST(ReadPlyHeader, Valid) {
@@ -540,8 +621,10 @@ TEST(ReadPlyHeader, InvalidCharacters) {
     string_copy[i] = '\v';
     std::stringstream stream(string_copy, std::ios::in | std::ios::binary);
     auto result = ReadPlyHeader(stream);
-    EXPECT_EQ("The input contained an invalid character",
-              result.error().message());
+    EXPECT_EQ(
+        "The input contained an invalid character in its header (each line "
+        "must contain only printable ASCII characters)",
+        result.error().message());
   }
 }
 

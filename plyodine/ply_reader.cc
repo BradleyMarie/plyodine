@@ -439,17 +439,17 @@ std::string ErrorCategory::message(int condition) const {
       case ErrorType::MISMATCHED_LINE_ENDINGS:
         return "The input contained mismatched line endings";
       case ErrorType::INVALID_CHARACTERS:
-        return "The input contained invalid characters in its data section (an "
-               "input with format 'ascii' must contain only printable ASCII "
-               "characters on each line)";
+        return "The input contained an invalid character in its data section "
+               "(each line of input with format 'ascii' must contain only "
+               "printable ASCII characters)";
       case ErrorType::MISSING_TOKEN:
         return MissingUnexpectedEofMessage(
-            "A line in the input had fewer tokens than expected (reached end "
-            "of line but expected to find a ",
+            "A line in the data section of the input contained fewer tokens "
+            "than expected (reached end of line but expected to find a ",
             std::get<1>(*decoded));
       case ErrorType::UNUSED_TOKEN:
-        return "The input contained a data token that was not associated with "
-               "any property";
+        return "The input contained a token in its data section that was not "
+               "associated with any property";
       case ErrorType::FAILED_TO_PARSE:
         return FailedToParseMessage(std::get<1>(*decoded));
       case ErrorType::OUT_OF_RANGE:
@@ -691,11 +691,19 @@ std::error_code ReadASCII(std::istream& input, Context& context,
   const char* start = context.token.data();
   const char* end = start + context.token.size();
 
+  bool out_of_range = false;
+  if constexpr (std::is_unsigned_v<T>) {
+    out_of_range = start[0] == '-';
+    if (out_of_range) {
+      start += 1;
+    }
+  }
+
   T value{};
   std::from_chars_result result = std::from_chars(start, end, value);
   if (result.ec == std::errc::invalid_argument || result.ptr != end) {
     return MakeFailedToParse(entry_type, GetDataType<T>());
-  } else if (result.ec == std::errc::result_out_of_range) {
+  } else if (result.ec == std::errc::result_out_of_range || out_of_range) {
     return MakeOutOfRange(entry_type, GetDataType<T>());
   }
 

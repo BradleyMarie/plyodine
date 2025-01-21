@@ -19,29 +19,47 @@ namespace {
 enum class ErrorCode {
   MIN_VALUE = 1,
   BAD_STREAM = 1,
-  MISSING_MAGIC_WORD = 2,
+  INVALID_MAGIC_WORD = 2,
   MISMATCHED_LINE_ENDINGS = 3,
-  CONTAINS_INVALID_CHARACTER = 4,
-  MISSING_FORMAT_SPECIFIER = 5,
-  SPECIFIED_INVALID_FORMAT = 6,
-  SPECIFIED_UNSUPPORTED_VERSION = 7,
-  FORMAT_SPECIFIER_TOO_LONG = 8,
-  NAKED_PROPERTY = 9,
-  PROPERTY_SPECIFIER_TOO_SHORT = 10,
-  PROPERTY_SPECIFIED_INVALID_TYPE = 11,
-  PROPERTY_SPECIFIED_LIST_TYPE_FLOAT = 12,
-  PROPERTY_SPECIFIED_LIST_TYPE_DOUBLE = 13,
-  PROPERTY_SPECIFIED_DUPLICATE_NAME = 14,
-  PROPERTY_SPECIFIER_TOO_LONG = 15,
-  ELEMENT_SPECIFIER_TOO_SHORT = 16,
-  ELEMENT_SPECIFIED_DUPLICATE_NAME = 17,
-  ELEMENT_COUNT_OUT_OF_RANGE = 18,
-  ELEMENT_COUNT_PARSING_FAILED = 19,
-  ELEMENT_SPECIFIER_TOO_LONG = 20,
-  END_INVALID = 21,
-  UNRECOGNIZED_KEYWORD = 22,
-  MAX_VALUE = 22,
+  INVALID_CHARACTER = 4,
+  INVALID_FORMAT_SPECIFIER = 5,
+  INVALID_FORMAT = 6,
+  UNSUPPORTED_VERSION = 7,
+  UNBOUND_PROPERTY = 8,
+  INVALID_PROPERTY_OR_LIST = 9,
+  INVALID_PROPERTY = 10,
+  INVALID_PROPERTY_TYPE = 11,
+  INVALID_PROPERTY_LIST = 12,
+  INVALID_PROPERTY_LIST_SIZE_TYPE = 13,
+  INVALID_PROPERTY_LIST_FLOAT = 14,
+  INVALID_PROPERTY_LIST_DOUBLE = 15,
+  INVALID_PROPERTY_LIST_DATA_TYPE = 16,
+  INVALID_PROPERTY_DUPLICATE_NAME = 17,
+  INVALID_ELEMENT = 18,
+  INVALID_ELEMENT_DUPLICATE_NAME = 19,
+  ELEMENT_COUNT_FAILED_TO_PARSE = 20,
+  ELEMENT_COUNT_OUT_OF_RANGE = 21,
+  INVALID_HEADER_END = 22,
+  UNRECOGNIZED_KEYWORD = 23,
+  EMPTY_LINE = 24,
+  MAX_VALUE = 24,
 };
+
+std::string UIntMaxMax() {
+  std::string without_commas =
+      std::to_string(std::numeric_limits<uintmax_t>::max());
+
+  std::string result;
+  for (size_t i = 0; i < without_commas.size(); i++) {
+    size_t index = without_commas.size() - i - 1;
+    result = without_commas[index] + result;
+    if (i % 3 == 2 && index != 0) {
+      result = ',' + result;
+    }
+  }
+
+  return result;
+}
 
 static class ErrorCategory final : public std::error_category {
   const char* name() const noexcept override;
@@ -55,54 +73,84 @@ const char* ErrorCategory::name() const noexcept {
 }
 
 std::string ErrorCategory::message(int condition) const {
+  static const std::string max_element_count = UIntMaxMax();
+
   ErrorCode error_code{condition};
   switch (error_code) {
     case ErrorCode::BAD_STREAM:
       return "The stream was not in 'good' state";
-    case ErrorCode::MISSING_MAGIC_WORD:
-      return "The first line of the input must contain only the word 'ply'";
+    case ErrorCode::INVALID_MAGIC_WORD:
+      return "The first line of the header must contain only 'ply'";
     case ErrorCode::MISMATCHED_LINE_ENDINGS:
       return "The input contained mismatched line endings";
-    case ErrorCode::CONTAINS_INVALID_CHARACTER:
-      return "The input contained an invalid character";
-    case ErrorCode::MISSING_FORMAT_SPECIFIER:
-      return "The second line of the input must contain the format specifier";
-    case ErrorCode::SPECIFIED_INVALID_FORMAT:
-      return "Format must be one of ascii, binary_big_endian, or "
-             "binary_little_endian";
-    case ErrorCode::SPECIFIED_UNSUPPORTED_VERSION:
-      return "Only PLY version 1.0 supported";
-    case ErrorCode::FORMAT_SPECIFIER_TOO_LONG:
-      return "The format specifier contained too many parameters";
-    case ErrorCode::NAKED_PROPERTY:
-      return "A property could not be associated with an element";
-    case ErrorCode::PROPERTY_SPECIFIER_TOO_SHORT:
-      return "A property specifier contained too few parameters";
-    case ErrorCode::PROPERTY_SPECIFIED_INVALID_TYPE:
-      return "A property is of an invalid type";
-    case ErrorCode::PROPERTY_SPECIFIED_LIST_TYPE_FLOAT:
-      return "A property list cannot have float as its list type";
-    case ErrorCode::PROPERTY_SPECIFIED_LIST_TYPE_DOUBLE:
-      return "A property list cannot have double as its list type";
-    case ErrorCode::PROPERTY_SPECIFIED_DUPLICATE_NAME:
-      return "An element contains two properties with the same name";
-    case ErrorCode::PROPERTY_SPECIFIER_TOO_LONG:
-      return "Too many parameters to property";
-    case ErrorCode::ELEMENT_SPECIFIER_TOO_SHORT:
-      return "Too few parameters to element";
-    case ErrorCode::ELEMENT_SPECIFIED_DUPLICATE_NAME:
-      return "Two elements have the same name";
+    case ErrorCode::INVALID_CHARACTER:
+      return "The input contained an invalid character in its header (each "
+             "line must contain only printable ASCII characters)";
+    case ErrorCode::INVALID_FORMAT_SPECIFIER:
+      return "The second line of the header must contain only the format "
+             "specifier (must follow structure 'format "
+             "<ascii|binary_big_endian|binary_little_endian> 1.0')";
+    case ErrorCode::INVALID_FORMAT:
+      return "The input specified an invalid format (must be one of 'ascii', "
+             "'binary_big_endian', or 'binary_little_endian')";
+    case ErrorCode::UNSUPPORTED_VERSION:
+      return "The input specified an unsupported PLY version (maximum "
+             "supported version is '1.0')";
+    case ErrorCode::UNBOUND_PROPERTY:
+      return "The input declared a property before its first element "
+             "declaration";
+    case ErrorCode::INVALID_PROPERTY_OR_LIST:
+      return "A property declaration was invalid (its line must follow "
+             "structure 'property [(list <char|uchar|short|ushort|int|uint>)] "
+             "<char|uchar|short|ushort|int|uint|float|double> <name>')";
+    case ErrorCode::INVALID_PROPERTY:
+      return "A property declaration was invalid (its line must follow "
+             "structure 'property "
+             "<char|uchar|short|ushort|int|uint|float|double> <name>')";
+    case ErrorCode::INVALID_PROPERTY_TYPE:
+      return "A property declaration specified an invalid type (must be one of "
+             "'char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float', or "
+             "'double')";
+    case ErrorCode::INVALID_PROPERTY_LIST:
+      return "A property list declaration was invalid (its line must follow "
+             "structure 'property list <char|uchar|short|ushort|int|uint> "
+             "<char|uchar|short|ushort|int|uint|float|double> <name>')";
+    case ErrorCode::INVALID_PROPERTY_LIST_SIZE_TYPE:
+      return "A property list declaration specified an invalid size type (must "
+             "be one of 'char', 'uchar', 'short', 'ushort', 'int', or 'uint')";
+    case ErrorCode::INVALID_PROPERTY_LIST_FLOAT:
+      return "A property list declaration specified 'float' as its size type "
+             "(must be one of 'char', 'uchar', 'short', 'ushort', 'int', or "
+             "'uint')";
+    case ErrorCode::INVALID_PROPERTY_LIST_DOUBLE:
+      return "A property list declaration specified 'double' as its size type "
+             "(must be one of 'char', 'uchar', 'short', 'ushort', 'int', or "
+             "'uint')";
+    case ErrorCode::INVALID_PROPERTY_LIST_DATA_TYPE:
+      return "A property list declaration specified an invalid data type (must "
+             "be one of 'char', 'uchar', 'short', 'ushort', 'int', 'uint', "
+             "'float', or 'double')";
+    case ErrorCode::INVALID_PROPERTY_DUPLICATE_NAME:
+      return "The input declared two properties of an element with the same "
+             "name";
+    case ErrorCode::INVALID_ELEMENT:
+      return "An element declaration was invalid (its line must follow "
+             "structure 'element <name> <number of instances>')";
+    case ErrorCode::INVALID_ELEMENT_DUPLICATE_NAME:
+      return "The input declared two elements with the same name";
+    case ErrorCode::ELEMENT_COUNT_FAILED_TO_PARSE:
+      return "An element declaration contained an instance count that could "
+             "not be parsed as an integer";
     case ErrorCode::ELEMENT_COUNT_OUT_OF_RANGE:
-      return "Out of range element count";
-    case ErrorCode::ELEMENT_COUNT_PARSING_FAILED:
-      return "Failed to parse element count";
-    case ErrorCode::ELEMENT_SPECIFIER_TOO_LONG:
-      return "Too many parameters to element";
-    case ErrorCode::END_INVALID:
-      return "The last line of the header may only contain the end_header "
-             "keyword";
+      return "An element declaration contained an instance count that was out "
+             "of range (must be an integer between 0 and " +
+             max_element_count + ")";
+    case ErrorCode::INVALID_HEADER_END:
+      return "The last line of the header must contain only 'end_header'";
     case ErrorCode::UNRECOGNIZED_KEYWORD:
-      return "The input contained an invalid header";
+      return "A line in the header contained an invalid keyword";
+    case ErrorCode::EMPTY_LINE:
+      return "A line in the header was empty";
   };
 
   return "Unknown Error";
@@ -163,7 +211,7 @@ std::expected<std::string_view, std::error_code> ReadNextLine(
     }
 
     if (!std::isprint(c)) {
-      return std::unexpected(ErrorCode::CONTAINS_INVALID_CHARACTER);
+      return std::unexpected(ErrorCode::INVALID_CHARACTER);
     }
 
     storage.push_back(c);
@@ -205,7 +253,7 @@ std::expected<std::string, std::error_code> ParseMagicString(
   };
 
   if (c != 'p' || !stream.get(c) || c != 'l' || !stream.get(c) || c != 'y') {
-    return std::unexpected(ErrorCode::MISSING_MAGIC_WORD);
+    return std::unexpected(ErrorCode::INVALID_MAGIC_WORD);
   }
 
   c = 0;
@@ -216,7 +264,7 @@ std::expected<std::string, std::error_code> ParseMagicString(
   };
 
   if (c != '\r' && c != '\n') {
-    return std::unexpected(ErrorCode::MISSING_MAGIC_WORD);
+    return std::unexpected(ErrorCode::INVALID_MAGIC_WORD);
   }
 
   // The original documentation describing the PLY format mandates the use of
@@ -283,7 +331,7 @@ std::expected<PlyHeader::Format, std::error_code> ParseFormat(
 
   if (std::optional<std::string_view> token = ReadNextToken(*line);
       !token || *token != "format") {
-    return std::unexpected(ErrorCode::MISSING_FORMAT_SPECIFIER);
+    return std::unexpected(ErrorCode::INVALID_FORMAT_SPECIFIER);
   }
 
   PlyHeader::Format format;
@@ -295,19 +343,23 @@ std::expected<PlyHeader::Format, std::error_code> ParseFormat(
     } else if (*token == "binary_little_endian") {
       format = PlyHeader::Format::BINARY_LITTLE_ENDIAN;
     } else {
-      return std::unexpected(ErrorCode::SPECIFIED_INVALID_FORMAT);
+      return std::unexpected(ErrorCode::INVALID_FORMAT);
     }
   } else {
-    return std::unexpected(ErrorCode::SPECIFIED_INVALID_FORMAT);
+    return std::unexpected(ErrorCode::INVALID_FORMAT_SPECIFIER);
   }
 
-  if (std::optional<std::string_view> token = ReadNextToken(*line);
-      !token || !CheckVersion(*token)) {
-    return std::unexpected(ErrorCode::SPECIFIED_UNSUPPORTED_VERSION);
+  std::optional<std::string_view> version_token = ReadNextToken(*line);
+  if (!version_token) {
+    return std::unexpected(ErrorCode::INVALID_FORMAT_SPECIFIER);
+  }
+
+  if (!CheckVersion(*version_token)) {
+    return std::unexpected(ErrorCode::UNSUPPORTED_VERSION);
   }
 
   if (std::optional<std::string_view> token = ReadNextToken(*line); token) {
-    return std::unexpected(ErrorCode::FORMAT_SPECIFIER_TOO_LONG);
+    return std::unexpected(ErrorCode::INVALID_FORMAT_SPECIFIER);
   }
 
   return format;
@@ -318,38 +370,45 @@ std::expected<std::pair<std::string, uintmax_t>, std::error_code> ParseElement(
     const std::unordered_set<std::string>& element_names) {
   std::optional<std::string_view> name = ReadNextToken(line);
   if (!name) {
-    return std::unexpected(ErrorCode::ELEMENT_SPECIFIER_TOO_SHORT);
+    return std::unexpected(ErrorCode::INVALID_ELEMENT);
   }
 
   std::string str_name(*name);
   if (element_names.contains(str_name)) {
-    return std::unexpected(ErrorCode::ELEMENT_SPECIFIED_DUPLICATE_NAME);
+    return std::unexpected(ErrorCode::INVALID_ELEMENT_DUPLICATE_NAME);
   }
 
   std::optional<std::string_view> num_in_file = ReadNextToken(line);
   if (!num_in_file) {
-    return std::unexpected(ErrorCode::ELEMENT_SPECIFIER_TOO_SHORT);
+    return std::unexpected(ErrorCode::INVALID_ELEMENT);
+  }
+
+  const char* start = num_in_file->data();
+  const char* end = num_in_file->data() + num_in_file->size();
+
+  bool out_of_range = start[0] == '-';
+  if (out_of_range) {
+    start += 1;
   }
 
   uintmax_t parsed_num_in_file;
-  auto parsing_result = std::from_chars(
-      num_in_file->data(), num_in_file->data() + num_in_file->size(),
-      parsed_num_in_file);
-  if (parsing_result.ec == std::errc::result_out_of_range) {
+  std::from_chars_result result =
+      std::from_chars(start, end, parsed_num_in_file);
+  if (result.ec == std::errc::invalid_argument || result.ptr != end) {
+    return std::unexpected(ErrorCode::ELEMENT_COUNT_FAILED_TO_PARSE);
+  } else if (result.ec == std::errc::result_out_of_range || out_of_range) {
     return std::unexpected(ErrorCode::ELEMENT_COUNT_OUT_OF_RANGE);
-  } else if (parsing_result.ec != std::errc{}) {
-    return std::unexpected(ErrorCode::ELEMENT_COUNT_PARSING_FAILED);
   }
 
   if (std::optional<std::string_view> token = ReadNextToken(line); token) {
-    return std::unexpected(ErrorCode::ELEMENT_SPECIFIER_TOO_LONG);
+    return std::unexpected(ErrorCode::INVALID_ELEMENT);
   }
 
   return std::make_pair(std::move(str_name), parsed_num_in_file);
 }
 
 std::expected<PlyHeader::Property::Type, std::error_code> ParseType(
-    std::string_view type_name) {
+    std::string_view type_name, ErrorCode invalid_type_error) {
   static const std::unordered_map<std::string_view, PlyHeader::Property::Type>
       type_map = {{"char", PlyHeader::Property::Type::CHAR},
                   {"uchar", PlyHeader::Property::Type::UCHAR},
@@ -369,7 +428,7 @@ std::expected<PlyHeader::Property::Type, std::error_code> ParseType(
                   {"float64", PlyHeader::Property::Type::DOUBLE}};
   auto iter = type_map.find(type_name);
   if (iter == type_map.end()) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_INVALID_TYPE);
+    return std::unexpected(invalid_type_error);
   }
 
   return iter->second;
@@ -380,44 +439,46 @@ std::expected<PlyHeader::Property, std::error_code> ParsePropertyList(
     const std::unordered_set<std::string>& property_names) {
   std::optional<std::string_view> first_token = ReadNextToken(line);
   if (!first_token) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIER_TOO_SHORT);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_LIST);
   }
 
-  auto list_type = ParseType(*first_token);
+  auto list_type =
+      ParseType(*first_token, ErrorCode::INVALID_PROPERTY_LIST_SIZE_TYPE);
   if (!list_type) {
     return std::unexpected(list_type.error());
   }
 
   if (*list_type == PlyHeader::Property::Type::FLOAT) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_LIST_TYPE_FLOAT);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_LIST_FLOAT);
   }
 
   if (*list_type == PlyHeader::Property::Type::DOUBLE) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_LIST_TYPE_DOUBLE);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_LIST_DOUBLE);
   }
 
   std::optional<std::string_view> second_token = ReadNextToken(line);
   if (!second_token) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIER_TOO_SHORT);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_LIST);
   }
 
-  auto data_type = ParseType(*second_token);
+  auto data_type =
+      ParseType(*second_token, ErrorCode::INVALID_PROPERTY_LIST_DATA_TYPE);
   if (!data_type) {
     return std::unexpected(data_type.error());
   }
 
   std::optional<std::string_view> name = ReadNextToken(line);
   if (!name) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIER_TOO_SHORT);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_LIST);
   }
 
   std::string str_name(*name);
   if (property_names.contains(str_name)) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_DUPLICATE_NAME);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_DUPLICATE_NAME);
   }
 
   if (std::optional<std::string_view> token = ReadNextToken(line); token) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIER_TOO_LONG);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_LIST);
   }
 
   return PlyHeader::Property{std::move(str_name), *data_type, *list_type};
@@ -428,30 +489,30 @@ std::expected<PlyHeader::Property, std::error_code> ParseProperty(
     const std::unordered_set<std::string>& property_names) {
   std::optional<std::string_view> first_token = ReadNextToken(line);
   if (!first_token) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIER_TOO_SHORT);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_OR_LIST);
   }
 
   if (*first_token == "list") {
     return ParsePropertyList(line, property_names);
   }
 
-  auto data_type = ParseType(*first_token);
+  auto data_type = ParseType(*first_token, ErrorCode::INVALID_PROPERTY_TYPE);
   if (!data_type) {
     return std::unexpected(data_type.error());
   }
 
   std::optional<std::string_view> name = ReadNextToken(line);
   if (!name) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIER_TOO_SHORT);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY);
   }
 
   std::string str_name(*name);
   if (property_names.contains(str_name)) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIED_DUPLICATE_NAME);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY_DUPLICATE_NAME);
   }
 
   if (std::optional<std::string_view> token = ReadNextToken(line); token) {
-    return std::unexpected(ErrorCode::PROPERTY_SPECIFIER_TOO_LONG);
+    return std::unexpected(ErrorCode::INVALID_PROPERTY);
   }
 
   return PlyHeader::Property{std::move(str_name), *data_type};
@@ -491,7 +552,7 @@ std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& stream) {
     if (first_token) {
       if (*first_token == "property") {
         if (elements.empty()) {
-          return std::unexpected(ErrorCode::NAKED_PROPERTY);
+          return std::unexpected(ErrorCode::UNBOUND_PROPERTY);
         }
 
         auto& element_property_names = property_names[elements.back().name];
@@ -529,14 +590,16 @@ std::expected<PlyHeader, std::error_code> ReadPlyHeader(std::istream& stream) {
       } else if (*first_token == "end_header") {
         if (std::optional<std::string_view> next_token = ReadNextToken(*line);
             next_token) {
-          return std::unexpected(ErrorCode::END_INVALID);
+          return std::unexpected(ErrorCode::INVALID_HEADER_END);
         }
 
         break;
       }
+
+      return std::unexpected(ErrorCode::UNRECOGNIZED_KEYWORD);
     }
 
-    return std::unexpected(ErrorCode::UNRECOGNIZED_KEYWORD);
+    return std::unexpected(ErrorCode::EMPTY_LINE);
   }
 
   return PlyHeader{*format,

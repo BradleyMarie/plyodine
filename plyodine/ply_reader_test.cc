@@ -473,7 +473,8 @@ TEST(Error, BadHeader) {
       OpenRunfile("_main/plyodine/test_data/header_format_bad.ply");
   auto result = reader.ReadFrom(stream);
   EXPECT_EQ(
-      "Format must be one of ascii, binary_big_endian, or binary_little_endian",
+      "The input specified an invalid format (must be one of 'ascii', "
+      "'binary_big_endian', or 'binary_little_endian')",
       result.message());
 }
 
@@ -662,9 +663,9 @@ TEST(ASCII, InvalidCharacter) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_invalid_character.ply");
   EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "The input contained invalid characters in its data section (an "
-            "input with format 'ascii' must contain only printable ASCII "
-            "characters on each line)");
+            "The input contained an invalid character in its data section "
+            "(each line of input with format 'ascii' must contain only "
+            "printable ASCII characters)");
 }
 
 TEST(ASCII, ListMissingEntries) {
@@ -696,10 +697,10 @@ TEST(ASCII, ListMissingEntries) {
 
   std::ifstream stream = OpenRunfile(
       "_main/plyodine/test_data/ply_ascii_list_missing_entries.ply");
-  EXPECT_EQ(
-      reader.ReadFrom(stream).message(),
-      "A line in the input had fewer tokens than expected (reached end of line "
-      "but expected to find a property list entry of type 'uchar')");
+  EXPECT_EQ(reader.ReadFrom(stream).message(),
+            "A line in the data section of the input contained fewer tokens "
+            "than expected (reached end of line but expected to find a "
+            "property list entry of type 'uchar')");
 }
 
 TEST(ASCII, MissingElement) {
@@ -964,8 +965,8 @@ TEST(ASCII, UnusedTokens) {
   std::ifstream stream =
       OpenRunfile("_main/plyodine/test_data/ply_ascii_unused_tokens.ply");
   EXPECT_EQ(reader.ReadFrom(stream).message(),
-            "The input contained a data token that was not associated with any "
-            "property");
+            "The input contained a token in its data section that was not "
+            "associated with any property");
 }
 
 TEST(ASCII, WithData) {
