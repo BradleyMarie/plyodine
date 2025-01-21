@@ -412,11 +412,11 @@ TEST(Validate, DefaultErrorCondition) {
       writer.WriteTo(output).category();
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 16; i++) {
+  for (int i = 1; i <= 31; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(17),
+  EXPECT_NE(error_catgegory.default_error_condition(32),
             std::errc::invalid_argument);
 }
 
@@ -458,8 +458,8 @@ TEST(Validate, BadElementNames) {
   EXPECT_EQ(WriteToASCII(output, {{"", {{"prop", {}}}}}).message(),
             "An element had an empty name");
   EXPECT_EQ(WriteToASCII(output, {{" ", {{"prop", {}}}}}).message(),
-            "An element name contained invalid characters (must contain only "
-            "ASCII graphic characters)");
+            "An element name contained an invalid character (must contain only "
+            "graphic ASCII characters)");
 }
 
 TEST(Validate, EmptyPropertyNames) {
@@ -481,28 +481,28 @@ TEST(Validate, NonGraphicPropertyNames) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, properties).message(),
-            "A property name contained invalid characters (must contain only "
-            "ASCII graphic characters)");
+            "A property name contained an invalid character (must contain only "
+            "graphic ASCII characters)");
 }
 
 TEST(Validate, BadComment) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {{"\r"}}).message(),
-            "A comment string contained invalid characters (must contain only "
+            "A comment contained an invalid character (must contain only "
             "printable ASCII characters)");
   EXPECT_EQ(WriteToASCII(output, {}, {{"\n"}}).message(),
-            "A comment string contained invalid characters (must contain only "
+            "A comment contained an invalid character (must contain only "
             "printable ASCII characters)");
 }
 
 TEST(Validate, BadObjInfo) {
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\r"}}).message(),
-            "An obj_info string contained invalid characters (must contain "
-            "only printable ASCII characters)");
+            "An obj_info contained an invalid character (must contain only "
+            "printable ASCII characters)");
   EXPECT_EQ(WriteToASCII(output, {}, {}, {{"\n"}}).message(),
-            "An obj_info string contained invalid characters (must contain "
-            "only printable ASCII characters)");
+            "An obj_info contained an invalid character (must contain only "
+            "printable ASCII characters)");
 }
 
 TEST(Validate, ListTooBigUInt8) {
@@ -568,8 +568,8 @@ TEST(Validate, UnbalancedProperties) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, properties).message(),
-            "A property generator did not produce enough data for all "
-            "instances of its element");
+            "A property with type 'uchar' was missing data (must contain a "
+            "value for every instance of its element)");
 }
 
 TEST(All, DefaultListSize) {
@@ -644,8 +644,8 @@ TEST(ASCII, NonFiniteFloat) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A property of type 'float' was out of range for output type "
-            "'ascii' (must be finite)");
+            "A property with type 'float' had a value that was out of range "
+            "for output format 'ascii' (must be finite)");
 }
 
 TEST(ASCII, NonFiniteDouble) {
@@ -655,8 +655,8 @@ TEST(ASCII, NonFiniteDouble) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A property of type 'double' was out of range for output type "
-            "'ascii' (must be finite)");
+            "A property with type 'double' had a value that was out of range "
+            "for output format 'ascii' (must be finite)");
 }
 
 TEST(ASCII, NonFiniteFloatList) {
@@ -667,8 +667,8 @@ TEST(ASCII, NonFiniteFloatList) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A property list entry of type 'float' was out of range for output "
-            "type 'ascii' (must be finite)");
+            "A property list entry with type 'float' had a value that was out "
+            "of range for output type 'ascii' (must be finite)");
 }
 
 TEST(ASCII, NonFiniteDoubleList) {
@@ -678,10 +678,9 @@ TEST(ASCII, NonFiniteDoubleList) {
   data["vertex"]["a"] = al;
 
   std::stringstream output(std::ios::out | std::ios::binary);
-  EXPECT_EQ(
-      WriteToASCII(output, data).message(),
-      "A property list entry of type 'double' was out of range for output "
-      "type 'ascii' (must be finite)");
+  EXPECT_EQ(WriteToASCII(output, data).message(),
+            "A property list entry with type 'double' had a value that was out "
+            "of range for output type 'ascii' (must be finite)");
 }
 
 TEST(ASCII, TestData) {

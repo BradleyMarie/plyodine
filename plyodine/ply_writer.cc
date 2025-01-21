@@ -35,13 +35,28 @@ enum class ErrorCode {
   OVERFLOWED_UCHAR_LIST = 8,
   OVERFLOWED_USHORT_LIST = 9,
   OVERFLOWED_UINT_LIST = 10,
-  MISSING_DATA = 11,
-  ASCII_FLOAT_OUT_OF_RANGE = 12,
-  ASCII_DOUBLE_OUT_OF_RANGE = 13,
-  ASCII_FLOAT_LIST_OUT_OF_RANGE = 14,
-  ASCII_DOUBLE_LIST_OUT_OF_RANGE = 15,
-  MISSING_PROPERTIES = 16,
-  MAX_VALUE = 16,
+  MISSING_PROPERTY_DATA_CHAR = 11,
+  MISSING_PROPERTY_DATA_UCHAR = 12,
+  MISSING_PROPERTY_DATA_SHORT = 13,
+  MISSING_PROPERTY_DATA_USHORT = 14,
+  MISSING_PROPERTY_DATA_INT = 15,
+  MISSING_PROPERTY_DATA_UINT = 16,
+  MISSING_PROPERTY_DATA_FLOAT = 17,
+  MISSING_PROPERTY_DATA_DOUBLE = 18,
+  MISSING_PROPERTY_LIST_DATA_CHAR = 19,
+  MISSING_PROPERTY_LIST_DATA_UCHAR = 20,
+  MISSING_PROPERTY_LIST_DATA_SHORT = 21,
+  MISSING_PROPERTY_LIST_DATA_USHORT = 22,
+  MISSING_PROPERTY_LIST_DATA_INT = 23,
+  MISSING_PROPERTY_LIST_DATA_UINT = 24,
+  MISSING_PROPERTY_LIST_DATA_FLOAT = 25,
+  MISSING_PROPERTY_LIST_DATA_DOUBLE = 26,
+  ASCII_FLOAT_OUT_OF_RANGE = 27,
+  ASCII_DOUBLE_OUT_OF_RANGE = 28,
+  ASCII_FLOAT_LIST_OUT_OF_RANGE = 29,
+  ASCII_DOUBLE_LIST_OUT_OF_RANGE = 30,
+  MISSING_PROPERTIES = 31,
+  MAX_VALUE = 31,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -60,21 +75,21 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::BAD_STREAM:
       return "The stream was not in 'good' state";
     case ErrorCode::INVALID_COMMENT:
-      return "A comment string contained invalid characters (must contain only "
+      return "A comment contained an invalid character (must contain only "
              "printable ASCII characters)";
     case ErrorCode::INVALID_OBJ_INFO:
-      return "An obj_info string contained invalid characters (must contain "
-             "only printable ASCII characters)";
+      return "An obj_info contained an invalid character (must contain only "
+             "printable ASCII characters)";
     case ErrorCode::MISSING_ELEMENT_NAME:
       return "An element had an empty name";
     case ErrorCode::INVALID_ELEMENT_NAME:
-      return "An element name contained invalid characters (must contain only "
-             "ASCII graphic characters)";
+      return "An element name contained an invalid character (must contain "
+             "only graphic ASCII characters)";
     case ErrorCode::MISSING_PROPERTY_NAME:
       return "A property had an empty name";
     case ErrorCode::INVALID_PROPERTY_NAME:
-      return "A property name contained invalid characters (must contain only "
-             "ASCII graphic characters)";
+      return "A property name contained an invalid character (must contain "
+             "only graphic ASCII characters)";
     case ErrorCode::OVERFLOWED_UCHAR_LIST:
       return "A property list with size type 'uchar' exceeded its maximum "
              "supported length (255 entries)";
@@ -84,21 +99,66 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::OVERFLOWED_UINT_LIST:
       return "A property list with size type 'uint' exceeded its maximum "
              "supported length (4,294,967,295 entries)";
-    case ErrorCode::MISSING_DATA:
-      return "A property generator did not produce enough data for all "
-             "instances of its element";
+    case ErrorCode::MISSING_PROPERTY_DATA_CHAR:
+      return "A property with type 'char' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_DATA_UCHAR:
+      return "A property with type 'uchar' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_DATA_SHORT:
+      return "A property with type 'short' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_DATA_USHORT:
+      return "A property with type 'ushort' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_DATA_INT:
+      return "A property with type 'int' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_DATA_UINT:
+      return "A property with type 'uint' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_DATA_FLOAT:
+      return "A property with type 'float' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_DATA_DOUBLE:
+      return "A property with type 'double' was missing data (must contain a "
+             "value for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_CHAR:
+      return "A property list with data type 'char' was missing data (must "
+             "contain a list for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_UCHAR:
+      return "A property list with data type 'uchar' was missing data (must "
+             "contain a list for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_SHORT:
+      return "A property list with data type 'short' was missing data (must "
+             "contain a list for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_USHORT:
+      return "A property list with data type 'ushort' was missing data (must "
+             "contain a list for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_INT:
+      return "A property list with data type 'int' was missing data (must "
+             "contain a list for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_UINT:
+      return "A property list with data type 'uint' was missing data (must "
+             "contain a list for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_FLOAT:
+      return "A property list with data type 'float' was missing data (must "
+             "contain a list for every instance of its element)";
+    case ErrorCode::MISSING_PROPERTY_LIST_DATA_DOUBLE:
+      return "A property list with data type 'double' was missing data (must "
+             "contain a list for every instance of its element)";
     case ErrorCode::ASCII_FLOAT_OUT_OF_RANGE:
-      return "A property of type 'float' was out of range for output type "
-             "'ascii' (must be finite)";
+      return "A property with type 'float' had a value that was out of range "
+             "for output format 'ascii' (must be finite)";
     case ErrorCode::ASCII_DOUBLE_OUT_OF_RANGE:
-      return "A property of type 'double' was out of range for output type "
-             "'ascii' (must be finite)";
+      return "A property with type 'double' had a value that was out of range "
+             "for output format 'ascii' (must be finite)";
     case ErrorCode::ASCII_FLOAT_LIST_OUT_OF_RANGE:
-      return "A property list entry of type 'float' was out of range for "
-             "output type 'ascii' (must be finite)";
+      return "A property list entry with type 'float' had a value that was out "
+             "of range for output type 'ascii' (must be finite)";
     case ErrorCode::ASCII_DOUBLE_LIST_OUT_OF_RANGE:
-      return "A property list entry of type 'double' was out of range for "
-             "output type 'ascii' (must be finite)";
+      return "A property list entry with type 'double' had a value that was "
+             "out of range for output type 'ascii' (must be finite)";
     case ErrorCode::MISSING_PROPERTIES:
       return "An element had no properties";
   };
@@ -258,6 +318,44 @@ std::error_code Serialize(std::ostream& stream, std::stringstream& storage,
   }
 }
 
+template <typename T>
+std::error_code MissingDataError() {
+  if constexpr (std::is_same_v<T, int8_t>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_CHAR;
+  } else if constexpr (std::is_same_v<T, std::span<const int8_t>>) {
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_CHAR;
+  } else if constexpr (std::is_same_v<T, uint8_t>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_UCHAR;
+  } else if constexpr (std::is_same_v<T, std::span<const uint8_t>>) {
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_UCHAR;
+  } else if constexpr (std::is_same_v<T, int16_t>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_SHORT;
+  } else if constexpr (std::is_same_v<T, std::span<const int16_t>>) {
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_SHORT;
+  } else if constexpr (std::is_same_v<T, uint16_t>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_USHORT;
+  } else if constexpr (std::is_same_v<T, std::span<const uint16_t>>) {
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_USHORT;
+  } else if constexpr (std::is_same_v<T, int32_t>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_INT;
+  } else if constexpr (std::is_same_v<T, std::span<const int32_t>>) {
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_INT;
+  } else if constexpr (std::is_same_v<T, uint32_t>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_UINT;
+  } else if constexpr (std::is_same_v<T, std::span<const uint32_t>>) {
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_UINT;
+  } else if constexpr (std::is_same_v<T, float>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_FLOAT;
+  } else if constexpr (std::is_same_v<T, std::span<const float>>) {
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_FLOAT;
+  } else if constexpr (std::is_same_v<T, double>) {
+    return ErrorCode::MISSING_PROPERTY_DATA_DOUBLE;
+  } else {
+    static_assert(std::is_same_v<T, std::span<const double>>);
+    return ErrorCode::MISSING_PROPERTY_LIST_DATA_DOUBLE;
+  }
+}
+
 template <Format F, typename T>
 WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
   static constexpr uint32_t list_capacities[3] = {
@@ -271,7 +369,7 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
              std::ostream& stream,
              std::stringstream& token) mutable -> std::error_code {
     if (iter == end) {
-      return ErrorCode::MISSING_DATA;
+      return MissingDataError<T>();
     }
 
     T value = *iter;
