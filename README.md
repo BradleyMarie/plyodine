@@ -35,7 +35,7 @@ bazel_dep(name = "plyodine")
 git_override(
     module_name = "plyodine",
     remote = "https://github.com/bradleymarie/plyodine.git",
-    commit = "d4d4912a97201126eb8870fa5a645e685f5e9581",
+    commit = "7ecc40c10cac0b3531c08ea5217abf05691d65fd",
 )
 ```
 
@@ -57,16 +57,20 @@ property is determined implicitly based on the type of the callback provided.
 
 While the APIs are broadly similar between `PlyReader` and `PlyWriter`, there is
 a bit of additional subtlety to keep in mind when implementing a `PlyWriter`.
+
+Most significantly implementers have the option of implementing the `DelegateTo`
+which allows the implementing class to delegate entirely to another `PlyWriter`
+sub-class. If this is done, there will be no call to `Start` or any of the other
+`PlyWriter` methods and all of those calls will instead go to the delegate.
+
+Additionally, when not delegating there are other differences to be aware of.
 First, in `Start`, the derived class is also responsible for filling out the map
 indicating how many instances of each element should exist in the input. If this
-is not done, PLYodine assumes a value of zero. Second, implementers must also
-implement the `GetPropertyListSizeType` which gets called by `PlyWriter` after
-`Start` to determine the index type to use for each property lists contained
-in the output. Note that while the callbacks for writing property list data
-include a vector in their arguments, there is no requirement to populate this
-vector with any data. PLYodine only looks at the returned span and the vector
-is passed strictly for convenience as a possible backing store for the returned
-span.
+is not done, PLYodine assumes a value of zero. Second, implementers may also
+implement the `GetPropertyListSizeType`, `GetElementRank`, `GetPropertyRank` 
+which gets called by `PlyWriter` after `Start` to determine the index type to
+use for each property lists contained in the output and the order in which
+elements and properties will be emitted to the output respectively.
 
 Also inside the `plyodine` directory resides the `readers` and `writers`
 directories. These directories contain pre-implemented readers and writers for
@@ -91,27 +95,37 @@ with the `PlyReader` and `PlyWriter` classes respectively.
 Additionally, there is good documentation of the PLYodine interface in its
 various header files.
 
-## Versioning
-
-PLYodine currently is not strongly versioned and it is recommended that users
-update to the latest commit from the main branch as often as is reasonably
-possible.
+## Forwards Compatibility
 
 The public API of `PlyReader` and `PlyWriter` at this point should be mostly
-locked down; however, it is possible that future commits may introduce breaking
-API changes.
+locked down and at this point it can be reasonably expected that there will not
+be major breaking changes in the future (or at least the medium feature). This
+stability; however, does not extend to the `triangle_mesh_reader` and
+`in_memory_writer` classes which are both considered experimental.
+
+For both the stable and experimental portions of the PLYodine API, it is
+expected that any future breaking changes will be minor.
+
+Also note that the details of the error codes returned by PLYodine are
+explicitly not stable and are subject to change in the future without warning.
 
 ## A note on reading PLY files
 
-PLYodine currently is very strict with what it will accept as a valid PLY input
-(especially when it comes to parsing ASCII-formatted input). If you are
-attempting to read a PLY input that is not quite perfect that is being rejected
-by PLYodine, to some extent this is working as intended.
+PLYodine currently is somewhat restrictive with what it will accept as a valid
+PLY input (especially when it comes to parsing ASCII-formatted input). If you
+are attempting to read a PLY input that is not quite perfect that is being
+rejected by PLYodine, to some extent this is working as intended.
 
 However, with PLY being as loosely standardized as it is, if you encounter a
 significant corpus of PLY files that will not open with PLYodine but will open
 with other libraries or applications please file an issue (and ideally create a
-pull request that resolves it).
+pull request that resolves it). If you aren't sure if the issue is with PLYodine
+or your own code, there is a `ply_validator` tool in the `tools` directory that
+can be used to verify if a PLY file will open with PLYodine in isolation.
 
 Also, if possible, prefer working with binary PLY files where there is less
-ambiguity about what deviations from the standard are allowable during parsing.
+ambiguity about what deviations from the "standard" are allowable during
+parsing. There is a `ply_sanitizer` tool in the `tools` director that can be
+used to translate PLY files between the ASCII, binary big-endian, and binary
+little-endian formats (and also sanitize them in the process to be fully
+"standards-compliant").
