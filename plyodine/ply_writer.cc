@@ -36,10 +36,12 @@ enum class ErrorCode {
   OVERFLOWED_USHORT_LIST = 9,
   OVERFLOWED_UINT_LIST = 10,
   MISSING_DATA = 11,
-  INVALID_ASCII_FLOAT = 12,
-  INVALID_ASCII_FLOAT_LIST = 13,
-  MISSING_PROPERTIES = 14,
-  MAX_VALUE = 14,
+  ASCII_FLOAT_OUT_OF_RANGE = 12,
+  ASCII_DOUBLE_OUT_OF_RANGE = 13,
+  ASCII_FLOAT_LIST_OUT_OF_RANGE = 14,
+  ASCII_DOUBLE_LIST_OUT_OF_RANGE = 15,
+  MISSING_PROPERTIES = 16,
+  MAX_VALUE = 16,
 };
 
 static class ErrorCategory final : public std::error_category {
@@ -85,12 +87,18 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::MISSING_DATA:
       return "A property generator did not produce enough data for all "
              "instances of its element";
-    case ErrorCode::INVALID_ASCII_FLOAT:
-      return "A non-finite floating-point property cannot be written to an "
-             "ASCII output";
-    case ErrorCode::INVALID_ASCII_FLOAT_LIST:
-      return "A non-finite floating-point property list entry cannot be "
-             "written to an ASCII output";
+    case ErrorCode::ASCII_FLOAT_OUT_OF_RANGE:
+      return "A property of type 'float' was out of range for output type "
+             "'ascii' (must be finite)";
+    case ErrorCode::ASCII_DOUBLE_OUT_OF_RANGE:
+      return "A property of type 'double' was out of range for output type "
+             "'ascii' (must be finite)";
+    case ErrorCode::ASCII_FLOAT_LIST_OUT_OF_RANGE:
+      return "A property list entry of type 'float' was out of range for "
+             "output type 'ascii' (must be finite)";
+    case ErrorCode::ASCII_DOUBLE_LIST_OUT_OF_RANGE:
+      return "A property list entry of type 'double' was out of range for "
+             "output type 'ascii' (must be finite)";
     case ErrorCode::MISSING_PROPERTIES:
       return "An element had no properties";
   };
@@ -178,7 +186,8 @@ template <std::floating_point T>
 std::error_code SerializeASCII(std::ostream& stream, std::stringstream& storage,
                                T value) {
   if (!std::isfinite(value)) {
-    return ErrorCode::INVALID_ASCII_FLOAT;
+    return std::is_same_v<T, float> ? ErrorCode::ASCII_FLOAT_OUT_OF_RANGE
+                                    : ErrorCode::ASCII_DOUBLE_OUT_OF_RANGE;
   }
 
   storage.str("");
@@ -306,10 +315,15 @@ WriteFunc MakeWriteFuncImpl(std::generator<T>& generator, int list_type) {
 
         if (std::error_code error = Serialize<F>(stream, token, value[i]);
             error) {
-          if (error == ErrorCode::INVALID_ASCII_FLOAT) {
-            return ErrorCode::INVALID_ASCII_FLOAT_LIST;
+          if constexpr (std::is_same_v<T, std::span<const float>>) {
+            if (error == ErrorCode::ASCII_FLOAT_OUT_OF_RANGE) {
+              error = ErrorCode::ASCII_FLOAT_LIST_OUT_OF_RANGE;
+            }
+          } else if constexpr (std::is_same_v<T, std::span<const double>>) {
+            if (error == ErrorCode::ASCII_DOUBLE_OUT_OF_RANGE) {
+              error = ErrorCode::ASCII_DOUBLE_LIST_OUT_OF_RANGE;
+            }
           }
-
           return error;
         }
       }

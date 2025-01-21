@@ -412,11 +412,11 @@ TEST(Validate, DefaultErrorCondition) {
       writer.WriteTo(output).category();
   EXPECT_NE(error_catgegory.default_error_condition(0),
             std::errc::invalid_argument);
-  for (int i = 1; i <= 14; i++) {
+  for (int i = 1; i <= 16; i++) {
     EXPECT_EQ(error_catgegory.default_error_condition(i),
               std::errc::invalid_argument);
   }
-  EXPECT_NE(error_catgegory.default_error_condition(15),
+  EXPECT_NE(error_catgegory.default_error_condition(17),
             std::errc::invalid_argument);
 }
 
@@ -637,18 +637,29 @@ TEST(ASCII, Empty) {
   EXPECT_EQ(expected, output.str());
 }
 
-TEST(ASCII, NonFinite) {
+TEST(ASCII, NonFiniteFloat) {
   std::vector<float> a = {std::numeric_limits<float>::infinity()};
   std::map<std::string, std::map<std::string, Property>> data;
   data["vertex"]["a"] = a;
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A non-finite floating-point property cannot be written to an "
-            "ASCII output");
+            "A property of type 'float' was out of range for output type "
+            "'ascii' (must be finite)");
 }
 
-TEST(ASCII, NonFiniteList) {
+TEST(ASCII, NonFiniteDouble) {
+  std::vector<double> a = {std::numeric_limits<double>::infinity()};
+  std::map<std::string, std::map<std::string, Property>> data;
+  data["vertex"]["a"] = a;
+
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(WriteToASCII(output, data).message(),
+            "A property of type 'double' was out of range for output type "
+            "'ascii' (must be finite)");
+}
+
+TEST(ASCII, NonFiniteFloatList) {
   std::vector<float> a = {std::numeric_limits<float>::infinity()};
   std::vector<std::span<const float>> al = {{a}};
   std::map<std::string, std::map<std::string, Property>> data;
@@ -656,8 +667,21 @@ TEST(ASCII, NonFiniteList) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A non-finite floating-point property list entry cannot be written "
-            "to an ASCII output");
+            "A property list entry of type 'float' was out of range for output "
+            "type 'ascii' (must be finite)");
+}
+
+TEST(ASCII, NonFiniteDoubleList) {
+  std::vector<double> a = {std::numeric_limits<double>::infinity()};
+  std::vector<std::span<const double>> al = {{a}};
+  std::map<std::string, std::map<std::string, Property>> data;
+  data["vertex"]["a"] = al;
+
+  std::stringstream output(std::ios::out | std::ios::binary);
+  EXPECT_EQ(
+      WriteToASCII(output, data).message(),
+      "A property list entry of type 'double' was out of range for output "
+      "type 'ascii' (must be finite)");
 }
 
 TEST(ASCII, TestData) {
