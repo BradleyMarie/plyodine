@@ -84,43 +84,73 @@ std::string ErrorCategory::message(int condition) const {
     case ErrorCode::MISMATCHED_LINE_ENDINGS:
       return "The input contained mismatched line endings";
     case ErrorCode::INVALID_CHARACTER:
-      return "The input contained an invalid character in its header (each line must contain only printable ASCII characters)";
+      return "The input contained an invalid character in its header (each "
+             "line must contain only printable ASCII characters)";
     case ErrorCode::INVALID_FORMAT_SPECIFIER:
-      return "The input must contain only the format specifier on its second line (must have structure 'format <ascii|binary_big_endian|binary_little_endian> 1.0')";
+      return "The input must contain only the format specifier on its second "
+             "line (must have structure 'format "
+             "<ascii|binary_big_endian|binary_little_endian> 1.0')";
     case ErrorCode::INVALID_FORMAT:
-      return "The input specified an invalid format (must be one of 'ascii', 'binary_big_endian', or 'binary_little_endian')";
+      return "The input specified an invalid format (must be one of 'ascii', "
+             "'binary_big_endian', or 'binary_little_endian')";
     case ErrorCode::UNSUPPORTED_VERSION:
-      return "The input specified an unsupported PLY version (maximum supported version is '1.0')";
+      return "The input specified an unsupported PLY version (maximum "
+             "supported version is '1.0')";
     case ErrorCode::UNBOUND_PROPERTY:
-      return "The input declared a property before its first element declaration";
+      return "The input declared a property before its first element "
+             "declaration";
     case ErrorCode::INVALID_PROPERTY_OR_LIST:
-      return "The input contained an invalid property declaration (its line must have structure 'property [(list <char|uchar|short|ushort|int|uint>)] <char|uchar|short|ushort|int|uint|float|double> <name>')";
+      return "The input contained an invalid property declaration (its line "
+             "must have structure 'property [(list "
+             "<char|uchar|short|ushort|int|uint>)] "
+             "<char|uchar|short|ushort|int|uint|float|double> <name>')";
     case ErrorCode::INVALID_PROPERTY:
-      return "The input contained an invalid property declaration (its line must have structure 'property <char|uchar|short|ushort|int|uint|float|double> <name>')";
+      return "The input contained an invalid property declaration (its line "
+             "must have structure 'property "
+             "<char|uchar|short|ushort|int|uint|float|double> <name>')";
     case ErrorCode::INVALID_PROPERTY_TYPE:
-      return "The input contained a property declaration with an invalid type (must be one of 'char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float', or 'double')";
+      return "The input contained a property declaration with an invalid type "
+             "(must be one of 'char', 'uchar', 'short', 'ushort', 'int', "
+             "'uint', 'float', or 'double')";
     case ErrorCode::INVALID_PROPERTY_LIST:
-      return "The input contained an invalid property list declaration (its line must have structure 'property list <char|uchar|short|ushort|int|uint> <char|uchar|short|ushort|int|uint|float|double> <name>')";
+      return "The input contained an invalid property list declaration (its "
+             "line must have structure 'property list "
+             "<char|uchar|short|ushort|int|uint> "
+             "<char|uchar|short|ushort|int|uint|float|double> <name>')";
     case ErrorCode::INVALID_PROPERTY_LIST_SIZE_TYPE:
-      return "The input contained a property list declaration with an invalid size type (must be one of 'char', 'uchar', 'short', 'ushort', 'int', or 'uint')";
+      return "The input contained a property list declaration with an invalid "
+             "size type (must be one of 'char', 'uchar', 'short', 'ushort', "
+             "'int', or 'uint')";
     case ErrorCode::INVALID_PROPERTY_LIST_FLOAT:
-      return "The input contained a property list declaration that specified 'float' as its size type (must be one of 'char', 'uchar', 'short', 'ushort', 'int', or 'uint')";
+      return "The input contained a property list declaration that specified "
+             "'float' as its size type (must be one of 'char', 'uchar', "
+             "'short', 'ushort', 'int', or 'uint')";
     case ErrorCode::INVALID_PROPERTY_LIST_DOUBLE:
-      return "The input contained a property list declaration that specified 'double' as its size type (must be one of 'char', 'uchar', 'short', 'ushort', 'int', or 'uint')";
+      return "The input contained a property list declaration that specified "
+             "'double' as its size type (must be one of 'char', 'uchar', "
+             "'short', 'ushort', 'int', or 'uint')";
     case ErrorCode::INVALID_PROPERTY_LIST_DATA_TYPE:
-      return "The input contained a property list declaration with an invalid data type (must be one of 'char', 'uchar', 'short', 'ushort', 'int', 'uint', 'float', or 'double')";
+      return "The input contained a property list declaration with an invalid "
+             "data type (must be one of 'char', 'uchar', 'short', 'ushort', "
+             "'int', 'uint', 'float', or 'double')";
     case ErrorCode::INVALID_PROPERTY_DUPLICATE_NAME:
-      return "The input declared two properties of an element with the same name";
+      return "The input declared two properties of an element with the same "
+             "name";
     case ErrorCode::INVALID_ELEMENT:
-      return "The input contained an invalid element declaration (its line must have structure 'element <name> <number of instances>')";
+      return "The input contained an invalid element declaration (its line "
+             "must have structure 'element <name> <number of instances>')";
     case ErrorCode::INVALID_ELEMENT_DUPLICATE_NAME:
       return "The input declared two elements with the same name";
     case ErrorCode::ELEMENT_COUNT_FAILED_TO_PARSE:
-      return "The input contained an element declaration with an instance count that could not be parsed as an integer";
+      return "The input contained an element declaration with an instance "
+             "count that could not be parsed as an integer";
     case ErrorCode::ELEMENT_COUNT_OUT_OF_RANGE:
-      return "The input contained an element declaration with an instance count that was out of range (must be an integer between 0 and " + max_element_count + ")";
+      return "The input contained an element declaration with an instance "
+             "count that was out of range (must be an integer between 0 and " +
+             max_element_count + ")";
     case ErrorCode::INVALID_HEADER_END:
-      return "The input contained an invalid header sentinel (its line may contain only 'end_header')";
+      return "The input contained an invalid header sentinel (its line may "
+             "contain only 'end_header')";
     case ErrorCode::UNRECOGNIZED_KEYWORD:
       return "The input contained an invalid keyword in its header";
     case ErrorCode::EMPTY_LINE:

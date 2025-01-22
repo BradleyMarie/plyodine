@@ -130,7 +130,7 @@ class TriangleMeshReader : public PlyReader {
     INVALID_PROPERTY_X_VALUE = 22,
     INVALID_PROPERTY_Y_VALUE = 23,
     INVALID_PROPERTY_Z_VALUE = 24,
-    INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS = 25,
+    INVALID_PROPERTY_VERTEX_INDEX_VALUE = 25,
     INVALID_PROPERTY_NX_VALUE = 26,
     INVALID_PROPERTY_NY_VALUE = 27,
     INVALID_PROPERTY_NZ_VALUE = 28,
@@ -145,20 +145,19 @@ class TriangleMeshReader : public PlyReader {
     OVERFLOWED_PROPERTY_X_TYPE = 37,
     OVERFLOWED_PROPERTY_Y_TYPE = 38,
     OVERFLOWED_PROPERTY_Z_TYPE = 39,
-    INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE = 40,
-    OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE = 41,
-    OVERFLOWED_PROPERTY_NX_TYPE = 42,
-    OVERFLOWED_PROPERTY_NY_TYPE = 43,
-    OVERFLOWED_PROPERTY_NZ_TYPE = 44,
-    OVERFLOWED_PROPERTY_TEXTURE_S_TYPE = 45,
-    OVERFLOWED_PROPERTY_TEXTURE_T_TYPE = 46,
-    OVERFLOWED_PROPERTY_TEXTURE_U_TYPE = 47,
-    OVERFLOWED_PROPERTY_TEXTURE_V_TYPE = 48,
-    OVERFLOWED_PROPERTY_S_TYPE = 49,
-    OVERFLOWED_PROPERTY_T_TYPE = 50,
-    OVERFLOWED_PROPERTY_U_TYPE = 51,
-    OVERFLOWED_PROPERTY_V_TYPE = 52,
-    MAX_VALUE = 52,
+    OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE = 40,
+    OVERFLOWED_PROPERTY_NX_TYPE = 41,
+    OVERFLOWED_PROPERTY_NY_TYPE = 42,
+    OVERFLOWED_PROPERTY_NZ_TYPE = 43,
+    OVERFLOWED_PROPERTY_TEXTURE_S_TYPE = 44,
+    OVERFLOWED_PROPERTY_TEXTURE_T_TYPE = 45,
+    OVERFLOWED_PROPERTY_TEXTURE_U_TYPE = 46,
+    OVERFLOWED_PROPERTY_TEXTURE_V_TYPE = 47,
+    OVERFLOWED_PROPERTY_S_TYPE = 48,
+    OVERFLOWED_PROPERTY_T_TYPE = 49,
+    OVERFLOWED_PROPERTY_U_TYPE = 50,
+    OVERFLOWED_PROPERTY_V_TYPE = 51,
+    MAX_VALUE = 51,
   };
 
   static class ErrorCategory final : public std::error_category {
@@ -174,152 +173,180 @@ class TriangleMeshReader : public PlyReader {
         case ErrorCode::MISSING_FACE_ELEMENT:
           return "The input did not contain required element 'face'";
         case ErrorCode::MISSING_PROPERTY_X:
-          return "The element 'vertex' did not contain required property 'x'";
+          return "The input did not contain required property 'x' on element "
+                 "'vertex'";
         case ErrorCode::INVALID_PROPERTY_X_TYPE:
-          return "The type of property 'x' on element 'vertex' was not 'float' "
-                 "or 'double'";
+          return "The input specified an invalid type for property 'x' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::MISSING_PROPERTY_Y:
-          return "The element 'vertex' did not contain required property 'y'";
+          return "The input did not contain required property 'y' on element "
+                 "'vertex'";
         case ErrorCode::INVALID_PROPERTY_Y_TYPE:
-          return "The type of property 'y' on element 'vertex' was not 'float' "
-                 "or 'double'";
+          return "The input specified an invalid type for property 'y' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::MISSING_PROPERTY_Z:
-          return "The element 'vertex' did not contain required property 'z'";
+          return "The input did not contain required property 'z' on element "
+                 "'vertex'";
         case ErrorCode::INVALID_PROPERTY_Z_TYPE:
-          return "The type of property 'z' on element 'vertex' was not 'float' "
-                 "or 'double'";
+          return "The input specified an invalid type for property 'z' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::MISSING_PROPERTY_VERTEX_INDICES:
-          return "The element 'face' did not contain required property "
-                 "'vertex_indices'";
+          return "The input did not contain required property 'vertex_indices' "
+                 "on element 'face'";
         case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_TYPE:
-          return "The data type of property list 'vertex_indices' on element "
-                 "'face' was not 'char', 'uchar', 'short', 'ushort', 'int', or "
-                 "'uint'";
+          return "The input specified an invalid type for property "
+                 "'vertex_indices' on element 'face' (must be one of 'char', "
+                 "'uchar', 'short', 'ushort', 'int', or 'uint')";
         case ErrorCode::INVALID_PROPERTY_NX_TYPE:
-          return "The type of property 'nx' on element 'vertex' was not "
-                 "'float' or 'double'";
+          return "The input specified an invalid type for property 'nx' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_NY_TYPE:
-          return "The type of property 'ny' on element 'vertex' was not "
-                 "'float' or 'double'";
+          return "The input specified an invalid type for property 'ny' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_NZ_TYPE:
-          return "The type of property 'nz' on element 'vertex' was not "
-                 "'float' or 'double'";
+          return "The input specified an invalid type for property 'nz' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_S_TYPE:
-          return "The type of property 'texture_s' on element 'vertex' was not "
-                 "'float' or 'double'";
+          return "The input specified an invalid type for property 'texture_s' "
+                 "on element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_T_TYPE:
-          return "The type of property 'texture_t' on element 'vertex' was not "
-                 "'float' or 'double'";
+          return "The input specified an invalid type for property 'texture_t' "
+                 "on element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_U_TYPE:
-          return "The type of property 'texture_u' on element 'vertex' was not "
-                 "'float' or 'double'";
+          return "The input specified an invalid type for property 'texture_u' "
+                 "on element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_V_TYPE:
-          return "The type of property 'texture_v' on element 'vertex' was not "
-                 "'float' or 'double'";
+          return "The input specified an invalid type for property 'texture_v' "
+                 "on element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_S_TYPE:
-          return "The type of property 's' on element 'vertex' was not 'float' "
-                 "or 'double'";
+          return "The input specified an invalid type for property 's' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_T_TYPE:
-          return "The type of property 't' on element 'vertex' was not 'float' "
-                 "or 'double'";
+          return "The input specified an invalid type for property 't' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_U_TYPE:
-          return "The type of property 'u' on element 'vertex' was not 'float' "
-                 "or 'double'";
+          return "The input specified an invalid type for property 'u' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_V_TYPE:
-          return "The type of property 'v' on element 'vertex' was not 'float' "
-                 "or 'double'";
+          return "The input specified an invalid type for property 'v' on "
+                 "element 'vertex' (must be 'float' or 'double')";
         case ErrorCode::INVALID_PROPERTY_X_VALUE:
-          return "A value of property 'x' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 'x' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_Y_VALUE:
-          return "A value of property 'y' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 'y' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_Z_VALUE:
-          return "A value of property 'z' on element 'vertex' was not finite";
-        case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS:
-          return "A value of property list 'vertex_indices' on element 'face' "
-                 "exceeded the number of 'vertex' elements";
+          return "The input contained an invalid value for property 'z' on "
+                 "element 'vertex' (must be finite)";
+        case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE:
+          return "The input contained an invalid entry of property list "
+                 "'vertex_indices' on element 'face' (must be an index between "
+                 "0 and the number of instances of element 'vertex')";
         case ErrorCode::INVALID_PROPERTY_NX_VALUE:
-          return "A value of property 'nx' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 'nx' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_NY_VALUE:
-          return "A value of property 'ny' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 'ny' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_NZ_VALUE:
-          return "A value of property 'nz' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 'nz' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_S_VALUE:
-          return "A value of property 'texture_s' on element 'vertex' was not "
-                 "finite";
+          return "The input contained an invalid value for property "
+                 "'texture_s' on element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_T_VALUE:
-          return "A value of property 'texture_t' on element 'vertex' was not "
-                 "finite";
+          return "The input contained an invalid value for property "
+                 "'texture_t' on element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_U_VALUE:
-          return "A value of property 'texture_u' on element 'vertex' was not "
-                 "finite";
+          return "The input contained an invalid value for property "
+                 "'texture_u' on element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_TEXTURE_V_VALUE:
-          return "A value of property 'texture_v' on element 'vertex' was not "
-                 "finite";
+          return "The input contained an invalid value for property "
+                 "'texture_v' on element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_S_VALUE:
-          return "A value of property 's' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 's' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_T_VALUE:
-          return "A value of property 't' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 't' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_U_VALUE:
-          return "A value of property 'u' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 'u' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::INVALID_PROPERTY_V_VALUE:
-          return "A value of property 'v' on element 'vertex' was not finite";
+          return "The input contained an invalid value for property 'v' on "
+                 "element 'vertex' (must be finite)";
         case ErrorCode::OVERFLOWED_PROPERTY_X_TYPE:
-          return "A value of property 'x' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 'x' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_Y_TYPE:
-          return "A value of property 'y' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 'y' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_Z_TYPE:
-          return "A value of property 'z' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
-        case ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE:
-          return "A value of property list 'vertex_indices' on element 'face' "
-                 "was negative";
+          return "The input contained a value of property 'z' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE:
           if constexpr (std::is_same_v<VertexIndexType, uint8_t>) {
-            return "A value of property list 'vertex_indices' on element "
-                   "'face' could not into destination type 'uchar'";
+            return "The input contained an entry of property list "
+                   "'vertex_indices' on element 'face' that could not fit into "
+                   "destination type 'uchar'";
           } else if constexpr (std::is_same_v<VertexIndexType, uint16_t>) {
-            return "A value of property list 'vertex_indices' on element "
-                   "'face' could not into destination type 'ushort'";
+            return "The input contained an entry of property list "
+                   "'vertex_indices' on element 'face' that could not fit into "
+                   "destination type 'ushort'";
           } else {
             static_assert(std::is_same_v<VertexIndexType, uint32_t>);
-            return "A value of property list 'vertex_indices' on element "
-                   "'face' could not into destination type 'uint'";
+            return "The input contained an entry of property list "
+                   "'vertex_indices' on element 'face' that could not fit into "
+                   "destination type 'uint'";
           }
         case ErrorCode::OVERFLOWED_PROPERTY_NX_TYPE:
-          return "A value of property 'nx' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 'nx' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_NY_TYPE:
-          return "A value of property 'ny' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 'ny' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_NZ_TYPE:
-          return "A value of property 'nz' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 'nz' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_S_TYPE:
-          return "A value of property 'texture_s' on element 'vertex' could "
-                 "not fit finitely into destination type 'float'";
+          return "The input contained a value of property 'texture_s' on "
+                 "element 'vertex' that could not fit finitely into "
+                 "destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_T_TYPE:
-          return "A value of property 'texture_t' on element 'vertex' could "
-                 "not fit finitely into destination type 'float'";
+          return "The input contained a value of property 'texture_t' on "
+                 "element 'vertex' that could not fit finitely into "
+                 "destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_U_TYPE:
-          return "A value of property 'texture_u' on element 'vertex' could "
-                 "not fit finitely into destination type 'float'";
+          return "The input contained a value of property 'texture_u' on "
+                 "element 'vertex' that could not fit finitely into "
+                 "destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_TEXTURE_V_TYPE:
-          return "A value of property 'texture_v' on element 'vertex' could "
-                 "not fit finitely into destination type 'float'";
+          return "The input contained a value of property 'texture_v' on "
+                 "element 'vertex' that could not fit finitely into "
+                 "destination type 'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_S_TYPE:
-          return "A value of property 's' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 's' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_T_TYPE:
-          return "A value of property 't' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 't' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_U_TYPE:
-          return "A value of property 'u' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 'u' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
         case ErrorCode::OVERFLOWED_PROPERTY_V_TYPE:
-          return "A value of property 'v' on element 'vertex' could not fit "
-                 "finitely into destination type 'float'";
+          return "The input contained a value of property 'v' on element "
+                 "'vertex' that could not fit finitely into destination type "
+                 "'float'";
       }
 
       return "Unknown Error";
@@ -410,37 +437,37 @@ class TriangleMeshReader : public PlyReader {
       return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_TYPE);
     }
 
-    iter->second = std::function<std::error_code(
-        std::span<const VertexIndexType>)>(
-        [num_vertices, this](std::span<const VertexIndexType> indices) {
-          if (indices.size() < 3) {
-            return std::error_code();
-          }
+    iter->second =
+        std::function<std::error_code(std::span<const VertexIndexType>)>(
+            [num_vertices, this](std::span<const VertexIndexType> indices) {
+              if (indices.size() < 3) {
+                return std::error_code();
+              }
 
-          if (num_vertices < indices[0] || num_vertices < indices[1]) {
-            return MakeError(
-                ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS);
-          }
+              if (num_vertices <= indices[0] || num_vertices <= indices[1]) {
+                return MakeError(
+                    ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE);
+              }
 
-          std::array<VertexIndexType, 3> faces;
-          faces[0] = static_cast<VertexIndexType>(indices[0]);
-          for (size_t i = 2u; i < indices.size(); i++) {
-            if (num_vertices < indices[i]) {
-              return MakeError(
-                  ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_OUT_OF_BOUNDS);
-            }
+              std::array<VertexIndexType, 3> faces;
+              faces[0] = static_cast<VertexIndexType>(indices[0]);
+              for (size_t i = 2u; i < indices.size(); i++) {
+                if (num_vertices <= indices[i]) {
+                  return MakeError(
+                      ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE);
+                }
 
-            faces[1] = static_cast<VertexIndexType>(indices[i - 1u]);
-            faces[2] = static_cast<VertexIndexType>(indices[i]);
+                faces[1] = static_cast<VertexIndexType>(indices[i - 1u]);
+                faces[2] = static_cast<VertexIndexType>(indices[i]);
 
-            if (faces[0] != faces[1] && faces[1] != faces[2] &&
-                faces[2] != faces[0]) {
-              AddTriangle(faces);
-            }
-          }
+                if (faces[0] != faces[1] && faces[1] != faces[2] &&
+                    faces[2] != faces[0]) {
+                  AddTriangle(faces);
+                }
+              }
 
-          return std::error_code();
-        });
+              return std::error_code();
+            });
 
     return std::error_code();
   }
@@ -716,7 +743,7 @@ class TriangleMeshReader : public PlyReader {
       if (reason == ConversionFailureReason::INTEGER_OVERFLOW) {
         return MakeError(ErrorCode::OVERFLOWED_PROPERTY_VERTEX_INDEX_TYPE);
       }
-      return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE_NEGATIVE);
+      return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE);
     } else if (property == "nx") {
       return MakeError(ErrorCode::OVERFLOWED_PROPERTY_NX_TYPE);
     } else if (property == "ny") {
