@@ -26,21 +26,18 @@ models.
 
 ## Getting Started
 
-PLYodine uses Bazel as its build system. If you are using Bazel as well, you can
-import PLYodine into your workspace by adding a snippet like the following into
-your `MODULE.bazel` file.
+PLYodine uses Bazel as its build system and is published into the
+[Bazel Central Registry](https://registry.bazel.build/modules/plyodine). If you
+are using Bazel as well, you can import PLYodine into your workspace by adding a
+snippet like the following into your `MODULE.bazel` file.
 
 ```
-bazel_dep(name = "plyodine")
-git_override(
-    module_name = "plyodine",
-    remote = "https://github.com/bradleymarie/plyodine.git",
-    commit = "7ecc40c10cac0b3531c08ea5217abf05691d65fd",
-)
+bazel_dep(name = "plyodine", version = "1.0.0")
 ```
 
-Note: You should update `commit` to reference the to the latest commit on the
-main branch.
+Note: You should update `version` to reference the to the 
+[latest version](https://registry.bazel.build/modules/plyodine) that has been
+published.
 
 PLYodine code is structured with the core modules residing in the `plyodine`
 directory. `ply_reader` contains the parent `PlyReader` class, `ply_writer`
