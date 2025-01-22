@@ -1,7 +1,6 @@
 #ifndef _PLYODINE_WRITERS_IN_MEMORY_WRITER_
 #define _PLYODINE_WRITERS_IN_MEMORY_WRITER_
 
-#include <any>
 #include <cstdint>
 #include <generator>
 #include <map>
@@ -485,26 +484,25 @@ class InMemoryWriter final : public PlyWriter {
                               const std::string& property_name,
                               std::span<const T> values) {
     properties_[element_name][property_name] = values;
-    property_storage_[element_name][property_name].reset();
+    property_storage_[element_name][property_name] = PropertyStorage();
   }
 
   template <typename T>
   void AddPropertyImpl(const std::string& element_name,
                        const std::string& property_name,
                        std::span<const T> values) {
-    property_storage_[element_name][property_name] =
-        std::vector<T>(values.begin(), values.end());
-    properties_[element_name][property_name] = std::any_cast<std::vector<T>&>(
-        property_storage_[element_name][property_name]);
+    properties_[element_name][property_name] =
+        property_storage_[element_name][property_name].emplace<std::vector<T>>(
+            values.begin(), values.end());
   }
 
   template <typename T>
   void AddPropertyImpl(const std::string& element_name,
                        const std::string& property_name,
                        std::vector<T>&& values) {
-    property_storage_[element_name][property_name] = std::move(values);
-    properties_[element_name][property_name] = std::any_cast<std::vector<T>&>(
-        property_storage_[element_name][property_name]);
+    properties_[element_name][property_name] =
+        property_storage_[element_name][property_name].emplace<std::vector<T>>(
+            std::move(values));
   }
 
   template <typename T>
@@ -512,7 +510,7 @@ class InMemoryWriter final : public PlyWriter {
                                   const std::string& property_name,
                                   std::span<const std::span<const T>> values) {
     properties_[element_name][property_name] = values;
-    property_storage_[element_name][property_name].reset();
+    property_storage_[element_name][property_name] = PropertyStorage();
   }
 
   template <typename T>
@@ -520,37 +518,35 @@ class InMemoryWriter final : public PlyWriter {
                                   const std::string& property_name,
                                   std::span<const std::vector<T>> values) {
     properties_[element_name][property_name] = values;
-    property_storage_[element_name][property_name].reset();
+    property_storage_[element_name][property_name] = PropertyStorage();
   }
 
   template <typename T>
   void AddPropertyListImpl(const std::string& element_name,
                            const std::string& property_name,
                            std::span<const std::span<const T>> values) {
-    std::vector<std::vector<T>> copy;
+    std::vector<std::vector<T>>& copy =
+        property_storage_[element_name][property_name]
+            .emplace<std::vector<std::vector<T>>>();
     for (const auto& value : values) {
       copy.emplace_back(value.begin(), value.end());
     }
 
-    property_storage_[element_name][property_name] = std::move(copy);
-    properties_[element_name][property_name] =
-        std::any_cast<std::vector<std::vector<T>>&>(
-            property_storage_[element_name][property_name]);
+    properties_[element_name][property_name] = copy;
   }
 
   template <typename T>
   void AddPropertyListImpl(const std::string& element_name,
                            const std::string& property_name,
                            std::span<const std::vector<T>> values) {
-    std::vector<std::vector<T>> copy;
+    std::vector<std::vector<T>>& copy =
+        property_storage_[element_name][property_name]
+            .emplace<std::vector<std::vector<T>>>();
     for (const auto& value : values) {
       copy.emplace_back(value.begin(), value.end());
     }
 
-    property_storage_[element_name][property_name] = std::move(copy);
-    properties_[element_name][property_name] =
-        std::any_cast<std::vector<std::vector<T>>&>(
-            property_storage_[element_name][property_name]);
+    properties_[element_name][property_name] = copy;
   }
 
   template <typename T>
@@ -558,7 +554,7 @@ class InMemoryWriter final : public PlyWriter {
                            const std::string& property_name,
                            std::vector<std::vector<T>>&& values) {
     properties_[element_name][property_name] = std::move(values);
-    property_storage_[element_name][property_name].reset();
+    property_storage_[element_name][property_name] = PropertyStorage();
   }
 
   typedef std::variant<
@@ -580,10 +576,22 @@ class InMemoryWriter final : public PlyWriter {
       std::span<const std::vector<double>>>
       Property;
 
+  typedef std::variant<std::monostate, std::vector<int8_t>,
+                       std::vector<std::vector<int8_t>>, std::vector<uint8_t>,
+                       std::vector<std::vector<uint8_t>>, std::vector<int16_t>,
+                       std::vector<std::vector<int16_t>>, std::vector<uint16_t>,
+                       std::vector<std::vector<uint16_t>>, std::vector<int32_t>,
+                       std::vector<std::vector<int32_t>>, std::vector<uint32_t>,
+                       std::vector<std::vector<uint32_t>>, std::vector<float>,
+                       std::vector<std::vector<float>>, std::vector<double>,
+                       std::vector<std::vector<double>>>
+      PropertyStorage;
+
   std::vector<std::string> comments_;
   std::vector<std::string> object_info_;
   std::map<std::string, std::map<std::string, Property>> properties_;
-  std::map<std::string, std::map<std::string, std::any>> property_storage_;
+  std::map<std::string, std::map<std::string, PropertyStorage>>
+      property_storage_;
 };
 
 }  // namespace plyodine
