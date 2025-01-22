@@ -154,10 +154,10 @@ std::string ErrorCategory::message(int condition) const {
       return "A property with type 'double' had a value that was out of range "
              "for output format 'ascii' (must be finite)";
     case ErrorCode::ASCII_FLOAT_LIST_OUT_OF_RANGE:
-      return "A property list entry with type 'float' had a value that was out "
+      return "A property list with data type 'float' had an entry that was out "
              "of range for output type 'ascii' (must be finite)";
     case ErrorCode::ASCII_DOUBLE_LIST_OUT_OF_RANGE:
-      return "A property list entry with type 'double' had a value that was "
+      return "A property list with data type 'double' had an entry that was "
              "out of range for output type 'ascii' (must be finite)";
     case ErrorCode::MISSING_PROPERTIES:
       return "An element had no properties";

@@ -667,7 +667,7 @@ TEST(ASCII, NonFiniteFloatList) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A property list entry with type 'float' had a value that was out "
+            "A property list with data type 'float' had an entry that was out "
             "of range for output type 'ascii' (must be finite)");
 }
 
@@ -679,7 +679,7 @@ TEST(ASCII, NonFiniteDoubleList) {
 
   std::stringstream output(std::ios::out | std::ios::binary);
   EXPECT_EQ(WriteToASCII(output, data).message(),
-            "A property list entry with type 'double' had a value that was out "
+            "A property list with data type 'double' had an entry that was out "
             "of range for output type 'ascii' (must be finite)");
 }
 

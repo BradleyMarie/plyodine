@@ -267,30 +267,37 @@ std::string InvalidConversionMessage(uint8_t payload) {
 
 std::string MissingUnexpectedEofMessage(std::string_view prefix,
                                         uint8_t payload) {
+  static constexpr std::string_view value_type[3] = {
+      "the length of a ",
+      "an entry of a ",
+      "the value of a ",
+  };
+
   static constexpr std::string_view type_names[3][8] = {
-      {"property list size of type 'char'",
-       "property list size of type 'uchar'",
-       "property list size of type 'short'",
-       "property list size of type 'ushort'",
-       "property list size of type 'int'", "property list size of type 'uint'",
-       "INVALID", "INVALID"},
-      {"property list entry of type 'char'",
-       "property list entry of type 'uchar'",
-       "property list entry of type 'short'",
-       "property list entry of type 'ushort'",
-       "property list entry of type 'int'",
-       "property list entry of type 'uint'",
-       "property list entry of type 'float'",
-       "property list entry of type 'double'"},
-      {"property of type 'char'", "property of type 'uchar'",
-       "property of type 'short'", "property of type 'ushort'",
-       "property of type 'int'", "property of type 'uint'",
-       "property of type 'float'", "property of type 'double'"}};
+      {"property list with size type 'char'",
+       "property list with size type 'uchar'",
+       "property list with size type 'short'",
+       "property list with size type 'ushort'",
+       "property list with size type 'int'",
+       "property list with size type 'uint'", "INVALID", "INVALID"},
+      {"property list with data type 'char'",
+       "property list with data type 'uchar'",
+       "property list with data type 'short'",
+       "property list with data type 'ushort'",
+       "property list with data type 'int'",
+       "property list with data type 'uint'",
+       "property list with data type 'float'",
+       "property list with data type 'double'"},
+      {"property with type 'char'", "property with type 'uchar'",
+       "property with type 'short'", "property with type 'ushort'",
+       "property with type 'int'", "property with type 'uint'",
+       "property with type 'float'", "property with type 'double'"}};
 
   uint8_t entry_type = payload >> 3u;
   uint8_t data_type = payload & 0x7u;
 
   std::string result(prefix);
+  result += value_type[entry_type];
   result += type_names[entry_type][data_type];
   result += ")";
 
@@ -299,13 +306,19 @@ std::string MissingUnexpectedEofMessage(std::string_view prefix,
 
 std::string FailedToParseMessage(uint8_t payload) {
   static constexpr std::string_view prefix[3] = {
-      "A property list size with type '",
-      "A property list entry with type '",
-      "A property with type '",
+      "The input contained a property list with size type '",
+      "The input contained a property list with data type '",
+      "The input contained a property with type '",
   };
 
   static constexpr std::string_view type[8] = {
       "char", "uchar", "short", "ushort", "int", "uint", "float", "double",
+  };
+
+  static constexpr std::string_view value_type[3] = {
+      "a length",
+      "an entry",
+      "a value",
   };
 
   uint8_t entry_type = payload >> 3u;
@@ -313,20 +326,28 @@ std::string FailedToParseMessage(uint8_t payload) {
 
   std::string result(prefix[entry_type]);
   result += type[data_type];
-  result += "' could not be parsed";
+  result += "' that had ";
+  result += value_type[entry_type];
+  result += " could not be parsed";
 
   return result;
 }
 
 std::string OutOfRangeMessage(uint8_t payload) {
   static constexpr std::string_view prefix[3] = {
-      "A property list size with type '",
-      "A property list entry with type '",
-      "A property with type '",
+      "The input contained a property list with size type '",
+      "The input contained a property list with data type '",
+      "The input contained a property with type '",
   };
 
   static constexpr std::string_view type[8] = {
       "char", "uchar", "short", "ushort", "int", "uint", "float", "double",
+  };
+
+  static constexpr std::string_view value_type[3] = {
+      "a length",
+      "an entry",
+      "a value",
   };
 
   static const std::string data_type_min[3][8]{
@@ -353,7 +374,9 @@ std::string OutOfRangeMessage(uint8_t payload) {
 
   std::string result(prefix[entry_type]);
   result += type[data_type];
-  result += "' was out of range (must be between ";
+  result += "' that had ";
+  result += value_type[entry_type];
+  result += " that was out of range (must be between ";
   result += data_type_min[entry_type][data_type];
   result += " and ";
   result += data_type_max[data_type];
@@ -365,8 +388,8 @@ std::string OutOfRangeMessage(uint8_t payload) {
 std::string OverflowedUnderflowedMessage(std::string_view type,
                                          uint8_t payload) {
   static constexpr std::string_view prefix[2] = {
-      "A conversion of a property from type '",
-      "A conversion of a property list entry from type '"};
+      "The input contained a property with type '",
+      "The input contained a property list with data type '"};
 
   static constexpr std::string_view types[8] = {
       "char", "uchar", "short", "ushort", "int", "uint", "float", "double",
@@ -398,11 +421,11 @@ std::string OverflowedUnderflowedMessage(std::string_view type,
 
   std::string result(prefix[is_list_type]);
   result += types[source];
-  result += "' to type '";
-  result += types[dest];
-  result += "' ";
+  result += "' that ";
   result += type;
-  result += " (must be between ";
+  result += " when converted to type '";
+  result += types[dest];
+  result += "' (value must be between ";
   result += type_min[dest];
   result += " and ";
   result += type_max[dest];
@@ -430,11 +453,11 @@ std::string ErrorCategory::message(int condition) const {
         return InvalidConversionMessage(std::get<1>(*decoded));
       case ErrorType::UNEXPECTED_EOF:
         return MissingUnexpectedEofMessage(
-            "The stream ended earlier than expected (reached EOF but expected "
-            "to find a ",
+            "The input ended earlier than expected (reached EOF but expected "
+            "to find ",
             std::get<1>(*decoded));
       case ErrorType::UNEXPECTED_EOF_NO_PROPERTIES:
-        return "The stream ended earlier than expected (reached EOF but "
+        return "The input ended earlier than expected (reached EOF but "
                "expected to find an element with no properties')";
       case ErrorType::MISMATCHED_LINE_ENDINGS:
         return "The input contained mismatched line endings";
@@ -444,8 +467,8 @@ std::string ErrorCategory::message(int condition) const {
                "printable ASCII characters)";
       case ErrorType::MISSING_TOKEN:
         return MissingUnexpectedEofMessage(
-            "A line in the data section of the input contained fewer tokens "
-            "than expected (reached end of line but expected to find a ",
+            "The input contained a line in its data section with fewer tokens "
+            "than expected (reached end of line but expected to find ",
             std::get<1>(*decoded));
       case ErrorType::UNUSED_TOKEN:
         return "The input contained a token in its data section that was not "
