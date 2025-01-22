@@ -1,11 +1,8 @@
 #include "plyodine/writers/in_memory_writer.h"
 
-#include <any>
 #include <cstdint>
 #include <limits>
 #include <map>
-#include <optional>
-#include <ostream>
 #include <span>
 #include <string>
 #include <system_error>
