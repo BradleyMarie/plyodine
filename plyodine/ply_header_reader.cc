@@ -382,22 +382,22 @@ std::expected<std::pair<std::string, uintmax_t>, std::error_code> ParseElement(
     return std::unexpected(ErrorCode::INVALID_ELEMENT_DUPLICATE_NAME);
   }
 
-  std::optional<std::string_view> num_in_file = ReadNextToken(line);
-  if (!num_in_file) {
+  std::optional<std::string_view> instance_count = ReadNextToken(line);
+  if (!instance_count) {
     return std::unexpected(ErrorCode::INVALID_ELEMENT);
   }
 
-  const char* start = num_in_file->data();
-  const char* end = num_in_file->data() + num_in_file->size();
+  const char* start = instance_count->data();
+  const char* end = instance_count->data() + instance_count->size();
 
   bool out_of_range = start[0] == '-';
   if (out_of_range) {
     start += 1;
   }
 
-  uintmax_t parsed_num_in_file;
+  uintmax_t parsed_instance_count;
   std::from_chars_result result =
-      std::from_chars(start, end, parsed_num_in_file);
+      std::from_chars(start, end, parsed_instance_count);
   if (result.ec == std::errc::invalid_argument || result.ptr != end) {
     return std::unexpected(ErrorCode::ELEMENT_COUNT_FAILED_TO_PARSE);
   } else if (result.ec == std::errc::result_out_of_range || out_of_range) {
@@ -408,7 +408,7 @@ std::expected<std::pair<std::string, uintmax_t>, std::error_code> ParseElement(
     return std::unexpected(ErrorCode::INVALID_ELEMENT);
   }
 
-  return std::make_pair(std::move(str_name), parsed_num_in_file);
+  return std::make_pair(std::move(str_name), parsed_instance_count);
 }
 
 std::expected<PlyHeader::Property::Type, std::error_code> ParseType(

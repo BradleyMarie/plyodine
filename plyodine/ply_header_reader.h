@@ -45,7 +45,7 @@ struct PlyHeader final {
     std::string name;
 
     // The number of instances of the element.
-    uintmax_t num_in_file;
+    uintmax_t instance_count;
 
     // An ordered list of the properties of the element.
     std::vector<Property> properties;

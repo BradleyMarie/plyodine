@@ -1103,7 +1103,7 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
   std::map<std::string, std::map<std::string, PropertyCallback>>
       actual_callbacks;
   for (const auto& element : header->elements) {
-    num_element_instances[element.name] = element.num_in_file;
+    num_element_instances[element.name] = element.instance_count;
 
     std::map<std::string, PropertyCallback>& property_callbacks =
         actual_callbacks[element.name];
@@ -1195,7 +1195,7 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
   for (size_t element_index = 0; element_index < header->elements.size();
        element_index++) {
     const PlyHeader::Element& element = header->elements[element_index];
-    for (size_t instance = 0; instance < element.num_in_file; instance++) {
+    for (size_t instance = 0; instance < element.instance_count; instance++) {
       if (header->format == PlyHeader::Format::ASCII) {
         std::error_code eof_error = MakeUnexpectedEofNoProperties();
         if (!element.properties.empty()) {
