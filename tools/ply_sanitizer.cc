@@ -125,6 +125,9 @@ std::error_code Sanitizer::Sanitize(std::optional<Format> format,
     return header.error();
   }
 
+  comments_ = std::move(header->comments);
+  object_info_ = std::move(header->object_info);
+
   if (!format.has_value()) {
     switch (header->format) {
       case PlyHeader::Format::ASCII:
@@ -141,6 +144,7 @@ std::error_code Sanitizer::Sanitize(std::optional<Format> format,
 
   for (size_t i = 0; i < header->elements.size(); i++) {
     const auto& element = header->elements[i];
+    num_element_instances_[element.name] = element.instance_count;
     element_rank[element.name] = i;
 
     for (size_t j = 0; j < element.properties.size(); j++) {
@@ -226,10 +230,6 @@ std::error_code Sanitizer::Start(
     std::map<std::string, uintmax_t> num_element_instances,
     std::map<std::string, std::map<std::string, PropertyCallback>>& callbacks,
     std::vector<std::string> comments, std::vector<std::string> object_info) {
-  num_element_instances_ = std::move(num_element_instances);
-  comments_ = std::move(comments);
-  object_info_ = std::move(object_info);
-
   for (auto& [element_name, element] : callbacks) {
     for (auto& [property_name, property_callback] : element) {
       elements_[element_name][property_name] = std::visit(
