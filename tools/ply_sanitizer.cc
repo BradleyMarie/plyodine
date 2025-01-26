@@ -1,9 +1,12 @@
+#include <condition_variable>
 #include <cstdint>
 #include <expected>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <span>
 #include <string>
@@ -28,52 +31,143 @@ class Sanitizer final : private PlyReader, private PlyWriter {
  private:
   struct PropertyInterface {
     virtual ~PropertyInterface() = default;
-    virtual PropertyGenerator GetGenerator() const = 0;
+    virtual PropertyGenerator GetGenerator() = 0;
+    virtual void Cancel() = 0;
   };
 
   template <typename T>
   class Property final : public PropertyInterface {
    public:
-    void Add(const T& value) { values_.push_back(value); }
+    Property(uintmax_t num_instances) : num_instances_(num_instances) {}
 
-    PropertyGenerator GetGenerator() const { return MakeGenerator(); }
+    PropertyGenerator GetGenerator() override { return MakeGenerator(); }
+
+    void Cancel() override {
+      std::unique_lock lock(mutex_);
+      cancelled_ = true;
+      condition_.notify_all();
+    }
+
+    std::error_code Add(const T& value) {
+      std::unique_lock lock(mutex_);
+      condition_.wait(lock, [this]() { return !holds_value_ || cancelled_; });
+      if (cancelled_) {
+        return std::make_error_code(std::errc::operation_canceled);
+      }
+
+      value_ = value;
+      holds_value_ = true;
+      condition_.notify_all();
+
+      return std::error_code();
+    }
 
    private:
-    std::generator<T> MakeGenerator() const {
-      for (auto value : values_) {
-        co_yield value;
+    std::generator<T> MakeGenerator() {
+      T result;
+      for (uintmax_t i = 0; i < num_instances_; i++) {
+        if (!Next(result)) {
+          break;
+        }
+
+        co_yield result;
       }
     }
 
-    std::vector<T> values_;
+    bool Next(T& result) {
+      std::unique_lock lock(mutex_);
+      condition_.wait(lock, [this]() { return holds_value_ || cancelled_; });
+      if (cancelled_) {
+        return false;
+      }
+
+      result = value_;
+      holds_value_ = false;
+      condition_.notify_all();
+
+      return true;
+    }
+
+    uintmax_t num_instances_;
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    T value_;
+    bool holds_value_ = false;
+    bool cancelled_ = false;
   };
 
   template <typename T>
   struct PropertyList final : public PropertyInterface {
    public:
-    void Add(std::span<const T> value) {
-      values_.emplace_back(value.begin(), value.end());
+    PropertyList(uintmax_t num_instances) : num_instances_(num_instances) {}
+
+    PropertyGenerator GetGenerator() override { return MakeGenerator(); }
+
+    void Cancel() override {
+      std::unique_lock lock(mutex_);
+      cancelled_ = true;
+      condition_.notify_all();
     }
 
-    PropertyGenerator GetGenerator() const { return MakeGenerator(); }
+    std::error_code Add(std::span<const T> value) {
+      std::unique_lock lock(mutex_);
+      condition_.wait(lock, [this]() { return !holds_values_ || cancelled_; });
+      if (cancelled_) {
+        return std::make_error_code(std::errc::operation_canceled);
+      }
+
+      values_.insert(values_.begin(), value.begin(), value.end());
+      holds_values_ = true;
+      condition_.notify_all();
+
+      return std::error_code();
+    }
 
    private:
-    std::generator<std::span<const T>> MakeGenerator() const {
-      for (auto value : values_) {
-        co_yield value;
+    std::generator<std::span<const T>> MakeGenerator() {
+      std::vector<T> results;
+      for (uintmax_t i = 0; i < num_instances_; i++) {
+        if (!Next(results)) {
+          break;
+        }
+
+        co_yield results;
       }
     }
 
-    std::vector<std::vector<T>> values_;
+    bool Next(std::vector<T>& results) {
+      std::unique_lock lock(mutex_);
+      condition_.wait(lock, [this]() { return holds_values_ || cancelled_; });
+      if (cancelled_) {
+        return false;
+      }
+
+      std::swap(results, values_);
+      values_.clear();
+      holds_values_ = false;
+      condition_.notify_all();
+
+      return true;
+    }
+
+    uintmax_t num_instances_;
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    std::vector<T> values_;
+    bool holds_values_ = false;
+    bool cancelled_ = false;
   };
 
   template <typename T>
   static std::unique_ptr<PropertyInterface> UpdateCallback(
-      std::function<std::error_code(T)>& callback);
+      std::function<std::error_code(T)>& callback, uintmax_t num_instances);
 
   template <typename T>
   static std::unique_ptr<PropertyInterface> UpdateCallback(
-      std::function<std::error_code(std::span<const T>)>& callback);
+      std::function<std::error_code(std::span<const T>)>& callback,
+      uintmax_t num_instances);
+
+  void Cancel();
 
   // PlyReader
   std::error_code Start(
@@ -108,6 +202,11 @@ class Sanitizer final : private PlyReader, private PlyWriter {
   std::map<std::string, std::map<std::string, ListSizeType>> list_size_types_;
   std::vector<std::string> comments_;
   std::vector<std::string> object_info_;
+  Format format_;
+
+  // Writer State
+  mutable std::future<std::error_code> write_result_;
+  std::ostream* output_;
 };
 
 std::error_code Sanitizer::Sanitize(std::optional<Format> format,
@@ -131,13 +230,13 @@ std::error_code Sanitizer::Sanitize(std::optional<Format> format,
   if (!format.has_value()) {
     switch (header->format) {
       case PlyHeader::Format::ASCII:
-        format = Format::ASCII;
+        format_ = Format::ASCII;
         break;
       case PlyHeader::Format::BINARY_BIG_ENDIAN:
-        format = Format::BIG;
+        format_ = Format::BIG;
         break;
       case PlyHeader::Format::BINARY_LITTLE_ENDIAN:
-        format = Format::LITTLE;
+        format_ = Format::LITTLE;
         break;
     }
   }
@@ -177,52 +276,47 @@ std::error_code Sanitizer::Sanitize(std::optional<Format> format,
   }
 
   input.seekg(0);
+  output_ = &output;
 
-  if (std::error_code error = ReadFrom(input); error) {
+  if (std::error_code error = ReadFrom(input);
+      error && error != std::errc::operation_canceled) {
+    Cancel();
     return error;
   }
 
-  std::error_code result;
-  switch (*format) {
-    case Format::ASCII:
-      result = WriteToASCII(output);
-      break;
-    case Format::BIG:
-      result = WriteToBigEndian(output);
-      break;
-    case Format::LITTLE:
-      result = WriteToLittleEndian(output);
-      break;
-    case Format::NATIVE:
-      result = WriteTo(output);
-      break;
-  }
-
-  return result;
+  return write_result_.get();
 }
 
 template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
-    std::function<std::error_code(T)>& callback) {
-  std::unique_ptr<Property<T>> property = std::make_unique<Property<T>>();
+    std::function<std::error_code(T)>& callback, uintmax_t num_instances) {
+  std::unique_ptr<Property<T>> property =
+      std::make_unique<Property<T>>(num_instances);
   callback = [ptr = property.get()](T value) -> std::error_code {
-    ptr->Add(value);
-    return std::error_code();
+    return ptr->Add(value);
   };
   return property;
 }
 
 template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
-    std::function<std::error_code(std::span<const T>)>& callback) {
+    std::function<std::error_code(std::span<const T>)>& callback,
+    uintmax_t num_instances) {
   std::unique_ptr<PropertyList<T>> property_list =
-      std::make_unique<PropertyList<T>>();
+      std::make_unique<PropertyList<T>>(num_instances);
   callback = [ptr = property_list.get()](
                  std::span<const T> values) -> std::error_code {
-    ptr->Add(values);
-    return std::error_code();
+    return ptr->Add(values);
   };
   return property_list;
+}
+
+void Sanitizer::Cancel() {
+  for (auto& element : elements_) {
+    for (auto& [property_name, property] : element.second) {
+      property->Cancel();
+    }
+  }
 }
 
 // PlyReader
@@ -233,12 +327,37 @@ std::error_code Sanitizer::Start(
   for (auto& [element_name, element] : callbacks) {
     for (auto& [property_name, property_callback] : element) {
       elements_[element_name][property_name] = std::visit(
-          [](auto& callback) -> std::unique_ptr<PropertyInterface> {
-            return UpdateCallback(callback);
+          [&](auto& callback) -> std::unique_ptr<PropertyInterface> {
+            return UpdateCallback(callback,
+                                  num_element_instances[element_name]);
           },
           property_callback);
     }
   }
+
+  write_result_ = std::async(std::launch::async, [this]() {
+    std::error_code error;
+    switch (format_) {
+      case Format::ASCII:
+        error = WriteToASCII(*output_);
+        break;
+      case Format::BIG:
+        error = WriteToBigEndian(*output_);
+        break;
+      case Format::LITTLE:
+        error = WriteToLittleEndian(*output_);
+        break;
+      case Format::NATIVE:
+        error = WriteTo(*output_);
+        break;
+    }
+
+    if (error) {
+      Cancel();
+    }
+
+    return error;
+  });
 
   return std::error_code();
 }
