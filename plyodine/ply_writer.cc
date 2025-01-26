@@ -205,6 +205,7 @@ using GetPropertyListSizeFunc =
     std::function<int(const std::string&, const std::string&)>;
 using WriteFunc =
     std::move_only_function<std::error_code(std::ostream&, std::stringstream&)>;
+using WriteFuncMaker = std::move_only_function<WriteFunc()>;
 
 std::error_code ValidateName(const std::string& name, ErrorCode empty_error,
                              ErrorCode invalid_chars_error) {
@@ -444,9 +445,19 @@ WriteFunc MakeWriteFunc(Variant& generator, int list_type) {
       generator);
 }
 
+template <Format F, typename Variant>
+WriteFuncMaker MakeWriteFuncMaker(Variant& generator, int list_type) {
+  return [&generator, list_type]() {
+    return std::visit(
+        [list_type](auto& gen) { return MakeWriteFuncImpl<F>(gen, list_type); },
+        generator);
+  };
+}
+
 struct Property {
   int list_type;
   size_t data_type_index;
+  WriteFuncMaker make_write_func;
   WriteFunc write_func;
 };
 
@@ -499,7 +510,7 @@ BuildProperties(GetElementRankFunc get_element_rank,
 
       result.back().second.emplace_back(
           property_name, Property{list_type, generator.index(),
-                                  MakeWriteFunc<F>(generator, list_type)});
+                                  MakeWriteFuncMaker<F>(generator, list_type)});
     }
   }
 
@@ -631,6 +642,10 @@ std::error_code WriteFile(
 
   std::stringstream storage;
   for (auto& [element_name, properties] : elements) {
+    for (auto& [_, property] : properties) {
+      property.write_func = property.make_write_func();
+    }
+
     uintmax_t count = num_element_instances[element_name];
     for (uintmax_t i = 0; i < count; i++) {
       bool first = true;
