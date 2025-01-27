@@ -35,8 +35,8 @@ class Sanitizer final : private PlyReader, private PlyWriter {
     virtual void Cancel() = 0;
   };
 
-  template <typename T>
-  class Property final : public PropertyInterface {
+  template <typename Storage, typename View>
+  class Property : public PropertyInterface {
    public:
     Property(uintmax_t num_instances) : num_instances_(num_instances) {}
 
@@ -48,14 +48,19 @@ class Sanitizer final : private PlyReader, private PlyWriter {
       condition_.notify_all();
     }
 
-    std::error_code Add(const T& value) {
+    std::error_code Add(const View& value) {
       std::unique_lock lock(mutex_);
       condition_.wait(lock, [this]() { return !holds_value_ || cancelled_; });
       if (cancelled_) {
         return std::make_error_code(std::errc::operation_canceled);
       }
 
-      value_ = value;
+      if constexpr (std::is_arithmetic_v<View>) {
+        value_ = value;
+      } else {
+        value_.assign(value.begin(), value.end());
+      }
+
       holds_value_ = true;
       condition_.notify_all();
 
@@ -63,8 +68,8 @@ class Sanitizer final : private PlyReader, private PlyWriter {
     }
 
    private:
-    std::generator<T> MakeGenerator() {
-      T result;
+    std::generator<View> MakeGenerator() {
+      Storage result;
       for (uintmax_t i = 0; i < num_instances_; i++) {
         if (!Next(result)) {
           break;
@@ -74,14 +79,14 @@ class Sanitizer final : private PlyReader, private PlyWriter {
       }
     }
 
-    bool Next(T& result) {
+    bool Next(Storage& result) {
       std::unique_lock lock(mutex_);
       condition_.wait(lock, [this]() { return holds_value_ || cancelled_; });
       if (cancelled_) {
         return false;
       }
 
-      result = value_;
+      std::swap(result, value_);
       holds_value_ = false;
       condition_.notify_all();
 
@@ -91,70 +96,8 @@ class Sanitizer final : private PlyReader, private PlyWriter {
     uintmax_t num_instances_;
     std::mutex mutex_;
     std::condition_variable condition_;
-    T value_;
+    Storage value_;
     bool holds_value_ = false;
-    bool cancelled_ = false;
-  };
-
-  template <typename T>
-  struct PropertyList final : public PropertyInterface {
-   public:
-    PropertyList(uintmax_t num_instances) : num_instances_(num_instances) {}
-
-    PropertyGenerator GetGenerator() override { return MakeGenerator(); }
-
-    void Cancel() override {
-      std::unique_lock lock(mutex_);
-      cancelled_ = true;
-      condition_.notify_all();
-    }
-
-    std::error_code Add(std::span<const T> value) {
-      std::unique_lock lock(mutex_);
-      condition_.wait(lock, [this]() { return !holds_values_ || cancelled_; });
-      if (cancelled_) {
-        return std::make_error_code(std::errc::operation_canceled);
-      }
-
-      values_.insert(values_.begin(), value.begin(), value.end());
-      holds_values_ = true;
-      condition_.notify_all();
-
-      return std::error_code();
-    }
-
-   private:
-    std::generator<std::span<const T>> MakeGenerator() {
-      std::vector<T> results;
-      for (uintmax_t i = 0; i < num_instances_; i++) {
-        if (!Next(results)) {
-          break;
-        }
-
-        co_yield results;
-      }
-    }
-
-    bool Next(std::vector<T>& results) {
-      std::unique_lock lock(mutex_);
-      condition_.wait(lock, [this]() { return holds_values_ || cancelled_; });
-      if (cancelled_) {
-        return false;
-      }
-
-      std::swap(results, values_);
-      values_.clear();
-      holds_values_ = false;
-      condition_.notify_all();
-
-      return true;
-    }
-
-    uintmax_t num_instances_;
-    std::mutex mutex_;
-    std::condition_variable condition_;
-    std::vector<T> values_;
-    bool holds_values_ = false;
     bool cancelled_ = false;
   };
 
@@ -290,8 +233,8 @@ std::error_code Sanitizer::Sanitize(std::optional<Format> format,
 template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
     std::function<std::error_code(T)>& callback, uintmax_t num_instances) {
-  std::unique_ptr<Property<T>> property =
-      std::make_unique<Property<T>>(num_instances);
+  std::unique_ptr<Property<T, T>> property =
+      std::make_unique<Property<T, T>>(num_instances);
   callback = [ptr = property.get()](T value) -> std::error_code {
     return ptr->Add(value);
   };
@@ -302,8 +245,9 @@ template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
     std::function<std::error_code(std::span<const T>)>& callback,
     uintmax_t num_instances) {
-  std::unique_ptr<PropertyList<T>> property_list =
-      std::make_unique<PropertyList<T>>(num_instances);
+  std::unique_ptr<Property<std::vector<T>, std::span<const T>>> property_list =
+      std::make_unique<Property<std::vector<T>, std::span<const T>>>(
+          num_instances);
   callback = [ptr = property_list.get()](
                  std::span<const T> values) -> std::error_code {
     return ptr->Add(values);
