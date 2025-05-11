@@ -1204,8 +1204,7 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
             eof_error =
                 MakeUnexpectedEof(EntryType::LIST_SIZE, *property.list_type);
           } else {
-            eof_error =
-                MakeUnexpectedEof(EntryType::VALUE, *property.list_type);
+            eof_error = MakeUnexpectedEof(EntryType::VALUE, property.data_type);
           }
         }
 
