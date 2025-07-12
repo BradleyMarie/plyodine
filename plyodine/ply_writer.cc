@@ -198,11 +198,11 @@ enum class Format {
   BINARY_LITTLE_ENDIAN = 2
 };
 
-using GetElementRankFunc = std::function<size_t(const std::string&)>;
+using GetElementRankFunc = std::move_only_function<size_t(const std::string&)>;
 using GetPropertyRankFunc =
-    std::function<size_t(const std::string&, const std::string&)>;
+    std::move_only_function<size_t(const std::string&, const std::string&)>;
 using GetPropertyListSizeFunc =
-    std::function<int(const std::string&, const std::string&)>;
+    std::move_only_function<int(const std::string&, const std::string&)>;
 using WriteFunc =
     std::move_only_function<std::error_code(std::ostream&, std::stringstream&)>;
 using WriteFuncMaker = std::move_only_function<WriteFunc()>;

@@ -53,90 +53,95 @@ class PlyReader {
   // A callback that receives the values of a char property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using CharPropertyCallback = std::function<std::error_code(int8_t)>;
+  using CharPropertyCallback = std::move_only_function<std::error_code(int8_t)>;
 
   // A callback that receives the values of a char property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using CharPropertyListCallback =
-      std::function<std::error_code(std::span<const int8_t>)>;
+      std::move_only_function<std::error_code(std::span<const int8_t>)>;
 
   // A callback that receives the values of a uchar property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using UCharPropertyCallback = std::function<std::error_code(uint8_t)>;
+  using UCharPropertyCallback =
+      std::move_only_function<std::error_code(uint8_t)>;
 
   // A callback that receives the values of a uchar property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using UCharPropertyListCallback =
-      std::function<std::error_code(std::span<const uint8_t>)>;
+      std::move_only_function<std::error_code(std::span<const uint8_t>)>;
 
   // A callback that receives the values of a short property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using ShortPropertyCallback = std::function<std::error_code(int16_t)>;
+  using ShortPropertyCallback =
+      std::move_only_function<std::error_code(int16_t)>;
 
   // A callback that receives the values of a short property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using ShortPropertyListCallback =
-      std::function<std::error_code(std::span<const int16_t>)>;
+      std::move_only_function<std::error_code(std::span<const int16_t>)>;
 
   // A callback that receives the values of a ushort property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using UShortPropertyCallback = std::function<std::error_code(uint16_t)>;
+  using UShortPropertyCallback =
+      std::move_only_function<std::error_code(uint16_t)>;
 
   // A callback that receives the values of a ushort property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using UShortPropertyListCallback =
-      std::function<std::error_code(std::span<const uint16_t>)>;
+      std::move_only_function<std::error_code(std::span<const uint16_t>)>;
 
   // A callback that receives the values of an int property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using IntPropertyCallback = std::function<std::error_code(int32_t)>;
+  using IntPropertyCallback = std::move_only_function<std::error_code(int32_t)>;
 
   // A callback that receives the values of an int property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using IntPropertyListCallback =
-      std::function<std::error_code(std::span<const int32_t>)>;
+      std::move_only_function<std::error_code(std::span<const int32_t>)>;
 
   // A callback that receives the values of a uint property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using UIntPropertyCallback = std::function<std::error_code(uint32_t)>;
+  using UIntPropertyCallback =
+      std::move_only_function<std::error_code(uint32_t)>;
 
   // A callback that receives the values of a uint property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using UIntPropertyListCallback =
-      std::function<std::error_code(std::span<const uint32_t>)>;
+      std::move_only_function<std::error_code(std::span<const uint32_t>)>;
 
   // A callback that receives the values of a float property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using FloatPropertyCallback = std::function<std::error_code(float)>;
+  using FloatPropertyCallback = std::move_only_function<std::error_code(float)>;
 
   // A callback that receives the values of a float property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using FloatPropertyListCallback =
-      std::function<std::error_code(std::span<const float>)>;
+      std::move_only_function<std::error_code(std::span<const float>)>;
 
   // A callback that receives the values of a double property.
   //
   // On success, returns an `std::error_code` with a zero-value.
-  using DoublePropertyCallback = std::function<std::error_code(double)>;
+  using DoublePropertyCallback =
+      std::move_only_function<std::error_code(double)>;
 
   // A callback that receives the values of a double property list.
   //
   // On success, returns an `std::error_code` with a zero-value.
   using DoublePropertyListCallback =
-      std::function<std::error_code(std::span<const double>)>;
+      std::move_only_function<std::error_code(std::span<const double>)>;
 
   // A variant that contains the callback for a property. The type of the
   // variant determines the type of the property in the input.

@@ -616,8 +616,8 @@ struct Context final {
 
 using AppendFunc = void (*)(Context&);
 using ConvertFunc = std::error_code (*)(Context&, EntryType);
-using Handler = std::function<std::error_code(Context&)>;
-using OnConversionErrorFunc = std::function<std::error_code(
+using Handler = std::move_only_function<std::error_code(Context&)>;
+using OnConversionErrorFunc = std::move_only_function<std::error_code(
     const std::string&, const std::string&, std::error_code)>;
 using ReadFunc = std::error_code (*)(std::istream&, Context&, EntryType);
 
@@ -951,32 +951,34 @@ AppendFunc GetAppendFunc(PlyHeader::Property::Type dest_type) {
 }
 
 template <typename T>
-Handler MakeHandler(const std::function<std::error_code(T)>& callback) {
-  return [&](Context& context) { return callback(std::get<T>(context.data)); };
+Handler MakeHandler(std::move_only_function<std::error_code(T)> callback) {
+  return [actual = std::move(callback)](Context& context) mutable {
+    return actual(std::get<T>(context.data));
+  };
 }
 
 template <typename T>
 Handler MakeHandler(
-    const std::function<std::error_code(std::span<const T>)>& callback) {
-  return [&](Context& context) {
+    std::move_only_function<std::error_code(std::span<const T>)> callback) {
+  return [actual = std::move(callback)](Context& context) mutable {
     auto& data = std::get<std::vector<T>>(context.data);
-    std::error_code result = callback(data);
+    std::error_code result = actual(data);
     data.clear();
     return result;
   };
 }
 
 template <typename PropertyCallback>
-Handler MakeHandler(const PropertyCallback& callback) {
+Handler MakeHandler(PropertyCallback callback) {
   return std::visit(
-      [](const auto& true_callback) -> Handler {
+      [](auto true_callback) -> Handler {
         if (!true_callback) {
           return Handler();
         }
 
-        return MakeHandler(true_callback);
+        return MakeHandler(std::move(true_callback));
       },
-      callback);
+      std::move(callback));
 }
 
 class PropertyParser {
@@ -999,8 +1001,8 @@ class PropertyParser {
   ReadFunc read_;
   ConvertFunc convert_;
   AppendFunc append_to_list_;
-  OnConversionErrorFunc on_conversion_error_;
-  Handler handler_;
+  mutable OnConversionErrorFunc on_conversion_error_;
+  mutable Handler handler_;
 };
 
 PropertyParser::PropertyParser(
@@ -1065,26 +1067,26 @@ std::error_code PropertyParser::Parse(std::istream& stream,
 template <typename PropertyCallback>
 PropertyCallback MakeEmptyCallback(PlyHeader::Property::Type data_type,
                                    bool is_list) {
-  static const PropertyCallback empty_callbacks[16] = {
-      PropertyCallback(std::in_place_index<0>),
-      PropertyCallback(std::in_place_index<1>),
-      PropertyCallback(std::in_place_index<2>),
-      PropertyCallback(std::in_place_index<3>),
-      PropertyCallback(std::in_place_index<4>),
-      PropertyCallback(std::in_place_index<5>),
-      PropertyCallback(std::in_place_index<6>),
-      PropertyCallback(std::in_place_index<7>),
-      PropertyCallback(std::in_place_index<8>),
-      PropertyCallback(std::in_place_index<9>),
-      PropertyCallback(std::in_place_index<10>),
-      PropertyCallback(std::in_place_index<11>),
-      PropertyCallback(std::in_place_index<12>),
-      PropertyCallback(std::in_place_index<13>),
-      PropertyCallback(std::in_place_index<14>),
-      PropertyCallback(std::in_place_index<15>)};
+  static constexpr PropertyCallback (*make_empty_callback[16])() = {
+      []() { return PropertyCallback(std::in_place_index<0>); },
+      []() { return PropertyCallback(std::in_place_index<1>); },
+      []() { return PropertyCallback(std::in_place_index<2>); },
+      []() { return PropertyCallback(std::in_place_index<3>); },
+      []() { return PropertyCallback(std::in_place_index<4>); },
+      []() { return PropertyCallback(std::in_place_index<5>); },
+      []() { return PropertyCallback(std::in_place_index<6>); },
+      []() { return PropertyCallback(std::in_place_index<7>); },
+      []() { return PropertyCallback(std::in_place_index<8>); },
+      []() { return PropertyCallback(std::in_place_index<9>); },
+      []() { return PropertyCallback(std::in_place_index<10>); },
+      []() { return PropertyCallback(std::in_place_index<11>); },
+      []() { return PropertyCallback(std::in_place_index<12>); },
+      []() { return PropertyCallback(std::in_place_index<13>); },
+      []() { return PropertyCallback(std::in_place_index<14>); },
+      []() { return PropertyCallback(std::in_place_index<15>); }};
 
-  return empty_callbacks[2 * static_cast<size_t>(data_type) +
-                         static_cast<size_t>(is_list)];
+  return make_empty_callback[2 * static_cast<size_t>(data_type) +
+                             static_cast<size_t>(is_list)]();
 }
 
 }  // namespace
@@ -1101,19 +1103,28 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
 
   std::map<std::string, uintmax_t> num_element_instances;
   std::map<std::string, std::map<std::string, PropertyCallback>>
+      requested_callbacks;
+  std::map<std::string, std::map<std::string, PropertyCallback>>
       actual_callbacks;
   for (const auto& element : header->elements) {
     num_element_instances[element.name] = element.instance_count;
 
-    std::map<std::string, PropertyCallback>& property_callbacks =
+    std::map<std::string, PropertyCallback>& actual_property_callbacks =
         actual_callbacks[element.name];
+    std::map<std::string, PropertyCallback>& requested_property_callbacks =
+        requested_callbacks[element.name];
     for (const auto& property : element.properties) {
-      property_callbacks[property.name] = MakeEmptyCallback<PropertyCallback>(
-          property.data_type, property.list_type.has_value());
+      actual_property_callbacks.emplace(
+          property.name,
+          MakeEmptyCallback<PropertyCallback>(property.data_type,
+                                              property.list_type.has_value()));
+      requested_property_callbacks.emplace(
+          property.name,
+          MakeEmptyCallback<PropertyCallback>(property.data_type,
+                                              property.list_type.has_value()));
     }
   }
 
-  auto requested_callbacks = actual_callbacks;
   if (std::error_code error =
           Start(std::move(num_element_instances), requested_callbacks,
                 std::move(header->comments), std::move(header->object_info));
@@ -1147,13 +1158,15 @@ std::error_code PlyReader::ReadFrom(std::istream& stream) {
   for (const PlyHeader::Element& element : header->elements) {
     parsers.emplace_back();
     for (const PlyHeader::Property& property : element.properties) {
-      const PropertyCallback& callback = actual_callbacks.find(element.name)
-                                             ->second.find(property.name)
-                                             ->second;
+      size_t callback_index = actual_callbacks.find(element.name)
+                                  ->second.find(property.name)
+                                  ->second.index();
       parsers.back().emplace_back(
           header->format, property.list_type, property.data_type,
-          static_cast<PlyHeader::Property::Type>(callback.index() >> 1u),
-          MakeHandler(callback),
+          static_cast<PlyHeader::Property::Type>(callback_index >> 1u),
+          MakeHandler(std::move(actual_callbacks.find(element.name)
+                                    ->second.find(property.name)
+                                    ->second)),
           [&, this](const std::string& element_name,
                     const std::string& property_name,
                     std::error_code error) -> std::error_code {

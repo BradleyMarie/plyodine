@@ -128,12 +128,12 @@ class Sanitizer final : private PlyReader, private PlyWriter {
 
   template <typename T>
   static std::unique_ptr<PropertyInterface> UpdateCallback(
-      std::function<std::error_code(T)>& callback, bool low_mem,
+      std::move_only_function<std::error_code(T)>& callback, bool low_mem,
       uintmax_t num_instances);
 
   template <typename T>
   static std::unique_ptr<PropertyInterface> UpdateCallback(
-      std::function<std::error_code(std::span<const T>)>& callback,
+      std::move_only_function<std::error_code(std::span<const T>)>& callback,
       bool low_mem, uintmax_t num_instances);
 
   void Cancel();
@@ -261,7 +261,7 @@ std::error_code Sanitizer::Sanitize(std::optional<Format> format,
 
 template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
-    std::function<std::error_code(T)>& callback, bool low_mem,
+    std::move_only_function<std::error_code(T)>& callback, bool low_mem,
     uintmax_t num_instances) {
   std::unique_ptr<Property<T, T>> property =
       std::make_unique<Property<T, T>>(low_mem, num_instances);
@@ -273,8 +273,8 @@ std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
 
 template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
-    std::function<std::error_code(std::span<const T>)>& callback, bool low_mem,
-    uintmax_t num_instances) {
+    std::move_only_function<std::error_code(std::span<const T>)>& callback,
+    bool low_mem, uintmax_t num_instances) {
   std::unique_ptr<Property<std::vector<T>, std::span<const T>>> property_list =
       std::make_unique<Property<std::vector<T>, std::span<const T>>>(
           low_mem, num_instances);

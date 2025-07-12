@@ -406,8 +406,8 @@ class TriangleMeshReader : public PlyReader {
       return MakeError(invalid_type_error_codes[index]);
     }
 
-    iter->second = std::function<std::error_code(PositionType)>(
-        [index, this](PositionType value) -> std::error_code {
+    iter->second = std::move_only_function<std::error_code(PositionType)>(
+        [index, this](PositionType value) mutable -> std::error_code {
           if (!std::isfinite(value)) {
             return MakeError(invalid_value_error_codes[index]);
           }
@@ -437,37 +437,35 @@ class TriangleMeshReader : public PlyReader {
       return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_TYPE);
     }
 
-    iter->second =
-        std::function<std::error_code(std::span<const VertexIndexType>)>(
-            [num_vertices, this](std::span<const VertexIndexType> indices) {
-              if (indices.size() < 3) {
-                return std::error_code();
-              }
+    iter->second = std::move_only_function<std::error_code(
+        std::span<const VertexIndexType>)>(
+        [num_vertices, this](std::span<const VertexIndexType> indices) mutable {
+          if (indices.size() < 3) {
+            return std::error_code();
+          }
 
-              if (num_vertices <= indices[0] || num_vertices <= indices[1]) {
-                return MakeError(
-                    ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE);
-              }
+          if (num_vertices <= indices[0] || num_vertices <= indices[1]) {
+            return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE);
+          }
 
-              std::array<VertexIndexType, 3> faces;
-              faces[0] = static_cast<VertexIndexType>(indices[0]);
-              for (size_t i = 2u; i < indices.size(); i++) {
-                if (num_vertices <= indices[i]) {
-                  return MakeError(
-                      ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE);
-                }
+          std::array<VertexIndexType, 3> faces;
+          faces[0] = static_cast<VertexIndexType>(indices[0]);
+          for (size_t i = 2u; i < indices.size(); i++) {
+            if (num_vertices <= indices[i]) {
+              return MakeError(ErrorCode::INVALID_PROPERTY_VERTEX_INDEX_VALUE);
+            }
 
-                faces[1] = static_cast<VertexIndexType>(indices[i - 1u]);
-                faces[2] = static_cast<VertexIndexType>(indices[i]);
+            faces[1] = static_cast<VertexIndexType>(indices[i - 1u]);
+            faces[2] = static_cast<VertexIndexType>(indices[i]);
 
-                if (faces[0] != faces[1] && faces[1] != faces[2] &&
-                    faces[2] != faces[0]) {
-                  AddTriangle(faces);
-                }
-              }
+            if (faces[0] != faces[1] && faces[1] != faces[2] &&
+                faces[2] != faces[0]) {
+              AddTriangle(faces);
+            }
+          }
 
-              return std::error_code();
-            });
+          return std::error_code();
+        });
 
     return std::error_code();
   }
@@ -478,8 +476,8 @@ class TriangleMeshReader : public PlyReader {
         ErrorCode::INVALID_PROPERTY_NY_VALUE,
         ErrorCode::INVALID_PROPERTY_NZ_VALUE};
 
-    callbacks = std::function<std::error_code(NormalType)>(
-        [index, this](NormalType value) -> std::error_code {
+    callbacks = std::move_only_function<std::error_code(NormalType)>(
+        [index, this](NormalType value) mutable -> std::error_code {
           if (!std::isfinite(value)) {
             return MakeError(invalid_value_error_codes[index]);
           }
@@ -539,8 +537,8 @@ class TriangleMeshReader : public PlyReader {
 
   void AddVertexUVCallback(PropertyCallback& callbacks, ErrorCode error_code,
                            size_t index) {
-    callbacks = std::function<std::error_code(UVType)>(
-        [error_code, index, this](UVType value) -> std::error_code {
+    callbacks = std::move_only_function<std::error_code(UVType)>(
+        [error_code, index, this](UVType value) mutable -> std::error_code {
           if (!std::isfinite(value)) {
             return MakeError(error_code);
           }

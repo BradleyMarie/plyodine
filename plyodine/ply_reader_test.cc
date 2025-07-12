@@ -2302,24 +2302,25 @@ class MockConvertingPlyReader final : public PlyReader {
       std::map<std::string, std::map<std::string, PropertyCallback>>& callbacks,
       std::vector<std::string> comments,
       std::vector<std::string> object_info) override {
-    static const PropertyCallback property_callbacks[16] = {
-        PropertyCallback(std::in_place_index<0>),
-        PropertyCallback(std::in_place_index<1>),
-        PropertyCallback(std::in_place_index<2>),
-        PropertyCallback(std::in_place_index<3>),
-        PropertyCallback(std::in_place_index<4>),
-        PropertyCallback(std::in_place_index<5>),
-        PropertyCallback(std::in_place_index<6>),
-        PropertyCallback(std::in_place_index<7>),
-        PropertyCallback(std::in_place_index<8>),
-        PropertyCallback(std::in_place_index<9>),
-        PropertyCallback(std::in_place_index<10>),
-        PropertyCallback(std::in_place_index<11>),
-        PropertyCallback(std::in_place_index<12>),
-        PropertyCallback(std::in_place_index<13>),
-        PropertyCallback(std::in_place_index<14>),
-        PropertyCallback(std::in_place_index<15>)};
-    callbacks["vertex"]["a"] = property_callbacks[static_cast<size_t>(type_)];
+    static constexpr PropertyCallback (*make_empty_callback[16])() = {
+        []() { return PropertyCallback(std::in_place_index<0>); },
+        []() { return PropertyCallback(std::in_place_index<1>); },
+        []() { return PropertyCallback(std::in_place_index<2>); },
+        []() { return PropertyCallback(std::in_place_index<3>); },
+        []() { return PropertyCallback(std::in_place_index<4>); },
+        []() { return PropertyCallback(std::in_place_index<5>); },
+        []() { return PropertyCallback(std::in_place_index<6>); },
+        []() { return PropertyCallback(std::in_place_index<7>); },
+        []() { return PropertyCallback(std::in_place_index<8>); },
+        []() { return PropertyCallback(std::in_place_index<9>); },
+        []() { return PropertyCallback(std::in_place_index<10>); },
+        []() { return PropertyCallback(std::in_place_index<11>); },
+        []() { return PropertyCallback(std::in_place_index<12>); },
+        []() { return PropertyCallback(std::in_place_index<13>); },
+        []() { return PropertyCallback(std::in_place_index<14>); },
+        []() { return PropertyCallback(std::in_place_index<15>); }};
+    callbacks["vertex"]["a"] =
+        make_empty_callback[static_cast<size_t>(type_)]();
     return std::error_code();
   }
 

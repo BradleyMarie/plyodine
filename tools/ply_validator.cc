@@ -22,7 +22,7 @@ class Validator final : public PlyReader {
 };
 
 template <typename T>
-void UpdateCallback(std::function<std::error_code(T)>& callback) {
+void UpdateCallback(std::move_only_function<std::error_code(T)>& callback) {
   callback = [](T) { return std::error_code(); };
 }
 
