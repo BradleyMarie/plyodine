@@ -32,7 +32,7 @@ are using Bazel as well, you can import PLYodine into your workspace by adding a
 snippet like the following into your `MODULE.bazel` file.
 
 ```
-bazel_dep(name = "plyodine", version = "1.0.4")
+bazel_dep(name = "plyodine", version = "1.1.0")
 ```
 
 Note: You should update `version` to reference the to the 
