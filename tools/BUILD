@@ -1,6 +1,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 
-package(default_visibility = ["//visibility:private"])
+package(
+    default_visibility = ["//visibility:private"],
+    features = [
+        "layering_check",
+        "parse_headers",
+    ],
+)
 
 cc_binary(
     name = "ply_sanitizer",

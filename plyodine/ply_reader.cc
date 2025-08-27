@@ -437,7 +437,8 @@ std::string OverflowedUnderflowedMessage(std::string_view type,
 static class ErrorCategory final : public std::error_category {
   const char* name() const noexcept override;
   std::string message(int condition) const override;
-  std::error_condition default_error_condition(int value) const noexcept;
+  std::error_condition default_error_condition(
+      int value) const noexcept override;
 } kErrorCategory;
 
 const char* ErrorCategory::name() const noexcept {
