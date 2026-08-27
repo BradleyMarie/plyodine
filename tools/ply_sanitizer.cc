@@ -1,12 +1,9 @@
-#include <condition_variable>
 #include <cstdint>
 #include <expected>
 #include <fstream>
-#include <future>
 #include <iostream>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <span>
 #include <string>
@@ -26,7 +23,7 @@ enum class Format { ASCII, BIG, LITTLE, NATIVE };
 
 class Sanitizer final : private PlyReader, private PlyWriter {
  public:
-  Sanitizer(bool low_mem) : low_mem_(low_mem) {}
+  Sanitizer() = default;
 
   std::error_code Sanitize(std::optional<Format> format, std::istream& input,
                            std::ostream& output);
@@ -35,47 +32,20 @@ class Sanitizer final : private PlyReader, private PlyWriter {
   struct PropertyInterface {
     virtual ~PropertyInterface() = default;
     virtual PropertyGenerator GetGenerator() = 0;
-    virtual void Cancel() = 0;
   };
 
   template <typename Storage, typename View>
   class Property : public PropertyInterface {
    public:
-    Property(bool low_mem, uintmax_t num_instances)
-        : low_mem_(low_mem), num_instances_(num_instances) {}
+    Property(uintmax_t num_instances) : num_instances_(num_instances) {}
 
     PropertyGenerator GetGenerator() override { return MakeGenerator(); }
 
-    void Cancel() override {
-      if (low_mem_) {
-        std::unique_lock lock(mutex_);
-        cancelled_ = true;
-        condition_.notify_all();
-      }
-    }
-
     std::error_code Add(const View& value) {
-      if (low_mem_) {
-        std::unique_lock lock(mutex_);
-        condition_.wait(lock,
-                        [this]() { return values_.empty() || cancelled_; });
-        if (cancelled_) {
-          return std::make_error_code(std::errc::operation_canceled);
-        }
-
-        if constexpr (std::is_arithmetic_v<View>) {
-          values_.push_back(value);
-        } else {
-          values_.emplace_back(value.begin(), value.end());
-        }
-
-        condition_.notify_all();
+      if constexpr (std::is_arithmetic_v<View>) {
+        values_.push_back(value);
       } else {
-        if constexpr (std::is_arithmetic_v<View>) {
-          values_.push_back(value);
-        } else {
-          values_.emplace_back(value.begin(), value.end());
-        }
+        values_.emplace_back(value.begin(), value.end());
       }
 
       return std::error_code();
@@ -97,46 +67,24 @@ class Sanitizer final : private PlyReader, private PlyWriter {
     }
 
     bool Next(std::vector<Storage>& result) {
-      if (low_mem_) {
-        std::unique_lock lock(mutex_);
-        condition_.wait(lock,
-                        [this]() { return !values_.empty() || cancelled_; });
-
-        if (cancelled_) {
-          return false;
-        }
-
-        std::swap(result, values_);
-        values_.clear();
-
-        condition_.notify_all();
-      } else {
-        std::swap(result, values_);
-        values_.clear();
-      }
-
+      std::swap(result, values_);
+      values_.clear();
       return true;
     }
 
-    const bool low_mem_;
     uintmax_t num_instances_;
-    std::mutex mutex_;
-    std::condition_variable condition_;
     std::vector<Storage> values_;
-    bool cancelled_ = false;
   };
 
   template <typename T>
   static std::unique_ptr<PropertyInterface> UpdateCallback(
-      std::move_only_function<std::error_code(T)>& callback, bool low_mem,
+      std::move_only_function<std::error_code(T)>& callback,
       uintmax_t num_instances);
 
   template <typename T>
   static std::unique_ptr<PropertyInterface> UpdateCallback(
       std::move_only_function<std::error_code(std::span<const T>)>& callback,
-      bool low_mem, uintmax_t num_instances);
-
-  void Cancel();
+      uintmax_t num_instances);
 
   // PlyReader
   std::error_code Start(
@@ -162,7 +110,6 @@ class Sanitizer final : private PlyReader, private PlyWriter {
   size_t GetPropertyRank(const std::string& element_name,
                          const std::string& property_name) const override;
 
-  const bool low_mem_;
   std::map<std::string, uintmax_t> num_element_instances_;
   std::map<std::string, size_t> element_rank;
   std::map<std::string, size_t> property_rank;
@@ -175,7 +122,6 @@ class Sanitizer final : private PlyReader, private PlyWriter {
   Format format_;
 
   // Writer State
-  mutable std::future<std::error_code> write_result_;
   std::ostream* output_;
 };
 
@@ -250,21 +196,35 @@ std::error_code Sanitizer::Sanitize(std::optional<Format> format,
   input.seekg(0);
   output_ = &output;
 
-  if (std::error_code error = ReadFrom(input);
-      error && error != std::errc::operation_canceled) {
-    Cancel();
+  if (std::error_code error = ReadFrom(input); error) {
     return error;
   }
 
-  return write_result_.get();
+  std::error_code error;
+  switch (format_) {
+    case Format::ASCII:
+      error = WriteToASCII(*output_);
+      break;
+    case Format::BIG:
+      error = WriteToBigEndian(*output_);
+      break;
+    case Format::LITTLE:
+      error = WriteToLittleEndian(*output_);
+      break;
+    case Format::NATIVE:
+      error = WriteTo(*output_);
+      break;
+  }
+
+  return error;
 }
 
 template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
-    std::move_only_function<std::error_code(T)>& callback, bool low_mem,
+    std::move_only_function<std::error_code(T)>& callback,
     uintmax_t num_instances) {
   std::unique_ptr<Property<T, T>> property =
-      std::make_unique<Property<T, T>>(low_mem, num_instances);
+      std::make_unique<Property<T, T>>(num_instances);
   callback = [ptr = property.get()](T value) -> std::error_code {
     return ptr->Add(value);
   };
@@ -274,27 +234,15 @@ std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
 template <typename T>
 std::unique_ptr<Sanitizer::PropertyInterface> Sanitizer::UpdateCallback(
     std::move_only_function<std::error_code(std::span<const T>)>& callback,
-    bool low_mem, uintmax_t num_instances) {
+    uintmax_t num_instances) {
   std::unique_ptr<Property<std::vector<T>, std::span<const T>>> property_list =
       std::make_unique<Property<std::vector<T>, std::span<const T>>>(
-          low_mem, num_instances);
+          num_instances);
   callback = [ptr = property_list.get()](
                  std::span<const T> values) -> std::error_code {
     return ptr->Add(values);
   };
   return property_list;
-}
-
-void Sanitizer::Cancel() {
-  if (!low_mem_) {
-    return;
-  }
-
-  for (auto& element : elements_) {
-    for (auto& [property_name, property] : element.second) {
-      property->Cancel();
-    }
-  }
 }
 
 // PlyReader
@@ -306,39 +254,12 @@ std::error_code Sanitizer::Start(
     for (auto& [property_name, property_callback] : element) {
       elements_[element_name][property_name] = std::visit(
           [&](auto& callback) -> std::unique_ptr<PropertyInterface> {
-            return UpdateCallback(callback, low_mem_,
+            return UpdateCallback(callback,
                                   num_element_instances[element_name]);
           },
           property_callback);
     }
   }
-
-  std::launch launch_policy =
-      low_mem_ ? std::launch::async : std::launch::deferred;
-
-  write_result_ = std::async(launch_policy, [this]() {
-    std::error_code error;
-    switch (format_) {
-      case Format::ASCII:
-        error = WriteToASCII(*output_);
-        break;
-      case Format::BIG:
-        error = WriteToBigEndian(*output_);
-        break;
-      case Format::LITTLE:
-        error = WriteToLittleEndian(*output_);
-        break;
-      case Format::NATIVE:
-        error = WriteTo(*output_);
-        break;
-    }
-
-    if (error) {
-      Cancel();
-    }
-
-    return error;
-  });
 
   return std::error_code();
 }
@@ -386,15 +307,13 @@ size_t Sanitizer::GetPropertyRank(const std::string& element_name,
 
 int main(int argc, char* argv[]) {
   static constexpr char usage[] =
-      "usage: ply_sanitizer input output <[ascii|big|little|native]> "
-      "<[lowmem]>";
+      "usage: ply_sanitizer input output <[ascii|big|little|native]>";
 
-  if (argc < 3 && argc > 5) {
+  if (argc != 3 && argc != 4) {
     std::cerr << usage << std::endl;
     return EXIT_FAILURE;
   }
 
-  bool lowmem = false;
   std::optional<plyodine::Format> format;
   if (argc == 4) {
     std::string_view arg = argv[3];
@@ -406,33 +325,10 @@ int main(int argc, char* argv[]) {
       format = plyodine::Format::LITTLE;
     } else if (arg == "native") {
       format = plyodine::Format::NATIVE;
-    } else if (arg == "lowmem") {
-      lowmem = true;
     } else {
       std::cerr << usage << std::endl;
       return EXIT_FAILURE;
     }
-  } else if (argc == 5) {
-    if (std::string_view(argv[4]) != "lowmem") {
-      std::cerr << usage << std::endl;
-      return EXIT_FAILURE;
-    }
-
-    std::string_view type = argv[3];
-    if (type == "ascii") {
-      format = plyodine::Format::ASCII;
-    } else if (type == "big") {
-      format = plyodine::Format::BIG;
-    } else if (type == "little") {
-      format = plyodine::Format::LITTLE;
-    } else if (type == "native") {
-      format = plyodine::Format::NATIVE;
-    } else {
-      std::cerr << usage << std::endl;
-      return EXIT_FAILURE;
-    }
-
-    lowmem = true;
   }
 
   std::ifstream input(argv[1], std::ios_base::in | std::ios_base::binary);
@@ -447,7 +343,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  plyodine::Sanitizer sanitizer(lowmem);
+  plyodine::Sanitizer sanitizer;
   if (std::error_code error = sanitizer.Sanitize(format, input, output);
       error) {
     std::cerr << error.message() << std::endl;
